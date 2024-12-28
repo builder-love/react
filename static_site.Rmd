@@ -1,0 +1,48 @@
+---
+title: "Blockchain Development Framework"
+output: 
+  html_document:
+    theme: darkly
+---
+
+### Total Developer Activity
+
+<br>
+
+```{r artemis_dev_stats, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+library(rmarkdown)
+library(dplyr)
+library(tidyr)
+library(formattable)
+library(scales)
+
+# get artemis dev dashboard csv file
+dev_stats <- read.csv('Developer Ecosystems - developer_ecosystems_december_2024.csv')
+
+# counts by ecosystem
+dev_stats_df <- dev_stats %>%
+  filter(Execution.VM != 'not labelled') %>%
+  group_by(Execution.VM) %>%
+  summarize(dev_cnt = sum(curr_num_devs),
+            repo_cnt = sum(num_repos),
+            sub_eco_cnt = sum(num_subecosystems),
+            commit_cnt = sum(curr_num_commits)) %>%
+  arrange(desc(dev_cnt)) %>%
+  mutate(dev_cnt = comma(dev_cnt),
+         repo_cnt = comma(repo_cnt),
+         sub_eco_cnt = comma(sub_eco_cnt),
+         commit_cnt = comma(commit_cnt))
+
+# rename columns
+colnames(dev_stats_df) <- c('Execution.VM', 'Developer Count', 'Repo Count', 'Sub Ecosystem Count', 'Commit Count')
+```
+
+```{r artemis_dev_stats_print, echo=FALSE, warning=FALSE, message=FALSE}
+formattable(dev_stats_df)
+```
+
+<br>
+
+The data was sourced from Artemis developer activity report (https://app.artemisanalytics.com/developer-activity) in December 2024.
+
+Developer data in the Artemis report is sourced from Electric Capital's Crypto Ecosystems repo (https://github.com/electric-capital/crypto-ecosystems/tree/master).
