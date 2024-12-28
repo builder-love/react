@@ -1,4 +1,4 @@
-# execution_vm
+# Blockchain Development Framework Activity
 
 https://treboryatska.github.io/execution_vm/
 
