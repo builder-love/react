@@ -1,4 +1,4 @@
-# Blockchain Development Framework Activity
+# Blockchain Development Frameworks - Activity Statistics
 
 https://treboryatska.github.io/execution_vm/
 
