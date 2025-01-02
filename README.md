@@ -6,6 +6,9 @@ This repo contains analysis of developer activity across blockchain ecosystems.
 
 The data is sourced from Electric Capital's Crypto Ecosystems repo (https://github.com/electric-capital/crypto-ecosystems/tree/master) and Artemis developer activity report (https://app.artemisanalytics.com/developer-activity). Developer data in the Artemis report is also sourced from Electric Capital's Crypto Ecosystems repo.
 
+## Database Generation
+The raw data used to generate analyses is not stored in this repo. However, the complete set of python data pipeline scripts are available. All data was sourced from open access sources. 
+
 ## Data Methodology
 The Crypto Ecosystems raw data and the Artemis dashboard allow us insights into developer ecosystems, however the data labels generally lack context and are not useful for understanding the relative strength of developer ecosystems. 
 
