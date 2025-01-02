@@ -1,13 +1,27 @@
 ---
-title: "Blockchain Development Framework"
+title: "Blockchain Development Ecosystems"
 output: 
   html_document:
     theme: darkly
 ---
 
-### Total Developer Activity
+<br>
+
+Which developer frameworks have the most traction?
 
 <br>
+
+## Total Developer Activity
+
+<br>
+
+```{r libraries, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+library(rmarkdown)
+library(dplyr)
+library(tidyr)
+library(formattable)
+library(scales)
+```
 
 ```{r artemis_dev_stats, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
 library(rmarkdown)
@@ -18,6 +32,9 @@ library(scales)
 
 # get artemis dev dashboard csv file
 dev_stats <- read.csv('Developer Ecosystems - developer_ecosystems_december_2024.csv')
+
+# get top 50 crypto projects by stargaze count
+project_stars <- read.csv('top_50_crypto_projects_by_stargaze_count.csv')
 
 # counts by ecosystem
 dev_stats_df <- dev_stats %>%
@@ -37,12 +54,34 @@ dev_stats_df <- dev_stats %>%
 colnames(dev_stats_df) <- c('Execution.VM', 'Developer Count', 'Repo Count', 'Sub Ecosystem Count', 'Commit Count')
 ```
 
-```{r artemis_dev_stats_print, echo=FALSE, warning=FALSE, message=FALSE}
-formattable(dev_stats_df)
+```{r top_50_projects_by_stars, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+
+# get top 50 crypto projects by stargaze count
+project_stars <- read.csv('top_50_crypto_projects_by_stargaze_count.csv')
+
+# counts by ecosystem
+dev_stars_df <- project_stars %>%
+    mutate(project_repo_count = comma(project_repo_count, accuracy = 1),
+         project_stargaze_count = comma(project_stargaze_count, accuracy = 1))
+
+# rename columns
+colnames(dev_stars_df) <- c('Project Name', 'Repo Count', 'Project Star Count')
 ```
 
-<br>
+```{r artemis_dev_stars_print, echo=FALSE, warning=FALSE, message=FALSE}
+formattable(dev_stats_df)
+```
 
 The data was sourced from Artemis developer activity report (https://app.artemisanalytics.com/developer-activity) in December 2024.
 
 Developer data in the Artemis report is sourced from Electric Capital's Crypto Ecosystems repo (https://github.com/electric-capital/crypto-ecosystems/tree/master).
+
+<br>
+
+## Github Star Count by Project
+
+```{r project_stars_print, echo=FALSE, warning=FALSE, message=FALSE}
+formattable(dev_stars_df)
+```
+
+Project name is self reported in the Electric Capital Crypto Ecosystems repo (https://github.com/electric-capital/crypto-ecosystems/tree/master).
