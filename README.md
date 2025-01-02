@@ -2,14 +2,12 @@
 
 https://treboryatska.github.io/execution_vm/
 
-Basic analysis of developer activity across blockchain ecosystems. 
+This repo contains analysis of developer activity across blockchain ecosystems. 
 
-The data is sourced from Artemis developer activity report (https://app.artemisanalytics.com/developer-activity). 
-
-Developer data in the Artemis report is sourced from Electric Capital's Crypto Ecosystems repo (https://github.com/electric-capital/crypto-ecosystems/tree/master).
+The data is sourced from Electric Capital's Crypto Ecosystems repo (https://github.com/electric-capital/crypto-ecosystems/tree/master) and Artemis developer activity report (https://app.artemisanalytics.com/developer-activity). Developer data in the Artemis report is also sourced from Electric Capital's Crypto Ecosystems repo.
 
 ## Data Methodology
-The Artemis dashboard allows us some basic insights into developer ecosystems, however the data labels generally lack context and are not useful for understanding the relative strength of developer ecosystems. 
+The Crypto Ecosystems raw data and the Artemis dashboard allow us insights into developer ecosystems, however the data labels generally lack context and are not useful for understanding the relative strength of developer ecosystems. 
 
 Specifically, the Artemis data has an incomplete and context unaware data labeling methodology:
 - Tooling, such as Hardhat, Foundry, and Truffle are built to support specific blockchain development frameworks, so it makes sense to include the developer activity in these ecosystems in the statistics of the blockchain framework they primarily support
