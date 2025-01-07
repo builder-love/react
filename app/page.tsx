@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -11,11 +11,25 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import type { StarsDataItem, ForksDataItem } from './types'; // Import the types
+import type { StarsDataItem, ForksDataItem } from './types';
 import top100StarsData from './data/top_100_by_stargaze.json';
 import top100ForksData from './data/top_100_forked_projects.json';
 
 const HomePage: React.FC = () => {
+  const [windowWidth, setWindowWidth] = useState(0);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    if (typeof window !== 'undefined') {
+      setWindowWidth(window.innerWidth);
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
+
   const chartDataStars: StarsDataItem[] = useMemo(() => {
     const formattedData = Object.entries(top100StarsData.project_name).map(
       ([index, name]) => ({
