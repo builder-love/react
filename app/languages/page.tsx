@@ -36,10 +36,8 @@ const LanguagesPage: React.FC = () => {
     cx,
     cy,
     midAngle,
-    innerRadius,
     outerRadius,
     percent,
-    index,
     name,
   }: {
     cx: number;
