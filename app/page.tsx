@@ -14,7 +14,12 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import type { StarsDataItem, ForksDataItem, LanguageItem } from './types';
+import type {
+  StarsDataItem,
+  ForksDataItem,
+  LanguageItem,
+  TooltipProps,
+} from './types';
 import top100StarsData from './data/top_100_by_stargaze.json';
 import top100ForksData from './data/top_100_forked_projects.json';
 import languageData from './data/top_languages_all_repos.json';
@@ -70,8 +75,17 @@ const HomePage: React.FC = () => {
     outerRadius,
     percent,
     name,
-  }: any) => {
-    const radius = outerRadius + 30; // Adjust the radius to position the label outside the pie
+  }: {
+    cx: number;
+    cy: number;
+    midAngle: number;
+    innerRadius: number;
+    outerRadius: number;
+    percent: number;
+    index: number;
+    name: string;
+  }) => {
+    const radius = outerRadius + 20; // Adjust the radius to position the label outside the pie
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
@@ -94,14 +108,15 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip: React.FC<TooltipProps> = ({ active, payload }) => {
     if (active && payload && payload.length) {
+      const data: LanguageItem = payload[0].payload as LanguageItem; // Cast payload to LanguageItem
       return (
         <div className="bg-gray-800 text-white p-2 rounded-md shadow-md">
-          <p className="label font-bold">{`${payload[0].name}`}</p>
-          <p className="intro">{`Bytes: ${payload[0].payload.bytes.toLocaleString()}`}</p>
+          <p className="label font-bold">{payload[0].name}</p>
+          <p className="intro">{`Bytes: ${data.bytes.toLocaleString()}`}</p>
           <p className="intro">{`Dominance: ${(
-            payload[0].payload.byte_dominance * 100
+            data.byte_dominance * 100
           ).toFixed(2)}%`}</p>
         </div>
       );
