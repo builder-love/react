@@ -67,13 +67,11 @@ const HomePage: React.FC = () => {
     cx,
     cy,
     midAngle,
-    innerRadius,
     outerRadius,
     percent,
-    index,
     name,
   }: any) => {
-    const radius = outerRadius + 20; // Adjust the radius to position the label outside the pie
+    const radius = outerRadius + 30; // Adjust the radius to position the label outside the pie
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
@@ -86,6 +84,7 @@ const HomePage: React.FC = () => {
           fill="white"
           textAnchor={x > cx ? 'start' : 'end'}
           dominantBaseline="central"
+          style={{ fontSize: '14px' }}
         >
           {`${name}: ${(percent * 100).toFixed(0)}%`}
         </text>
@@ -95,7 +94,7 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-gray-800 text-white p-2 rounded-md shadow-md">
