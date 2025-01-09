@@ -8,7 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import type { LanguageItem, Payload, TooltipProps } from '../types';
+import type { LanguageItem, TooltipProps } from '../types';
 import languageData from '../data/top_languages_all_repos.json';
 
 const COLORS = [
