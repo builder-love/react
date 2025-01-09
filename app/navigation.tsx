@@ -1,20 +1,33 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Navigation() {
   const [isNavCollapsed, setIsNavCollapsed] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(0);
 
   const toggleNav = () => {
     setIsNavCollapsed(!isNavCollapsed);
   };
 
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    if (typeof window !== 'undefined') {
+      setWindowWidth(window.innerWidth);
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
+
   return (
     <div className="flex">
       <nav
         className={`p-5 bg-gray-800 h-screen fixed ${
-          isNavCollapsed ? 'w-16' : 'w-64'
+          isNavCollapsed && windowWidth > 768 ? 'w-20' : 'w-64'
         } transition-all duration-300 ease-in-out`}
       >
         <button onClick={toggleNav} className="text-white focus:outline-none">
@@ -46,6 +59,15 @@ export default function Navigation() {
           <li className="mb-2">
             <Link href="/" className="text-white hover:underline" prefetch>
               Builder Love
+            </Link>
+          </li>
+          <li className="mb-2">
+            <Link
+              href="/languages"
+              className="text-white hover:underline"
+              prefetch
+            >
+              Languages
             </Link>
           </li>
           <li className="mb-2">

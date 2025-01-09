@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import {
   BarChart,
   Bar,
@@ -10,42 +10,12 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
 } from 'recharts';
-import type {
-  StarsDataItem,
-  ForksDataItem,
-  LanguageItem,
-  TooltipProps,
-} from './types';
+import type { StarsDataItem, ForksDataItem } from './types';
 import top100StarsData from './data/top_100_by_stargaze.json';
 import top100ForksData from './data/top_100_forked_projects.json';
-import languageData from './data/top_languages_all_repos.json';
-
-const COLORS = [
-  '#0088FE',
-  '#00C49F',
-  '#FFBB28',
-  '#FF8042',
-  '#AF19FF',
-  '#FF4500',
-  '#808000',
-  '#800080',
-  '#008080',
-];
-
-const RADIAN = Math.PI / 180;
 
 const HomePage: React.FC = () => {
-  const [topLanguages, setTopLanguages] = useState<LanguageItem[]>([]);
-
-  useEffect(() => {
-    // Directly assign the imported JSON data to the state
-    setTopLanguages(languageData);
-  }, []);
-
   const chartDataStars: StarsDataItem[] = useMemo(() => {
     const formattedData = Object.entries(top100StarsData.project_name).map(
       ([index, name]) => ({
@@ -67,68 +37,6 @@ const HomePage: React.FC = () => {
       forks: item.fork_count,
     }));
   }, []);
-
-  const renderCustomizedLabel = ({
-    cx,
-    cy,
-    midAngle,
-    outerRadius,
-    percent,
-    name,
-  }: {
-    cx: number;
-    cy: number;
-    midAngle: number;
-    innerRadius: number;
-    outerRadius: number;
-    percent: number;
-    index: number;
-    name: string;
-  }) => {
-    const radius = outerRadius + 20; // Adjust the radius to position the label outside the pie
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-    const dominance = percent * 100;
-    if (dominance >= 3) {
-      return (
-        <text
-          x={x}
-          y={y}
-          fill="white"
-          textAnchor={x > cx ? 'start' : 'end'}
-          dominantBaseline="central"
-          style={{ fontSize: '14px' }}
-        >
-          {`${name}: ${(percent * 100).toFixed(0)}%`}
-        </text>
-      );
-    } else {
-      return null;
-    }
-  };
-
-  const CustomTooltip: React.FC<TooltipProps> = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      const data: LanguageItem = payload[0].payload as LanguageItem; // Cast payload to LanguageItem
-      return (
-        <div className="bg-gray-800 text-white p-2 rounded-md shadow-md">
-          <p className="label font-bold">{payload[0].name}</p>
-          <p className="intro">{`Bytes: ${data.bytes.toLocaleString()}`}</p>
-          <p className="intro">{`Dominance: ${(
-            data.byte_dominance * 100
-          ).toFixed(2)}%`}</p>
-        </div>
-      );
-    }
-
-    return null;
-  };
-
-  // Calculate total bytes
-  const totalBytes = useMemo(() => {
-    return topLanguages.reduce((sum, lang) => sum + lang.bytes, 0);
-  }, [topLanguages]);
 
   return (
     <div className="p-6">
@@ -238,42 +146,6 @@ const HomePage: React.FC = () => {
               <Bar dataKey="forks" fill="#82ca9d" />
             </BarChart>
           </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Language Distribution Chart */}
-      <div className="mt-20">
-        <h3 className="text-xl font-bold mb-4 text-center">
-          Language Dominance - Entire Crypto Industry
-        </h3>
-        <ResponsiveContainer width="100%" height={500}>
-          <PieChart>
-            <Pie
-              data={topLanguages}
-              cx="50%"
-              cy="50%"
-              labelLine={true}
-              label={renderCustomizedLabel}
-              outerRadius={200}
-              fill="#8884d8"
-              dataKey="bytes"
-              nameKey="language_name"
-            >
-              {topLanguages.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={COLORS[index % COLORS.length]}
-                />
-              ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-          </PieChart>
-        </ResponsiveContainer>
-        {/* Callout Field */}
-        <div className="flex justify-center">
-          <p className="text-md text-gray-400 text-center mt-2">
-            {totalBytes.toLocaleString()} bytes and counting
-          </p>
         </div>
       </div>
     </div>
