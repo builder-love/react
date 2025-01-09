@@ -7,3 +7,8 @@ export interface StarsDataItem {
     name: string;
     forks: number;
   }
+
+  export interface LanguageItem {
+    language_name: string;
+    bytes: number;
+  }
