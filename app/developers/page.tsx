@@ -2,9 +2,11 @@ import React from 'react';
 
 const DevelopersPage: React.FC = () => {
   return (
-    <div>
-      <h1>Developer Profiles</h1>
-      <p>This is a placeholder for the Developer Profiles page.</p>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold text-blue-500 mb-4">Developer Profiles</h1>
+      <p>A developer scorecard that compiles history of commits, tenure, and language diversity. Crypot and non-crypto experience badge.</p>
+      <br/>
+      <p>Not ready for production. Soon.</p> 
     </div>
   );
 };
