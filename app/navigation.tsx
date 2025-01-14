@@ -76,7 +76,7 @@ export default function Navigation() {
               className="text-white hover:underline"
               prefetch
             >
-              Developer Profiles
+              Builder Segments
             </Link>
           </li>
           <li className="mb-2">
