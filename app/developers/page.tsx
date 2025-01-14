@@ -11,7 +11,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { ScatterData } from 'recharts';
+import { CustomScatterData } from '../types';
 
 // Import data for each language
 import solidityData from '../data/top_solidity_projects.json';
@@ -22,7 +22,7 @@ import rustData from '../data/top_rust_projects.json';
 const DevelopersPage: React.FC = () => {
 
   // Create a function to render a bubble chart for a given language
-  const renderBubbleChart = (data: ScatterData[], language: string) => (
+  const renderBubbleChart = (data: CustomScatterData[], language: string) => (
     <div key={language} className="mb-8">
       <h2 className="text-xl font-bold text-blue-500 mb-4">{`Top ${language} Projects`}</h2>
       <ResponsiveContainer width="100%" height={400}>

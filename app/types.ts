@@ -32,3 +32,10 @@ export type TooltipProps = DefaultTooltipContentProps<number, string> & {
   payload?: Payload[];
   active?: boolean;
 };
+
+export interface CustomScatterData {
+  project_name: string;
+  contributor_count: number | null;
+  stars_count: number | null;
+  repo_count: number | null;
+}
