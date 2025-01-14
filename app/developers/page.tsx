@@ -7,18 +7,18 @@ import {
   XAxis,
   YAxis,
   ZAxis,
-  CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
 } from 'recharts';
 
+// Import data for each language
+import solidityData from '../data/top_solidity_projects.json';
+import cData from '../data/top_c_projects.json';
+import goData from '../data/top_go_projects.json';
+import rustData from '../data/top_rust_projects.json';
+
 const DevelopersPage: React.FC = () => {
-  // Import data for each language
-  const solidityData = require('../data/top_solidity_projects.json');
-  const cData = require('../data/top_c_projects.json');
-  const goData = require('../data/top_go_projects.json');
-  const rustData = require('../data/top_rust_projects.json');
 
   // Create a function to render a bubble chart for a given language
   const renderBubbleChart = (data: any[], language: string) => (
