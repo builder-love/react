@@ -3,9 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 
-interface NavProps {} // Explicitly empty interface
-
-const Navigation: React.FC<NavProps> = () => {
+const Navigation: React.FC<React.PropsWithChildren> = () => {
   const [isNavCollapsed, setIsNavCollapsed] = useState(false);
   const [windowWidth, setWindowWidth] = useState(0);
 

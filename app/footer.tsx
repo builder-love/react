@@ -2,11 +2,11 @@ import Link from 'next/link';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-gray-950 py-10 mt-20"> {/* Darker shade: bg-gray-950 */}
+    <footer className="bg-gray-950 py-10 mt-20">
       <div className="container mx-auto px-4">
-        <div className="flex flex-col md:flex-row justify-center gap-10 md:gap-32"> {/* Increased gap: md:gap-32 */}
+        <div className="flex flex-col md:flex-row justify-end gap-10 md:gap-32"> {/* Changed justify-center to justify-end */}
           {/* Resources Column */}
-          <div className="text-center md:text-left">
+          <div className="text-center md:text-right"> {/* Changed text-left to text-right */}
             <h4 className="text-white font-bold mb-4">Resources</h4>
             <ul>
               <li>
@@ -23,12 +23,12 @@ const Footer: React.FC = () => {
           </div>
 
           {/* Community Column */}
-          <div className="text-center md:text-left">
+          <div className="text-center md:text-right"> {/* Changed text-left to text-right */}
             <h4 className="text-white font-bold mb-4">Community</h4>
-            <div className="flex gap-4 justify-center md:justify-start">
+            <div className="flex gap-4 justify-center md:justify-end"> {/* Changed md:justify-start to md:justify-end */}
               {/* GitHub Link */}
               <a
-                href="https://github.com/builder-love"
+                href="https://github.com/treboryatska/execution_vm"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-300 hover:text-white"
