@@ -3,9 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 
-type NavProps = {
-  // Define props if your component takes any
-};
+interface NavProps {} // Explicitly empty interface
 
 const Navigation: React.FC<NavProps> = () => {
   const [isNavCollapsed, setIsNavCollapsed] = useState(false);
