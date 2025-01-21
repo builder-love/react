@@ -98,7 +98,7 @@ const ResearchPage: React.FC = () => {
     return indices;
   }, [minX, maxX, numTicks]);
 
-  const formatTooltipDate = (dateStr: string) => format(parseISO(dateStr), "MMMM dd, সৌর");
+  const formatTooltipDate = (dateStr: string) => format(parseISO(dateStr), "MMMM dd, yyyy");
 
   useEffect(() => {
     // Only run D3 code after initial client-side mount
