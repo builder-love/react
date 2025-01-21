@@ -249,7 +249,7 @@ const ResearchPage: React.FC = () => {
               <Tooltip
                 contentStyle={{ backgroundColor: "#444", borderColor: "#888", color: 'white' }}
                 labelFormatter={(value) => formatTooltipDate(value)}
-                formatter={(value: any) => [formatScore(value), "Participants"]}
+                formatter={(value: number) => [formatScore(value), "Participants"]}
               />
               <Line
                 type="monotone"
@@ -299,7 +299,7 @@ const ResearchPage: React.FC = () => {
               <Tooltip
                 contentStyle={{ backgroundColor: "#444", borderColor: "#888", color: 'white' }}
                 labelFormatter={(value) => formatTooltipDate(value)}
-                formatter={(value: any) => [formatScore(value), "Views"]}
+                formatter={(value: number) => [formatScore(value), "Views"]}
               />
               <Line
                 type="monotone"
@@ -349,7 +349,7 @@ const ResearchPage: React.FC = () => {
               <Tooltip
                 contentStyle={{ backgroundColor: "#444", borderColor: "#888", color: 'white' }}
                 labelFormatter={(value) => formatTooltipDate(value)}
-                formatter={(value: any) => [formatScore(value), "Score"]}
+                formatter={(value: number) => [formatScore(value), "Score"]}
               />
               <Line
                 type="monotone"
