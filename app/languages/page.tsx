@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import type { LanguageItem, TooltipProps } from '../types';
 import languageData from '../data/top_languages_all_repos.json';
+import otherLanguagesData from '../data/other_languages_repos.json';
 
 const COLORS = [
   '#0088FE',
@@ -27,9 +28,24 @@ const RADIAN = Math.PI / 180;
 
 const LanguagesPage: React.FC = () => {
   const [topLanguages, setTopLanguages] = useState<LanguageItem[]>([]);
+  const [otherLanguages, setOtherLanguages] = useState<LanguageItem[]>([]);
+  const [showOtherLanguages, setShowOtherLanguages] = useState(false); // State for the toggle
 
   useEffect(() => {
-    setTopLanguages(languageData);
+    setTopLanguages(
+      languageData.map((item) => ({
+        language_name: item.language_name,
+        bytes: item.bytes,
+        byte_dominance: item.byte_dominance,
+      }))
+    );
+    setOtherLanguages(
+      otherLanguagesData.map((item) => ({
+        language_name: item.language_name,
+        bytes: item.sum_bytes_by_language,
+        byte_dominance: item.byte_dominance,
+      }))
+    );
   }, []);
 
   const renderCustomizedLabel = ({
@@ -49,12 +65,12 @@ const LanguagesPage: React.FC = () => {
     index: number;
     name: string;
   }) => {
-    const radius = outerRadius + 20; // Adjust the radius to position the label outside the pie
+    const radius = outerRadius + 20;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
     const dominance = percent * 100;
-    if (dominance >= 3) {
+    if (dominance >= 2) {
       return (
         <text
           x={x}
@@ -74,16 +90,16 @@ const LanguagesPage: React.FC = () => {
 
   const CustomTooltip: React.FC<TooltipProps> = ({ active, payload }) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload as LanguageItem; // Cast payload to LanguageItem
+      const data = payload[0].payload as LanguageItem;
       return (
         <div className="bg-gray-800 text-white p-2 rounded-md shadow-md">
           <p className="label font-bold">{`${payload[0].name}`}</p>
           <p className="intro">
             {`Bytes: ${data.bytes.toLocaleString()}`}
           </p>
-          <p className="intro">{`Dominance: ${(data.byte_dominance * 100).toFixed(
-            2
-          )}%`}</p>
+          <p className="intro">{`Dominance: ${(
+            data.byte_dominance * 100
+          ).toFixed(2)}%`}</p>
         </div>
       );
     }
@@ -95,6 +111,11 @@ const LanguagesPage: React.FC = () => {
   const totalBytes = useMemo(() => {
     return topLanguages.reduce((sum, lang) => sum + lang.bytes, 0);
   }, [topLanguages]);
+
+  // Toggle function
+  const toggleOtherLanguages = () => {
+    setShowOtherLanguages(!showOtherLanguages);
+  };
 
   return (
     <div className="p-6">
@@ -132,6 +153,28 @@ const LanguagesPage: React.FC = () => {
             {totalBytes.toLocaleString()} bytes and counting
           </p>
         </div>
+        {/* Other Languages Toggle */}
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={toggleOtherLanguages}
+            className="text-blue-500 hover:underline focus:outline-none"
+          >
+            {showOtherLanguages ? 'Hide Other' : 'View Other'}
+          </button>
+        </div>
+        {/* Other Languages (Conditional) */}
+        {showOtherLanguages && (
+          <div className="flex justify-center mt-2">
+            <p className="text-xs text-gray-400 text-center">
+              {otherLanguages.map((lang, index) => (
+                <React.Fragment key={lang.language_name}>
+                  {lang.language_name} ({((lang.byte_dominance || 0) * 100).toFixed(2)}%)
+                  {index < otherLanguages.length - 1 && ', '}
+                </React.Fragment>
+              ))}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
