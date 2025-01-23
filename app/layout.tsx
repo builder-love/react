@@ -18,18 +18,22 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-black text-white flex flex-col min-h-screen`}>
-        <Navigation />
-        <main className="flex-1 ml-64 p-5">
-          <h1 className="text-3xl font-bold text-red-500 text-center mt-5">
-            Builder <span className="text-red-500">♥</span>
-          </h1>
-          <p className="text-sm text-gray-400 text-center mt-2">
-            This app is in beta. Please use the data and analysis presented on
-            this page with caution.
-          </p>
-          {children}
-        </main>
+      <body
+        className={`${inter.className} bg-black text-white flex flex-col min-h-screen`}
+      >
+        <div className="flex flex-row w-full">
+          <Navigation />
+          <main className="flex-1 md:ml-64 p-5 pt-16 md:pt-20">
+            <h1 className="text-3xl font-bold text-red-500 text-center">
+              Builder <span className="text-red-500">♥</span>
+            </h1>
+            <p className="text-sm text-gray-400 text-center mt-2 md:block hidden">
+              This app is in beta. Please use the data and analysis presented on
+              this page with caution.
+            </p>
+            {children}
+          </main>
+        </div>
         <Footer />
       </body>
     </html>

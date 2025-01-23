@@ -38,6 +38,13 @@ const HomePage: React.FC = () => {
     }));
   }, []);
 
+  const formatYAxisLabel = (name: string) => {
+    if (name.length > 15) {
+      return name.substring(0, 15) + '...';
+    }
+    return name;
+  };
+
   return (
     <div className="p-6">
       <div className="flex justify-center w-full">
@@ -54,8 +61,8 @@ const HomePage: React.FC = () => {
               data={chartDataStars}
               margin={{
                 top: 40,
-                right: 30,
-                left: 120,
+                right: 10,
+                left: 10,
                 bottom: 5,
               }}
               layout="vertical"
@@ -71,8 +78,9 @@ const HomePage: React.FC = () => {
                 dataKey="name"
                 type="category"
                 tick={{ fontSize: 12 }}
-                width={150}
+                width={120}
                 interval={0}
+                tickFormatter={formatYAxisLabel}
               />
               <Tooltip
                 formatter={(value: number, name: string) => [
@@ -105,8 +113,8 @@ const HomePage: React.FC = () => {
               data={chartDataForks}
               margin={{
                 top: 40,
-                right: 30,
-                left: 120,
+                right: 10,
+                left: 10,
                 bottom: 5,
               }}
               layout="vertical"
@@ -122,8 +130,9 @@ const HomePage: React.FC = () => {
                 dataKey="name"
                 type="category"
                 tick={{ fontSize: 12 }}
-                width={150}
+                width={120}
                 interval={0}
+                tickFormatter={formatYAxisLabel}
               />
               <Tooltip
                 formatter={(value: number, name: string) => [
