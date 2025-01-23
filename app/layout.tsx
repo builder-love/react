@@ -23,7 +23,7 @@ export default function RootLayout({
       >
         <div className="flex flex-row w-full">
           <Navigation />
-          <main className="flex-1 md:ml-64 p-5 pt-16 md:pt-20">
+          <main className="flex-1 md:ml-64 p-5 pt-16 md:pt-5">
             <h1 className="text-3xl font-bold text-red-500 text-center">
               Builder <span className="text-red-500">♥</span>
             </h1>

@@ -40,7 +40,7 @@ const Navigation: React.FC<React.PropsWithChildren> = () => {
   return (
     <div className="md:block relative z-10">
       <nav
-        className={`bg-gray-800 md:h-screen w-full md:w-64 fixed ${
+        className={`bg-gray-800 md:h-screen md:w-64 w-full fixed ${
           isNavCollapsed
             ? 'h-auto bg-transparent'
             : 'h-screen w-64'
