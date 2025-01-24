@@ -29,7 +29,8 @@ const RADIAN = Math.PI / 180;
 const LanguagesPage: React.FC = () => {
   const [topLanguages, setTopLanguages] = useState<LanguageItem[]>([]);
   const [otherLanguages, setOtherLanguages] = useState<LanguageItem[]>([]);
-  const [showOtherLanguages, setShowOtherLanguages] = useState(false); // State for the toggle
+  const [showOtherLanguages, setShowOtherLanguages] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     setTopLanguages(
@@ -46,6 +47,23 @@ const LanguagesPage: React.FC = () => {
         byte_dominance: item.byte_dominance,
       }))
     );
+  }, []);
+
+  const checkIsMobile = () => {
+    if (typeof window !== 'undefined') {
+      setIsMobile(window.innerWidth < 768);
+    }
+  };
+
+  useEffect(() => {
+    checkIsMobile();
+
+    const handleResize = () => {
+      checkIsMobile();
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const renderCustomizedLabel = ({
@@ -65,12 +83,19 @@ const LanguagesPage: React.FC = () => {
     index: number;
     name: string;
   }) => {
-    const radius = outerRadius + 20;
+    const dominance = percent * 100;
+    // Apply different logic for mobile and desktop
+    if (isMobile && dominance <= 5) {
+      return null; // Hide on mobile if dominance is less than or equal to 5%
+    } else if (!isMobile && dominance <= 2) {
+      return null; // Hide on desktop if dominance is less than or equal to 2%
+    }
+
+    const radius = isMobile ? outerRadius + 1 : outerRadius + 20; // Adjust the radius to position the label outside the pie
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
-    const dominance = percent * 100;
-    if (dominance >= 2) {
+    if (isMobile) {
       return (
         <text
           x={x}
@@ -78,14 +103,27 @@ const LanguagesPage: React.FC = () => {
           fill="white"
           textAnchor={x > cx ? 'start' : 'end'}
           dominantBaseline="central"
-          style={{ fontSize: '14px' }}
+          style={{ fontSize: '12px' }}
         >
-          {`${name}: ${(percent * 100).toFixed(0)}%`}
+          <tspan x={x} dy="1.2em">{name}</tspan>
+          <tspan x={x} dy="1.2em">({(percent * 100).toFixed(0)}%)</tspan>
         </text>
       );
-    } else {
-      return null;
     }
+
+    // Render name and percentage outside for desktop
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="white"
+        textAnchor={x > cx ? 'start' : 'end'}
+        dominantBaseline="central"
+        style={{ fontSize: '14px' }}
+      >
+        {`${name}: ${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
   };
 
   const CustomTooltip: React.FC<TooltipProps> = ({ active, payload }) => {
@@ -124,15 +162,15 @@ const LanguagesPage: React.FC = () => {
         <h3 className="text-2xl font-bold mb-4 text-center">
           Language Dominance - Entire Crypto Industry
         </h3>
-        <ResponsiveContainer width="100%" height={500}>
+        <ResponsiveContainer width="100%" height={350}>
           <PieChart>
             <Pie
               data={topLanguages}
               cx="50%"
               cy="50%"
-              labelLine={true}
+              labelLine={!isMobile}
               label={renderCustomizedLabel}
-              outerRadius={200}
+              outerRadius="80%"
               fill="#8884d8"
               dataKey="bytes"
               nameKey="language_name"
