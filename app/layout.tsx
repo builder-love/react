@@ -18,10 +18,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-black text-white flex flex-col min-h-screen`}>
+      <body
+        className={`${inter.className} bg-black text-white flex flex-col min-h-screen`}
+      >
         <div className="flex flex-row w-full">
           <Navigation />
-          <main className="flex-1 md:ml-64 p-5 pt-16 min-h-screen">
+          <main className="flex-1 p-5 pt-16 md:ml-0">
             <h1 className="text-3xl font-bold text-red-500 text-center">
               Builder <span className="text-red-500">♥</span>
             </h1>
