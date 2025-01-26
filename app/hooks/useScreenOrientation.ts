@@ -27,6 +27,7 @@ export const useScreenOrientation = () => {
 
     if (typeof window !== 'undefined') {
       console.log("window object is defined: setting initial values"); 
+      console.log("window.devicePixelRatio:", window.devicePixelRatio);
       const mediaQuery = window.matchMedia("(orientation: landscape)");
       console.log("mediaQuery: ", mediaQuery);
       console.log("mediaQuery.matches: ", mediaQuery.matches);
