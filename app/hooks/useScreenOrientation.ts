@@ -1,4 +1,3 @@
-// useScreenOrientation.ts (create a new file for this hook)
 import { useState, useEffect } from 'react';
 
 export const useScreenOrientation = () => {
@@ -7,26 +6,33 @@ export const useScreenOrientation = () => {
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
   const [isMobile, setIsMobile] = useState(false);
 
-  useEffect(() => {
-    const handleOrientationChange = (event: MediaQueryListEvent | MediaQueryList) => {
-        console.log("orientation changed");
-      setScreenWidth(window.innerWidth);
-      setScreenHeight(window.innerHeight);
-
-      if (event.matches) {
-        setOrientation("landscape");
-      } else {
-        setOrientation("portrait");
-      }
-    };
-
-    const handleResize = () => {
-        console.log("resize event");
+  const checkIsMobile = () => {
+    if (typeof window !== 'undefined') {
+        console.log("Setting isMobile to ", window.innerWidth < 768);
         setIsMobile(window.innerWidth < 768);
+    }
+  };
+
+  const handleOrientationChange = (event: MediaQueryListEvent | MediaQueryList) => {
+    console.log("orientation changed");
+    setScreenWidth(window.innerWidth);
+    setScreenHeight(window.innerHeight);
+
+    if (event.matches) {
+      setOrientation("landscape");
+    } else {
+      setOrientation("portrait");
+    }
+  };
+
+  useEffect(() => {
+    const handleResize = () => {
+      console.log("resize event");
+      checkIsMobile();
     };
 
     if (typeof window !== 'undefined') {
-      console.log("window object is defined: setting initial values"); 
+      console.log("window object is defined: setting initial values");
       console.log("window.devicePixelRatio:", window.devicePixelRatio);
       const mediaQuery = window.matchMedia("(orientation: landscape)");
       console.log("mediaQuery: ", mediaQuery);
@@ -38,7 +44,7 @@ export const useScreenOrientation = () => {
       setScreenWidth(window.innerWidth);
       setScreenHeight(window.innerHeight);
       setOrientation(mediaQuery.matches ? "landscape" : "portrait");
-      setIsMobile(window.innerWidth < 768);
+      checkIsMobile();
 
       mediaQuery.addEventListener("change", handleOrientationChange);
       window.addEventListener("resize", handleResize);
