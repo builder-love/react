@@ -41,7 +41,11 @@ const DevelopersPage: React.FC = () => {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 
   // Use the custom hook
-  const { screenWidth, screenHeight, orientation, isMobile } =
+  const { 
+    // screenWidth, 
+    // screenHeight, 
+    // orientation, 
+    isMobile } =
     useScreenOrientation();
 
   // State for multi-select filters
@@ -760,7 +764,7 @@ const CustomCheckbox: React.FC<CustomCheckboxProps> = ({
       className={`w-4 h-4 border rounded cursor-pointer flex items-center justify-center ${
         checked ? "bg-blue-600 border-blue-600" : "bg-gray-800 border-gray-300"
       }`}
-      onClick={(event) => {
+      onClick={() => {
         onChange();
       }}
     >
