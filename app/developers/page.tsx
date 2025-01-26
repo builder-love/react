@@ -13,6 +13,7 @@ import {
   ColumnFiltersState,
 } from '@tanstack/react-table';
 import topProjectsData from '../data/top_projects.json';
+import { useScreenOrientation } from '../hooks/useScreenOrientation';
 
 interface Project {
   project_name: string;
@@ -38,7 +39,10 @@ const DevelopersPage: React.FC = () => {
   ]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [isMobile, setIsMobile] = useState(false);
+
+  // Use the custom hook
+  const { screenWidth, screenHeight, orientation, isMobile } =
+    useScreenOrientation();
 
   // State for multi-select filters
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -63,18 +67,6 @@ const DevelopersPage: React.FC = () => {
 
   useEffect(() => {
     setData(topProjectsData);
-  }, []);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768); // Adjust breakpoint as needed
-    };
-
-    if (typeof window !== 'undefined') {
-      setIsMobile(window.innerWidth < 768);
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
-    }
   }, []);
 
   const columns = useMemo<ColumnDef<Project>[]>(
@@ -257,23 +249,19 @@ const DevelopersPage: React.FC = () => {
       const nextSelectedCategories = isSelected
         ? prevSelectedCategories.filter((c) => c !== category)
         : [...prevSelectedCategories, category];
-  
+
+      // Update the column filters based on the selected categories
       setColumnFilters((prevFilters) => {
         const categoryFilter = prevFilters.find(
           (f) => f.id === 'project_category'
         );
-  
-        // Toggle the filter value for the clicked category
-        const newCategoryFilterValue = nextSelectedCategories;
-  
-        if (newCategoryFilterValue.length === 0) {
-          // Remove the filter if no category is selected
+
+        if (nextSelectedCategories.length === 0) {
           return prevFilters.filter((f) => f.id !== 'project_category');
         } else {
-          // Update or add the filter with the new value
           const newFilter = {
             id: 'project_category',
-            value: newCategoryFilterValue
+            value: nextSelectedCategories,
           };
           return categoryFilter
             ? prevFilters.map((f) =>
@@ -282,33 +270,25 @@ const DevelopersPage: React.FC = () => {
             : [...prevFilters, newFilter];
         }
       });
-  
+
       return nextSelectedCategories;
     });
   };
-  
+
   const handleProjectFilterChange = (project: string) => {
     setSelectedProjects((prevSelectedProjects) => {
       const isSelected = prevSelectedProjects.includes(project);
       const nextSelectedProjects = isSelected
         ? prevSelectedProjects.filter((p) => p !== project)
         : [...prevSelectedProjects, project];
-  
+
       setColumnFilters((prevFilters) => {
         const projectFilter = prevFilters.find((f) => f.id === 'project_name');
-  
-        // Toggle the filter value for the clicked project
-        const newProjectFilterValue = nextSelectedProjects;
-  
-        if (newProjectFilterValue.length === 0) {
-          // Remove the filter if no project is selected
+
+        if (nextSelectedProjects.length === 0) {
           return prevFilters.filter((f) => f.id !== 'project_name');
         } else {
-          // Update or add the filter with the new value
-          const newFilter = {
-            id: 'project_name',
-            value: newProjectFilterValue
-          };
+          const newFilter = { id: 'project_name', value: nextSelectedProjects };
           return projectFilter
             ? prevFilters.map((f) =>
                 f.id === 'project_name' ? newFilter : f
@@ -316,32 +296,27 @@ const DevelopersPage: React.FC = () => {
             : [...prevFilters, newFilter];
         }
       });
-  
+
       return nextSelectedProjects;
     });
   };
-  
+
   const handleLanguageFilterChange = (language: string) => {
     setSelectedLanguages((prevSelectedLanguages) => {
       const isSelected = prevSelectedLanguages.includes(language);
       const nextSelectedLanguages = isSelected
         ? prevSelectedLanguages.filter((l) => l !== language)
         : [...prevSelectedLanguages, language];
-  
+
       setColumnFilters((prevFilters) => {
         const languageFilter = prevFilters.find((f) => f.id === 'language_name');
-  
-        // Toggle the filter value for the clicked language
-        const newLanguageFilterValue = nextSelectedLanguages;
-  
-        if (newLanguageFilterValue.length === 0) {
-          // Remove the filter if no language is selected
+
+        if (nextSelectedLanguages.length === 0) {
           return prevFilters.filter((f) => f.id !== 'language_name');
         } else {
-          // Update or add the filter with the new value
           const newFilter = {
             id: 'language_name',
-            value: newLanguageFilterValue
+            value: nextSelectedLanguages,
           };
           return languageFilter
             ? prevFilters.map((f) =>
@@ -350,7 +325,7 @@ const DevelopersPage: React.FC = () => {
             : [...prevFilters, newFilter];
         }
       });
-  
+
       return nextSelectedLanguages;
     });
   };
@@ -395,11 +370,36 @@ const DevelopersPage: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Handle option click for each filter
+  const handleCategoryOptionClick = (category: string) => {
+    handleCategoryFilterChange(category);
+    setSelectedCategories((prevSelectedCategories) =>
+      prevSelectedCategories.includes(category)
+        ? prevSelectedCategories.filter((c) => c !== category)
+        : [...prevSelectedCategories, category]
+    );
+  };
+
+  const handleProjectOptionClick = (project: string) => {
+    handleProjectFilterChange(project);
+    setSelectedProjects((prevSelectedProjects) =>
+      prevSelectedProjects.includes(project)
+        ? prevSelectedProjects.filter((p) => p !== project)
+        : [...prevSelectedProjects, project]
+    );
+  };
+
+  const handleLanguageOptionClick = (language: string) => {
+    handleLanguageFilterChange(language);
+    setSelectedLanguages((prevSelectedLanguages) =>
+      prevSelectedLanguages.includes(language)
+        ? prevSelectedLanguages.filter((l) => l !== language)
+        : [...prevSelectedLanguages, language]
+    );
+  };
+
   // Update column visibility based on isMobile
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setIsMobile(window.matchMedia("(max-width: 767px)").matches); // Use matchMedia
-    }
     if (isMobile) {
       setColumnVisibility({
         project_rank: false,
@@ -458,19 +458,6 @@ const DevelopersPage: React.FC = () => {
     setActiveRowData(null);
   };
 
-  // Add these near the other click handlers
-  const handleProjectOptionClick = (project: string) => {
-    handleProjectFilterChange(project);
-  };
-
-  const handleLanguageOptionClick = (language: string) => {
-    handleLanguageFilterChange(language);
-  };
-
-  const handleCategoryOptionClick = (category: string) => {
-    handleCategoryFilterChange(category);
-  };
-
   return (
     <div className="p-4 bg-black text-white min-h-screen relative z-0">
       <h1 className="text-2xl font-bold text-center mt-8 mb-8">
@@ -501,7 +488,10 @@ const DevelopersPage: React.FC = () => {
               </svg>
             </button>
             {isProjectDropdownOpen && (
-              <div className="absolute z-30 mt-1 left-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg">
+              <div
+                className="absolute z-30 mt-1 left-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {uniqueProjects.map((project) => (
                   <div
                     key={project}
@@ -510,7 +500,7 @@ const DevelopersPage: React.FC = () => {
                   >
                     <CustomCheckbox
                       checked={selectedProjects.includes(project)}
-                      onChange={() => {}}
+                      onChange={() => handleProjectOptionClick(project)}
                     />
                     <span className="ml-2">{project}</span>
                   </div>
@@ -541,7 +531,10 @@ const DevelopersPage: React.FC = () => {
               </svg>
             </button>
             {isLanguageDropdownOpen && (
-              <div className="absolute z-30 mt-1 left-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg">
+              <div
+                className="absolute z-30 mt-1 left-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {uniqueLanguages.map((language) => (
                   <div
                     key={language}
@@ -550,7 +543,7 @@ const DevelopersPage: React.FC = () => {
                   >
                     <CustomCheckbox
                       checked={selectedLanguages.includes(language)}
-                      onChange={() => {}}
+                      onChange={() => handleLanguageOptionClick(language)}
                     />
                     <span className="ml-2">{language}</span>
                   </div>
@@ -581,7 +574,10 @@ const DevelopersPage: React.FC = () => {
               </svg>
             </button>
             {isCategoryDropdownOpen && (
-              <div className="absolute z-30 mt-1 right-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg">
+              <div
+                className="absolute z-30 mt-1 left-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {uniqueCategories.map((category) => (
                   <div
                     key={category}
@@ -590,7 +586,7 @@ const DevelopersPage: React.FC = () => {
                   >
                     <CustomCheckbox
                       checked={selectedCategories.includes(category)}
-                      onChange={() => {}}
+                      onChange={() => handleCategoryOptionClick(category)}
                     />
                     <span className="ml-2">{category}</span>
                   </div>
@@ -764,7 +760,7 @@ const CustomCheckbox: React.FC<CustomCheckboxProps> = ({
       className={`w-4 h-4 border rounded cursor-pointer flex items-center justify-center ${
         checked ? "bg-blue-600 border-blue-600" : "bg-gray-800 border-gray-300"
       }`}
-      onClick={() => {
+      onClick={(event) => {
         onChange();
       }}
     >
