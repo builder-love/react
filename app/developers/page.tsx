@@ -11,6 +11,7 @@ import {
   SortingState,
   VisibilityState,
   ColumnFiltersState,
+  FilterFn,
 } from '@tanstack/react-table';
 import topProjectsData from '../data/top_projects.json';
 import { useScreenOrientation } from '../hooks/useScreenOrientation';
@@ -29,6 +30,12 @@ interface Project {
   language_name: string;
 }
 
+// Define a custom filter function for multi-select
+const multiSelectFilter: FilterFn<any> = (row, columnId, filterValue: string[]) => {
+  const value = row.getValue(columnId);
+  return filterValue.includes(String(value));
+};
+
 const DevelopersPage: React.FC = () => {
   const [data, setData] = useState<Project[]>([]);
   const [sorting, setSorting] = useState<SortingState>([
@@ -41,12 +48,12 @@ const DevelopersPage: React.FC = () => {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 
   // Use the custom hook
-  const { 
-    // screenWidth, 
-    // screenHeight, 
-    // orientation, 
-    isMobile } =
-    useScreenOrientation();
+  const {
+    // screenWidth,
+    // screenHeight,
+    // orientation,
+    isMobile,
+  } = useScreenOrientation();
 
   // State for multi-select filters
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -54,12 +61,9 @@ const DevelopersPage: React.FC = () => {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
 
   // State for dropdown visibility
-  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] =
-    useState<boolean>(false);
-  const [isProjectDropdownOpen, setIsProjectDropdownOpen] =
-    useState<boolean>(false);
-  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] =
-    useState<boolean>(false);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState<boolean>(false);
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState<boolean>(false);
+  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState<boolean>(false);
 
   // Refs for dropdown containers
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
@@ -80,94 +84,64 @@ const DevelopersPage: React.FC = () => {
         accessorKey: 'project_name',
         id: 'project_name',
         footer: (props) => props.column.id,
-        cell: ({ getValue }) => (
-          <div className="text-sm md:text-base">{getValue<string>()}</div>
-        ),
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<string>()}</div>,
+        filterFn: multiSelectFilter, // Use the custom filter function
       },
       {
         header: 'Language',
         accessorKey: 'language_name',
         id: 'language_name',
         footer: (props) => props.column.id,
-        cell: ({ getValue }) => (
-          <div className="text-sm md:text-base">{getValue<string>()}</div>
-        ),
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<string>()}</div>,
+        filterFn: multiSelectFilter, // Use the custom filter function
       },
       {
         header: 'Rank',
         accessorKey: 'project_rank',
         id: 'project_rank',
         footer: (props) => props.column.id,
-        cell: ({ getValue }) => (
-          <div className="text-sm md:text-base">
-            {getValue<number>().toLocaleString()}
-          </div>
-        ),
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>().toLocaleString()}</div>,
       },
       {
         header: 'Bytes',
         accessorKey: 'bytes_written',
         id: 'bytes_written',
-        cell: ({ getValue }) => (
-          <div className="text-sm md:text-base">
-            {getValue<number>().toLocaleString()}
-          </div>
-        ),
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>().toLocaleString()}</div>,
         footer: (props) => props.column.id,
       },
       {
         header: 'Lang %',
         accessorKey: 'language_pct',
         id: 'language_pct',
-        cell: ({ getValue }) => (
-          <div className="text-sm md:text-base">
-            {(getValue<number>() * 100).toFixed(2) + '%'}
-          </div>
-        ),
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{(getValue<number>() * 100).toFixed(2) + '%'}</div>,
         footer: (props) => props.column.id,
       },
       {
         header: 'Stars',
         accessorKey: 'stars_count',
         id: 'stars_count',
-        cell: ({ getValue }) => (
-          <div className="text-sm md:text-base">
-            {getValue<number>().toLocaleString()}
-          </div>
-        ),
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>().toLocaleString()}</div>,
         footer: (props) => props.column.id,
       },
       {
         header: 'Contrib',
         accessorKey: 'contributor_count',
         id: 'contributor_count',
-        cell: ({ getValue }) => (
-          <div className="text-sm md:text-base">
-            {getValue<number>().toLocaleString()}
-          </div>
-        ),
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>().toLocaleString()}</div>,
         footer: (props) => props.column.id,
       },
       {
         header: 'Repos',
         accessorKey: 'repo_count',
         id: 'repo_count',
-        cell: ({ getValue }) => (
-          <div className="text-sm md:text-base">
-            {getValue<number>().toLocaleString()}
-          </div>
-        ),
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>().toLocaleString()}</div>,
         footer: (props) => props.column.id,
       },
       {
         header: 'Forks',
         accessorKey: 'fork_count',
         id: 'fork_count',
-        cell: ({ getValue }) => (
-          <div className="text-sm md:text-base">
-            {getValue<number>().toLocaleString()}
-          </div>
-        ),
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>().toLocaleString()}</div>,
         footer: (props) => props.column.id,
       },
       {
@@ -196,25 +170,16 @@ const DevelopersPage: React.FC = () => {
               break;
           }
 
-          return (
-            <div
-              className={`${bgColorClass} px-2 py-1 rounded text-sm md:text-base`}
-            >
-              {category}
-            </div>
-          );
+          return <div className={`${bgColorClass} px-2 py-1 rounded text-sm md:text-base`}>{category}</div>;
         },
         footer: (props) => props.column.id,
+        filterFn: multiSelectFilter, // Use the custom filter function
       },
       {
         header: 'Score',
         accessorKey: 'weighted_score',
         id: 'weighted_score',
-        cell: ({ getValue }) => (
-          <div className="text-sm md:text-base">
-            {getValue<number>().toFixed(2)}
-          </div>
-        ),
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>().toFixed(2)}</div>,
         footer: (props) => props.column.id,
       },
     ],
@@ -246,7 +211,7 @@ const DevelopersPage: React.FC = () => {
     return Array.from(languages);
   }, [data]);
 
-  // Handle filter changes
+  // Handle filter changes (Now simplified due to the custom filterFn)
   const handleCategoryFilterChange = (category: string) => {
     setSelectedCategories((prevSelectedCategories) => {
       const isSelected = prevSelectedCategories.includes(category);
@@ -254,26 +219,8 @@ const DevelopersPage: React.FC = () => {
         ? prevSelectedCategories.filter((c) => c !== category)
         : [...prevSelectedCategories, category];
 
-      // Update the column filters based on the selected categories
-      setColumnFilters((prevFilters) => {
-        const categoryFilter = prevFilters.find(
-          (f) => f.id === 'project_category'
-        );
-
-        if (nextSelectedCategories.length === 0) {
-          return prevFilters.filter((f) => f.id !== 'project_category');
-        } else {
-          const newFilter = {
-            id: 'project_category',
-            value: nextSelectedCategories,
-          };
-          return categoryFilter
-            ? prevFilters.map((f) =>
-                f.id === 'project_category' ? newFilter : f
-              )
-            : [...prevFilters, newFilter];
-        }
-      });
+      // Update column filters (Simplified)
+      updateColumnFilters('project_category', nextSelectedCategories);
 
       return nextSelectedCategories;
     });
@@ -286,20 +233,8 @@ const DevelopersPage: React.FC = () => {
         ? prevSelectedProjects.filter((p) => p !== project)
         : [...prevSelectedProjects, project];
 
-      setColumnFilters((prevFilters) => {
-        const projectFilter = prevFilters.find((f) => f.id === 'project_name');
-
-        if (nextSelectedProjects.length === 0) {
-          return prevFilters.filter((f) => f.id !== 'project_name');
-        } else {
-          const newFilter = { id: 'project_name', value: nextSelectedProjects };
-          return projectFilter
-            ? prevFilters.map((f) =>
-                f.id === 'project_name' ? newFilter : f
-              )
-            : [...prevFilters, newFilter];
-        }
-      });
+      // Update column filters (Simplified)
+      updateColumnFilters('project_name', nextSelectedProjects);
 
       return nextSelectedProjects;
     });
@@ -312,25 +247,24 @@ const DevelopersPage: React.FC = () => {
         ? prevSelectedLanguages.filter((l) => l !== language)
         : [...prevSelectedLanguages, language];
 
-      setColumnFilters((prevFilters) => {
-        const languageFilter = prevFilters.find((f) => f.id === 'language_name');
-
-        if (nextSelectedLanguages.length === 0) {
-          return prevFilters.filter((f) => f.id !== 'language_name');
-        } else {
-          const newFilter = {
-            id: 'language_name',
-            value: nextSelectedLanguages,
-          };
-          return languageFilter
-            ? prevFilters.map((f) =>
-                f.id === 'language_name' ? newFilter : f
-              )
-            : [...prevFilters, newFilter];
-        }
-      });
+      // Update column filters (Simplified)
+      updateColumnFilters('language_name', nextSelectedLanguages);
 
       return nextSelectedLanguages;
+    });
+  };
+
+  // Helper function to update column filters (DRY principle)
+  const updateColumnFilters = (columnId: string, selectedValues: string[]) => {
+    setColumnFilters((prevFilters) => {
+      const existingFilter = prevFilters.find((f) => f.id === columnId);
+
+      if (selectedValues.length === 0) {
+        return prevFilters.filter((f) => f.id !== columnId);
+      } else {
+        const newFilter = { id: columnId, value: selectedValues };
+        return existingFilter ? prevFilters.map((f) => (f.id === columnId ? newFilter : f)) : [...prevFilters, newFilter];
+      }
     });
   };
 
@@ -374,32 +308,17 @@ const DevelopersPage: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Handle option click for each filter
+  // Handle option click for each filter (These are now simplified)
   const handleCategoryOptionClick = (category: string) => {
     handleCategoryFilterChange(category);
-    setSelectedCategories((prevSelectedCategories) =>
-      prevSelectedCategories.includes(category)
-        ? prevSelectedCategories.filter((c) => c !== category)
-        : [...prevSelectedCategories, category]
-    );
   };
 
   const handleProjectOptionClick = (project: string) => {
     handleProjectFilterChange(project);
-    setSelectedProjects((prevSelectedProjects) =>
-      prevSelectedProjects.includes(project)
-        ? prevSelectedProjects.filter((p) => p !== project)
-        : [...prevSelectedProjects, project]
-    );
   };
 
   const handleLanguageOptionClick = (language: string) => {
     handleLanguageFilterChange(language);
-    setSelectedLanguages((prevSelectedLanguages) =>
-      prevSelectedLanguages.includes(language)
-        ? prevSelectedLanguages.filter((l) => l !== language)
-        : [...prevSelectedLanguages, language]
-    );
   };
 
   // Update column visibility based on isMobile
