@@ -2,48 +2,38 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
+import { useScreenOrientation } from './hooks/useScreenOrientation';
 
 const Navigation: React.FC<React.PropsWithChildren> = () => {
-  const [isNavCollapsed, setIsNavCollapsed] = useState(true); // Default collapsed on mobile
-  const [windowWidth, setWindowWidth] = useState(0);
+  const { isMobile } = useScreenOrientation();
+  const [isNavCollapsed, setIsNavCollapsed] = useState(isMobile);
+  const pathname = usePathname();
 
   const toggleNav = () => {
     setIsNavCollapsed(!isNavCollapsed);
   };
 
   const collapseNav = () => {
-    if (windowWidth < 768) {
+    if (isMobile) {
       setIsNavCollapsed(true);
     }
-  }
+  };
 
   useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
+    setIsNavCollapsed(isMobile);
+  }, [isMobile]);
 
-    if (typeof window !== 'undefined') {
-      setWindowWidth(window.innerWidth);
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
-    }
-  }, []);
-
+  // Collapse the navbar whenever the route changes
   useEffect(() => {
-    if (windowWidth >= 768) {
-      setIsNavCollapsed(false); // Expand by default on larger screens
-    } else {
-      setIsNavCollapsed(true); // Collapse by default on smaller screens
-    }
-  }, [windowWidth]);
+    collapseNav();
+  }, [pathname]);
 
   return (
     <div className="md:block relative z-10">
       <nav
         className={`bg-gray-800 md:h-screen md:w-64 w-full fixed ${
-          isNavCollapsed
-            ? 'h-auto bg-transparent'
-            : 'h-screen w-64'
+          isNavCollapsed ? 'h-auto bg-transparent' : 'h-screen w-64'
         } transition-all duration-300 ease-in-out`}
       >
         <div className="flex justify-between items-center">
@@ -58,36 +48,38 @@ const Navigation: React.FC<React.PropsWithChildren> = () => {
               viewBox="0 0 24 24"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4 6h16M4 12h16m-7 6h7"
-              />
+              {isNavCollapsed ? (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 6h16M4 12h16m-7 6h7"
+                />
+              ) : (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              )}
             </svg>
           </button>
           {/* Title/Logo */}
-          {windowWidth < 768 && isNavCollapsed && (
-            <Link
-              href="/"
-              className="text-white text-lg font-bold pr-5"
-              prefetch
-            >
+          {isMobile && isNavCollapsed && (
+            <Link href="/" className="text-white text-lg font-bold pr-5" prefetch>
               BL
             </Link>
           )}
         </div>
         <ul
-          className={`list-none p-0 ${
-            isNavCollapsed ? 'hidden md:block' : 'block'
-          }`}
+          className={`list-none p-0 ${isNavCollapsed ? 'hidden md:block' : 'block'}`}
         >
           <li className="mb-2">
             <Link
               href="/"
               className="text-white hover:underline block px-5"
               prefetch
-              onClick={collapseNav}
             >
               Builder Love
             </Link>
@@ -97,7 +89,6 @@ const Navigation: React.FC<React.PropsWithChildren> = () => {
               href="/languages"
               className="text-white hover:underline block px-5"
               prefetch
-              onClick={collapseNav}
             >
               Languages
             </Link>
@@ -107,7 +98,6 @@ const Navigation: React.FC<React.PropsWithChildren> = () => {
               href="/developers"
               className="text-white hover:underline block px-5"
               prefetch
-              onClick={collapseNav}
             >
               Builder Segments
             </Link>
@@ -117,7 +107,6 @@ const Navigation: React.FC<React.PropsWithChildren> = () => {
               href="/economics"
               className="text-white hover:underline block px-5"
               prefetch
-              onClick={collapseNav}
             >
               Economics
             </Link>
@@ -127,7 +116,6 @@ const Navigation: React.FC<React.PropsWithChildren> = () => {
               href="/research"
               className="text-white hover:underline block px-5"
               prefetch
-              onClick={collapseNav}
             >
               Research
             </Link>
