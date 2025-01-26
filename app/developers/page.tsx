@@ -31,7 +31,7 @@ interface Project {
 }
 
 // Define a custom filter function for multi-select
-const multiSelectFilter: FilterFn<any> = (row, columnId, filterValue: string[]) => {
+const multiSelectFilter: FilterFn<Project> = (row, columnId, filterValue: string[]) => {
   const value = row.getValue(columnId);
   return filterValue.includes(String(value));
 };
