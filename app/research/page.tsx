@@ -171,7 +171,7 @@ const ResearchPage: React.FC = () => {
       rect.setAttribute('id', rectId);
 
       const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-      title.textContent = `Topics: ${data.topic_count}\nReplies: ${data.reply_count}\nParticipants: ${data.participant_count}\nAvg Topic Score: ${formatScore(data.avg_topic_score)}\nLikes: ${formatScore(data.like_count)}\nViews: ${formatScore(data.view_count)}`;
+      title.textContent = `Author: ${data.author_name}\nTopics: ${data.topic_count}\nReplies: ${data.reply_count}\nParticipants: ${data.participant_count}\nAvg Topic Score: ${formatScore(data.avg_topic_score)}\nLikes: ${formatScore(data.like_count)}\nViews: ${formatScore(data.view_count)}`;
       rect.appendChild(title);
 
       const element = g.node() as SVGGElement;
