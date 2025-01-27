@@ -36,6 +36,40 @@ const multiSelectFilter: FilterFn<Project> = (row, columnId, filterValue: string
   return filterValue.includes(String(value));
 };
 
+// Add after the Project interface and before DevelopersPage component
+interface CustomCheckboxProps {
+  checked: boolean;
+  onChange: () => void;
+}
+
+const CustomCheckbox: React.FC<CustomCheckboxProps> = ({ checked, onChange }) => {
+  return (
+    <div
+      className={`w-4 h-4 border rounded cursor-pointer flex items-center justify-center ${
+        checked ? "bg-blue-600 border-blue-600" : "bg-gray-800 border-gray-300"
+      }`}
+      onClick={onChange}
+    >
+      {checked && (
+        <svg
+          className="w-3 h-3 text-white"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5 13l4 4L19 7"
+          />
+        </svg>
+      )}
+    </div>
+  );
+};
+
 const DevelopersPage: React.FC = () => {
   const [data, setData] = useState<Project[]>([]);
   const [sorting, setSorting] = useState<SortingState>([
@@ -388,7 +422,7 @@ const DevelopersPage: React.FC = () => {
       </h1>
 
       <div className="mb-4">
-        <div className="flex justify-start md:justify-center space-x-4">
+        <div className={`flex space-x-4 ${isMobile ? 'justify-center' : 'justify-start md:justify-center'}`}>
           <div className="relative" ref={projectDropdownRef}>
             <button
               onClick={toggleProjectDropdown}
@@ -431,7 +465,6 @@ const DevelopersPage: React.FC = () => {
               </div>
             )}
           </div>
-
           <div className="relative" ref={languageDropdownRef}>
             <button
               onClick={toggleLanguageDropdown}
@@ -474,7 +507,6 @@ const DevelopersPage: React.FC = () => {
               </div>
             )}
           </div>
-
           <div className="relative" ref={categoryDropdownRef}>
             <button
               onClick={toggleCategoryDropdown}
@@ -664,45 +696,6 @@ const DevelopersPage: React.FC = () => {
           </select>
         </div>
       </div>
-    </div>
-  );
-};
-
-// CustomCheckbox component
-interface CustomCheckboxProps {
-  checked: boolean;
-  onChange: () => void;
-}
-
-const CustomCheckbox: React.FC<CustomCheckboxProps> = ({
-  checked,
-  onChange,
-}) => {
-  return (
-    <div
-      className={`w-4 h-4 border rounded cursor-pointer flex items-center justify-center ${
-        checked ? "bg-blue-600 border-blue-600" : "bg-gray-800 border-gray-300"
-      }`}
-      onClick={() => {
-        onChange();
-      }}
-    >
-      {checked && (
-        <svg
-          className="w-3 h-3 text-white"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M5 13l4 4L19 7"
-          />
-        </svg>
-      )}
     </div>
   );
 };
