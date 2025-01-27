@@ -192,7 +192,7 @@ const DevelopersPage: React.FC = () => {
     data.forEach((project) => {
       categories.add(project.project_category);
     });
-    return Array.from(categories);
+    return Array.from(categories).sort();
   }, [data]);
 
   const uniqueProjects = useMemo(() => {
@@ -200,7 +200,7 @@ const DevelopersPage: React.FC = () => {
     data.forEach((project) => {
       projects.add(project.project_name);
     });
-    return Array.from(projects);
+    return Array.from(projects).sort();
   }, [data]);
 
   const uniqueLanguages = useMemo(() => {
@@ -208,7 +208,7 @@ const DevelopersPage: React.FC = () => {
     data.forEach((project) => {
       languages.add(project.language_name);
     });
-    return Array.from(languages);
+    return Array.from(languages).sort();
   }, [data]);
 
   // Handle filter changes (Now simplified due to the custom filterFn)
@@ -498,7 +498,7 @@ const DevelopersPage: React.FC = () => {
             </button>
             {isCategoryDropdownOpen && (
               <div
-                className="absolute z-30 mt-1 left-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg"
+                className="absolute z-30 mt-1 right-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg"
                 onClick={(e) => e.stopPropagation()}
               >
                 {uniqueCategories.map((category) => (
