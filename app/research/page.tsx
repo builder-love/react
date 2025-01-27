@@ -181,7 +181,7 @@ const ResearchPage: React.FC = () => {
       if (isMobile) {
         g.on('touchstart', (event) => {
           event.preventDefault(); // Prevent other events like mouseover from firing
-          const touch = (event as unknown as TouchEvent).touches[0];
+          //const touch = (event as unknown as TouchEvent).touches[0];
           const tooltipElement = document.getElementById(rectId)?.querySelector('title');
           if (tooltipElement) {
             const tooltipContent = tooltipElement.textContent;
