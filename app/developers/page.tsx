@@ -446,7 +446,7 @@ const DevelopersPage: React.FC = () => {
             </button>
             {isProjectDropdownOpen && (
               <div
-                className="absolute z-30 mt-1 left-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg"
+              className="absolute z-30 mt-1 right-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" // Add overflow-y-auto and max-h-60
                 onClick={(e) => e.stopPropagation()}
               >
                 {uniqueProjects.map((project) => (
