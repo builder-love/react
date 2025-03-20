@@ -28,7 +28,7 @@ const Footer: React.FC = () => {
             <div className="flex gap-4 justify-center md:justify-end"> {/* Changed md:justify-start to md:justify-end */}
               {/* GitHub Link */}
               <a
-                href="https://github.com/treboryatska/execution_vm"
+                href="https://github.com/builder-love"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-300 hover:text-white"
@@ -64,7 +64,7 @@ const Footer: React.FC = () => {
               </a>
               {/* Discord Link */}
               <a
-                href="https://discord.gg/Fu64P834"
+                href="https://discord.gg/7s8CU3HR"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-300 hover:text-white"
