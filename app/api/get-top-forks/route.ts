@@ -1,7 +1,7 @@
 // app/api/get-top-forks/route.ts
 // import { google } from 'googleapis';
-//import { getVercelOidcToken } from '@vercel/functions/oidc';
-import { GoogleAuth } from 'google-auth-library';
+import { getVercelOidcToken } from '@vercel/functions/oidc';
+import { ExternalAccountClient } from 'google-auth-library';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Environment variables needed for the google-auth-library with OIDC
@@ -28,10 +28,32 @@ export async function GET(req: NextRequest) {
     }
 
   try {
-    const auth = new GoogleAuth();
-    const authClient = await auth.getIdTokenClient(CLOUD_RUN_URL);
-    const idToken = await authClient.getRequestHeaders()
-        .then(headers => headers['Authorization'].split(' ')[1]);
+    // Initialize the External Account Client
+    // This client handles exchanging the Vercel OIDC token for Google Cloud credentials
+    // by interacting with Google's Secure Token Service (STS).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const authClient = new (ExternalAccountClient as any).fromJSON({
+        type: 'external_account',
+        audience: `//iam.googleapis.com/projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID}`,
+        subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+        token_url: 'https://sts.googleapis.com/v1/token',
+        credential_source: { // Use credential_source instead of subject_token_supplier
+            // Provide the function to get the Vercel OIDC token
+            factoryReset: false, // Typically false for this use case
+            getSubjectToken: getVercelOidcToken,
+        },
+        // Specify the service account to impersonate to get the final token
+        service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateIdToken`,
+        // We ask directly for an ID token here, targeting our Cloud Run service
+        additional_claims: { // Use additional_claims to specify the ID token audience
+           audience: CLOUD_RUN_URL,
+        }
+    });
+
+    // Obtain the ID token using the configured ExternalAccountClient
+    // The ExternalAccountClient handles the STS exchange and impersonation
+    // to generate the required ID token with the specified audience.
+    const idToken = await authClient.fetchIdToken(CLOUD_RUN_URL); // Re-confirm audience
 
     // 4. Make the request to your Cloud Run API.
     const apiResponse = await fetch(CLOUD_RUN_URL + '/projects/top-forks', {
