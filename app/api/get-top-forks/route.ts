@@ -9,7 +9,7 @@ interface TopForkData {
   forks: number;
 }
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     // 1. Create a GoogleAuth instance.
     const auth = new google.auth.GoogleAuth({
