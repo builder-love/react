@@ -1,6 +1,16 @@
 // app/api/get-top-forks/route.ts
 import { google } from 'googleapis';
+import { getVercelOidcToken } from '@vercel/functions/oidc';
+import { ExternalAccountClient, GoogleAuth } from 'google-auth-library';
 import { NextRequest, NextResponse } from 'next/server';
+
+// Environment variables needed for the google-auth-library with OIDC
+const GCP_PROJECT_NUMBER = process.env.GCP_PROJECT_NUMBER;
+const GCP_WORKLOAD_IDENTITY_POOL_ID = process.env.GCP_WORKLOAD_IDENTITY_POOL_ID;
+const GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID = process.env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID;
+const GCP_SERVICE_ACCOUNT_EMAIL = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
+// Get the Cloud Run service URL from an environment variable.
+const CLOUD_RUN_URL = process.env.CLOUD_RUN_URL;
 
 // Define an interface for your data item (similar to Pydantic in FastAPI)
 interface TopForkData {
@@ -11,26 +21,20 @@ interface TopForkData {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(req: NextRequest) {
-  try {
-    // 1. Create a GoogleAuth instance.
-    const auth = new google.auth.GoogleAuth({
-        // No keyFile needed! We're using Workload Identity Federation + ADC
-        scopes: 'https://www.googleapis.com/auth/cloud-platform'
-    });
-
-    // 2. Get the Cloud Run service URL from an environment variable.
-    const cloudRunUrl = process.env.CLOUD_RUN_URL;
-    if (!cloudRunUrl) {
-        console.error("CLOUD_RUN_URL environment variable not set.");
-        return NextResponse.json({ message: 'Internal server configuration error.' }, { status: 500 });
+  // --- Input Validation ---
+  if (!GCP_PROJECT_NUMBER || !GCP_WORKLOAD_IDENTITY_POOL_ID || !GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID || !GCP_SERVICE_ACCOUNT_EMAIL || !CLOUD_RUN_URL) {
+    console.error("Missing required GCP/Cloud Run environment variables for OIDC");
+    return NextResponse.json({ message: 'Internal server configuration error: Missing OIDC variables.' }, { status: 500 });
     }
 
-    // 3. Obtain an ID token. Set the `targetAudience` to your Cloud Run URL.
-    const client = await auth.getIdTokenClient(cloudRunUrl);
-    const idToken = await client.idTokenProvider.fetchIdToken(cloudRunUrl);
+  try {
+    const auth = new GoogleAuth();
+    const authClient = await auth.getIdTokenClient(CLOUD_RUN_URL);
+    const idToken = await authClient.getRequestHeaders()
+        .then(headers => headers['Authorization'].split(' ')[1]);
 
     // 4. Make the request to your Cloud Run API.
-    const apiResponse = await fetch(cloudRunUrl + '/projects/top-forks', {
+    const apiResponse = await fetch(CLOUD_RUN_URL + '/projects/top-forks', {
       headers: {
         'Authorization': `Bearer ${idToken}`,
         'Content-Type': 'application/json',
