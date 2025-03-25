@@ -1,7 +1,7 @@
 // app/api/get-top-forks/route.ts
-import { google } from 'googleapis';
-import { getVercelOidcToken } from '@vercel/functions/oidc';
-import { ExternalAccountClient, GoogleAuth } from 'google-auth-library';
+// import { google } from 'googleapis';
+//import { getVercelOidcToken } from '@vercel/functions/oidc';
+import { GoogleAuth } from 'google-auth-library';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Environment variables needed for the google-auth-library with OIDC
