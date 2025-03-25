@@ -33,6 +33,7 @@ export default function EconomicsPage() {
             errorDetail = errorData.message || errorDetail;
           } catch (jsonError) {
             // Ignore if the error response wasn't JSON
+            console.error("Error parsing JSON:", jsonError);
           }
           throw new Error(errorDetail);
         }
@@ -40,9 +41,19 @@ export default function EconomicsPage() {
         const data: TopForkData[] = await response.json();
         setTopForks(data); // Update state with fetched data
 
-      } catch (err: any) { // Catch any error
-        setError(err.message || 'Failed to fetch data'); // Set error state
-        console.error("Fetching error:", err); // Log the error for debugging
+      } catch (err: unknown) { // Catch as unknown
+        let message = 'An unknown error occurred'; // Default message
+        if (err instanceof Error) {
+          // If it's an Error object, we can safely access .message
+          message = err.message;
+          console.error("Fetching error:", err); // Log the full error object
+        } else {
+          // If it's something else (e.g., a string was thrown), log it directly
+          console.error("Unexpected error type:", err);
+          // Optionally convert non-Error types to string for the message
+          message = String(err) || 'Failed to fetch data due to an unexpected error type';
+        }
+        setError(message); // Set the error state with the determined message
       } finally {
         setIsLoading(false); // Stop loading, regardless of success or error
       }
