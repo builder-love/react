@@ -1,7 +1,7 @@
 // app/api/get-top-forks/route.ts
 // import { google } from 'googleapis';
-// import { getVercelOidcToken } from '@vercel/functions/oidc';
-import { GoogleAuth } from 'google-auth-library';
+import { getVercelOidcToken } from '@vercel/functions/oidc';
+import { ExternalAccountClient } from 'google-auth-library';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Environment variables needed for the google-auth-library with OIDC
@@ -29,17 +29,29 @@ export async function GET(req: NextRequest) {
 
   try {
     // Initialize the External Account Client
-    // This client handles exchanging the Vercel OIDC token for Google Cloud credentials
-    // by interacting with Google's Secure Token Service (STS).
-    const auth = new GoogleAuth();
-    const authClient = await auth.getIdTokenClient(CLOUD_RUN_URL);
-    const idToken = await authClient.getRequestHeaders()
-        .then(headers => headers['Authorization'].split(' ')[1]);
+    const authClient = ExternalAccountClient.fromJSON({
+        type: 'external_account',
+        audience: `//iam.googleapis.com/projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID}`,
+        subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+        token_url: 'https://sts.googleapis.com/v1/token',
+        service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateAccessToken`,
+        subject_token_supplier: {
+        // Use the Vercel OIDC token as the subject token
+        getSubjectToken: getVercelOidcToken,
+        },
+    });
+
+    if (!authClient) {
+        throw new Error('Failed to initialize auth client');
+    }
+
+    const idToken = await authClient.getAccessToken();
+    const token = idToken.token;
 
     // 4. Make the request to your Cloud Run API.
     const apiResponse = await fetch(CLOUD_RUN_URL + '/projects/top-forks', {
       headers: {
-        'Authorization': `Bearer ${idToken}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
