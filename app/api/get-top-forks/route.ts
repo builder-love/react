@@ -5,7 +5,7 @@ import { ExternalAccountClient } from 'google-auth-library';
 import { NextRequest, NextResponse } from 'next/server';
 import { decodeJwt } from 'jose';
 
-// ... (keep existing environment variable checks and interface) ...
+// environment variable checks and interface
 const GCP_PROJECT_NUMBER = process.env.GCP_PROJECT_NUMBER;
 const GCP_WORKLOAD_IDENTITY_POOL_ID = process.env.GCP_WORKLOAD_IDENTITY_POOL_ID;
 const GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID = process.env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID;
@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
     }
 
     console.log("Requesting impersonated access token...");
+    // This gets the SA's ACCESS token (scopes define what the token can be used for)
     const saAccessTokenResponse = await impersonationClient.getAccessToken();
     const saAccessToken = saAccessTokenResponse?.token;
 
