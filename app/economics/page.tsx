@@ -62,7 +62,7 @@ export default function EconomicsPage() {
 
     fetchData(); // Call the fetch function when the component mounts
 
-  },); // Empty dependency array means this effect runs only once on mount
+  },[]); // Empty dependency array means this effect runs only once on mount
 
   // --- Render the component based on state ---
 
