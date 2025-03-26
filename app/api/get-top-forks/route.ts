@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: 'Internal server configuration error: Missing OIDC variables.' }, { status: 500 });
     }
   console.log("All environment variables are set. Proceeding to initialize External Account Client");
-  
+
   try {
     // Initialize the External Account Client
     console.log("Initializing External Account Client");
@@ -65,10 +65,16 @@ export async function GET(req: NextRequest) {
         throw new Error('Failed to initialize auth client');
     }
 
+    console.log("Auth client initialized. Requesting access token");
     const idToken = await authClient.getAccessToken();
+    console.log("Access token received");
+    console.log("idToken:", idToken);
+    console.log("setting token variable");
     const token = idToken.token;
+    console.log("Token:", token);
 
     // 4. Make the request to your Cloud Run API.
+    console.log("Making request to Cloud Run API");
     const apiResponse = await fetch(CLOUD_RUN_URL + '/projects/top-forks', {
       headers: {
         'Authorization': `Bearer ${token}`,
