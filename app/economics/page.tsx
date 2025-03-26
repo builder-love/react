@@ -23,6 +23,7 @@ export default function EconomicsPage() {
 
       try {
         // Fetch data from YOUR Next.js API route
+        console.log("Fetching data from API route");
         const response = await fetch('/api/get-top-forks');
 
         if (!response.ok) {
