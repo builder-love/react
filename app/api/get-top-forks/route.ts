@@ -3,6 +3,7 @@
 import { getVercelOidcToken } from '@vercel/functions/oidc';
 import { ExternalAccountClient } from 'google-auth-library';
 import { NextRequest, NextResponse } from 'next/server';
+import { decodeJwt } from 'jose';
 
 // Environment variables needed for the google-auth-library with OIDC
 const GCP_PROJECT_NUMBER = process.env.GCP_PROJECT_NUMBER;
@@ -36,8 +37,24 @@ export async function GET(req: NextRequest) {
         token_url: 'https://sts.googleapis.com/v1/token',
         service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateAccessToken`,
         subject_token_supplier: {
-        // Use the Vercel OIDC token as the subject token
-        getSubjectToken: getVercelOidcToken,
+          getSubjectToken: async () => {
+            const token = await getVercelOidcToken();
+  
+            // --- Log Decoded Token ---
+            try {
+              if (token) {
+                const decodedPayload = decodeJwt(token);
+                console.log("Decoded Vercel OIDC Token Payload:", JSON.stringify(decodedPayload, null, 2));
+              } else {
+                console.log("getVercelOidcToken returned null or undefined");
+              }
+            } catch (decodeError) {
+              console.error("Failed to decode Vercel OIDC token:", decodeError);
+            }
+            // --- End Log ---
+  
+            return token;
+          },
         },
     });
 
