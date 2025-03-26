@@ -27,9 +27,11 @@ export async function GET(req: NextRequest) {
     console.error("Missing required GCP/Cloud Run environment variables for OIDC");
     return NextResponse.json({ message: 'Internal server configuration error: Missing OIDC variables.' }, { status: 500 });
     }
-
+  console.log("All environment variables are set. Proceeding to initialize External Account Client");
+  
   try {
     // Initialize the External Account Client
+    console.log("Initializing External Account Client");
     const authClient = ExternalAccountClient.fromJSON({
         type: 'external_account',
         audience: `//iam.googleapis.com/projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WORKLOAD_IDENTITY_POOL_ID}/providers/${GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID}`,
@@ -38,8 +40,9 @@ export async function GET(req: NextRequest) {
         service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT_EMAIL}:generateAccessToken`,
         subject_token_supplier: {
           getSubjectToken: async () => {
+            console.log("Requesting Vercel OIDC token");
             const token = await getVercelOidcToken();
-  
+            console.log("Token received");
             // --- Log Decoded Token ---
             try {
               if (token) {
