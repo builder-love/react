@@ -3,12 +3,7 @@ import { type DefaultTooltipContentProps } from 'recharts';
 export interface StarsDataItem {
   name: string;
   stars: number;
-  forks: number;
-}
-
-export interface ForksDataItem {
-  name: string;
-  forks: number;
+  repos: number;
 }
 
 export interface LanguageItem {
@@ -38,4 +33,11 @@ export interface CustomScatterData {
   contributor_count: number | null;
   stars_count: number | null;
   repo_count: number | null;
+}
+
+// Define the type for the data you expect from your API route
+export interface TopForkData {
+  project_title: string;
+  latest_data_timestamp: string;
+  forks: number;
 }

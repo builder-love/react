@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -11,11 +11,67 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import type { StarsDataItem, ForksDataItem } from './types';
+import type { StarsDataItem, TopForkData } from './types';
 import top100StarsData from './data/top_100_by_stargaze.json';
-import top100ForksData from './data/top_100_forked_projects.json';
 
 const HomePage: React.FC = () => {
+  // --- State Hooks for Forks Data ---
+  // Use ForksDataItem for the chart data state
+  const [chartDataForks, setChartDataForks] = useState<TopForkData[]>([]);
+  const [isLoadingForks, setIsLoadingForks] = useState<boolean>(true); // Specific loading state
+  const [errorForks, setErrorForks] = useState<string | null>(null); // Specific error state
+
+  // --- Fetch Forks Data ---
+  useEffect(() => {
+    const fetchForksData = async () => {
+      setIsLoadingForks(true);
+      setErrorForks(null);
+
+      try {
+        console.log("Fetching top forks data from API route");
+        const response = await fetch('/api/get-top-forks'); // Your Vercel API route
+
+        if (!response.ok) {
+          let errorDetail = `HTTP error! status: ${response.status}`;
+          try {
+            const errorData = await response.json();
+            errorDetail = errorData.message || errorDetail;
+          } catch (jsonError) {
+             console.error("Error parsing JSON error response:", jsonError);
+          }
+          throw new Error(errorDetail);
+        }
+
+        const apiData: TopForkData[] = await response.json();
+
+        // *** Data Transformation ***
+        const formattedChartData = apiData.map(item => ({
+            name: item.project_title,
+            forks: item.forks,
+            project_title: item.project_title,
+            latest_data_timestamp: item.latest_data_timestamp
+        }));
+
+        setChartDataForks(formattedChartData); // Set the transformed data
+
+      } catch (err: unknown) {
+        let message = 'An unknown error occurred fetching fork data';
+        if (err instanceof Error) {
+          message = err.message;
+          console.error("Fetching forks error:", err);
+        } else {
+          console.error("Unexpected forks error type:", err);
+          message = String(err) || message;
+        }
+        setErrorForks(message);
+      } finally {
+        setIsLoadingForks(false);
+      }
+    };
+
+    fetchForksData();
+  }, []); // Runs once on mount
+
   const chartDataStars: StarsDataItem[] = useMemo(() => {
     const formattedData = Object.entries(top100StarsData.project_name).map(
       ([index, name]) => ({
@@ -23,19 +79,12 @@ const HomePage: React.FC = () => {
         stars: top100StarsData.project_stargaze_count[
           index as keyof typeof top100StarsData.project_stargaze_count
         ] as number,
-        forks: top100StarsData.project_repo_count[
+        repos: top100StarsData.project_repo_count[
           index as keyof typeof top100StarsData.project_repo_count
         ] as number,
       })
     );
     return formattedData;
-  }, []);
-
-  const chartDataForks: ForksDataItem[] = useMemo(() => {
-    return top100ForksData.map((item) => ({
-      name: item.project_name,
-      forks: item.fork_count,
-    }));
   }, []);
 
   const formatYAxisLabel = (name: string) => {
@@ -108,6 +157,11 @@ const HomePage: React.FC = () => {
         {/* Forks Chart */}
         <div className="flex-1">
           <h3 className="text-xl font-bold mb-4 text-center">By Forks</h3>
+          {isLoadingForks ? (
+            <div className="text-center p-10">Loading forks data...</div>
+          ) : errorForks ? (
+            <div className="text-center p-10 text-red-500">Error loading forks: {errorForks}</div>
+          ) : chartDataForks.length > 0 ? (
           <ResponsiveContainer width="100%" height={2500}>
             <BarChart
               data={chartDataForks}
@@ -155,6 +209,9 @@ const HomePage: React.FC = () => {
               <Bar dataKey="forks" fill="#82ca9d" />
             </BarChart>
           </ResponsiveContainer>
+          ) : (
+            <div className="text-center p-10">No fork data available.</div>
+          )}
         </div>
       </div>
     </div>
