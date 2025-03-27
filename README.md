@@ -1,3 +1,17 @@
+## builder.love web app framework
+
+An open source repository for the builder.love web application. 
+
+The front-end web application: https://builder.love
+
+The data warehouse: coming soon...
+
+If you would like to contribute, join the discord: https://discord.gg/qppA8MxTHf
+
+This project is a public good, bootstrapped by the contributors. If you would like to donate please see our donation page: https://docs.builder.love/docs/donate
+
+## Running the interface locally
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
