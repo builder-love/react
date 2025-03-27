@@ -64,7 +64,7 @@ const Footer: React.FC = () => {
               </a>
               {/* Discord Link */}
               <a
-                href="https://discord.gg/7s8CU3HR"
+                href="https://discord.gg/qppA8MxTHf"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-300 hover:text-white"
