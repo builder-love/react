@@ -11,15 +11,19 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import type { StarsDataItem, TopForkData } from './types';
-import top100StarsData from './data/top_100_by_stargaze.json';
+import type { TopStarsData, TopForkData } from './types';
 
 const HomePage: React.FC = () => {
-  // --- State Hooks for Forks Data ---
+  // --- State Hooks for Data ---
   // Use ForksDataItem for the chart data state
   const [chartDataForks, setChartDataForks] = useState<TopForkData[]>([]);
   const [isLoadingForks, setIsLoadingForks] = useState<boolean>(true); // Specific loading state
   const [errorForks, setErrorForks] = useState<string | null>(null); // Specific error state
+
+  // Use StarsDataItem for the chart data state
+  const [chartDataStars, setChartDataStars] = useState<TopStarsData[]>([]);
+  const [isLoadingStars, setIsLoadingStars] = useState<boolean>(true); // Specific loading state
+  const [errorStars, setErrorStars] = useState<string | null>(null); // Specific error state
 
   // --- Fetch Forks Data ---
   useEffect(() => {
@@ -72,20 +76,56 @@ const HomePage: React.FC = () => {
     fetchForksData();
   }, []); // Runs once on mount
 
-  const chartDataStars: StarsDataItem[] = useMemo(() => {
-    const formattedData = Object.entries(top100StarsData.project_name).map(
-      ([index, name]) => ({
-        name: name as string,
-        stars: top100StarsData.project_stargaze_count[
-          index as keyof typeof top100StarsData.project_stargaze_count
-        ] as number,
-        repos: top100StarsData.project_repo_count[
-          index as keyof typeof top100StarsData.project_repo_count
-        ] as number,
-      })
-    );
-    return formattedData;
-  }, []);
+  // --- Fetch Stars Data ---
+  useEffect(() => {
+    const fetchStarsData = async () => {
+      setIsLoadingStars(true);
+      setErrorStars(null);
+
+      try {
+        console.log("Fetching top stars data from API route");
+        const response = await fetch('/api/get-top-stars'); // Your Vercel API route
+
+        if (!response.ok) {
+          let errorDetail = `HTTP error! status: ${response.status}`;
+          try {
+            const errorData = await response.json();
+            errorDetail = errorData.message || errorDetail;
+          } catch (jsonError) {
+             console.error("Error parsing JSON error response:", jsonError);
+          }
+          throw new Error(errorDetail);
+        }
+
+        const apiData: TopStarsData[] = await response.json();
+
+        // *** Data Transformation ***
+        const formattedChartData = apiData.map(item => ({
+            name: item.project_title,
+            stars: item.stars,
+            project_title: item.project_title,
+            latest_data_timestamp: item.latest_data_timestamp
+        }));
+
+        setChartDataStars(formattedChartData); // Set the transformed data
+
+      } catch (err: unknown) {
+        let message = 'An unknown error occurred fetching stars data';
+        if (err instanceof Error) {
+          message = err.message;
+          console.error("Fetching stars error:", err);
+        } else {
+          console.error("Unexpected stars error type:", err);
+          message = String(err) || message;
+        }
+        setErrorStars(message);
+      } finally {
+        setIsLoadingStars(false);
+      }
+    };
+
+    fetchStarsData();
+  }, []); // Runs once on mount
 
   const formatYAxisLabel = (name: string) => {
     if (name.length > 15) {
@@ -105,6 +145,11 @@ const HomePage: React.FC = () => {
         {/* Stars Chart */}
         <div className="flex-1">
           <h3 className="text-xl font-bold mb-4 text-center">By Stars</h3>
+          {isLoadingStars ? (
+            <div className="text-center p-10">Loading stars data...</div>
+          ) : errorStars ? (
+            <div className="text-center p-10 text-red-500">Error loading stars: {errorStars}</div>
+          ) : chartDataStars.length > 0 ? (
           <ResponsiveContainer width="100%" height={2500}>
             <BarChart
               data={chartDataStars}
@@ -152,6 +197,9 @@ const HomePage: React.FC = () => {
               <Bar dataKey="stars" fill="#8884d8" />
             </BarChart>
           </ResponsiveContainer>
+          ) : (
+            <div className="text-center p-10">No stars data available.</div>
+          )}
         </div>
 
         {/* Forks Chart */}
