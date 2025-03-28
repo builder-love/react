@@ -134,6 +134,11 @@ const HomePage: React.FC = () => {
     return name;
   };
 
+  // wait for both data sets to be loaded before rendering the page
+  if (isLoadingForks || isLoadingStars) {
+    return <div className="text-center p-10">Loading data...</div>;
+  }
+
   return (
     <div className="p-6">
       <div className="flex justify-center w-full">
