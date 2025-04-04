@@ -199,7 +199,7 @@ const HomePage: React.FC = () => {
                 ]}
                 wrapperStyle={{ bottom: 0 }}
               />
-              <Bar dataKey="stars" fill="#8884d8" />
+              <Bar dataKey="stargaze_count" fill="#8884d8" />
             </BarChart>
           </ResponsiveContainer>
           ) : (
@@ -259,7 +259,7 @@ const HomePage: React.FC = () => {
                 ]}
                 wrapperStyle={{ bottom: 0 }}
               />
-              <Bar dataKey="forks" fill="#82ca9d" />
+              <Bar dataKey="fork_count" fill="#82ca9d" />
             </BarChart>
           </ResponsiveContainer>
           ) : (
