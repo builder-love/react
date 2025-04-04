@@ -33,7 +33,7 @@ const HomePage: React.FC = () => {
 
       try {
         console.log("Fetching top forks data from API route");
-        const response = await fetch('/api/get-top-forks'); // Your Vercel API route
+        const response = await fetch('/api/get-top100-project-forks'); // Your Vercel API route
 
         if (!response.ok) {
           let errorDetail = `HTTP error! status: ${response.status}`;
@@ -84,7 +84,7 @@ const HomePage: React.FC = () => {
 
       try {
         console.log("Fetching top stars data from API route");
-        const response = await fetch('/api/get-top-stars'); // Your Vercel API route
+        const response = await fetch('/api/get-top100-project-stars'); // Your Vercel API route
 
         if (!response.ok) {
           let errorDetail = `HTTP error! status: ${response.status}`;

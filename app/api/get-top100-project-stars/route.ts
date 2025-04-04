@@ -1,4 +1,4 @@
-// app/api/get-top-forks/route.ts
+// app/api/get-top-stars/route.ts
 import { getVercelOidcToken } from '@vercel/functions/oidc';
 // Only need ExternalAccountClient for now
 import { ExternalAccountClient } from 'google-auth-library';
@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
 
     // --- Step 3: Make the request to your Cloud Run API using the ID Token ---
     console.log("Making request to Cloud Run API with generated ID Token");
-    const apiResponse = await fetch(CLOUD_RUN_URL + '/projects/top-forks', { // Ensure this path is correct
+    const apiResponse = await fetch(CLOUD_RUN_URL + '/projects/top100-star-count', { // Ensure this path is correct
       headers: {
         'Authorization': `Bearer ${cloudRunIdToken}`, // Use the Cloud Run-specific ID token
         'Content-Type': 'application/json',
