@@ -51,7 +51,7 @@ const HomePage: React.FC = () => {
         // *** Data Transformation ***
         const formattedChartData = apiData.map(item => ({
             name: item.project_title,
-            forks: item.forks,
+            fork_count: item.fork_count,
             project_title: item.project_title,
             latest_data_timestamp: item.latest_data_timestamp
         }));
@@ -102,7 +102,7 @@ const HomePage: React.FC = () => {
         // *** Data Transformation ***
         const formattedChartData = apiData.map(item => ({
             name: item.project_title,
-            stars: item.stars,
+            stargaze_count: item.stargaze_count,
             project_title: item.project_title,
             latest_data_timestamp: item.latest_data_timestamp
         }));

@@ -25,7 +25,7 @@ export type TooltipProps = DefaultTooltipContentProps<number, string> & {
 export interface CustomScatterData {
   project_name: string;
   contributor_count: number | null;
-  stars_count: number | null;
+  stargaze_count: number | null;
   repo_count: number | null;
 }
 
@@ -33,12 +33,12 @@ export interface CustomScatterData {
 export interface TopForkData {
   project_title: string;
   latest_data_timestamp: string;
-  forks: number;
+  fork_count: number;
 }
 
 // Define the type for the stars data you expect from the API route
 export interface TopStarsData {
   project_title: string;
   latest_data_timestamp: string;
-  stars: number;
+  stargaze_count: number;
 }
