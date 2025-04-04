@@ -1,4 +1,4 @@
-// app/api/get-top-stars/route.ts
+// app/api/get-top100-project-stars/route.ts
 import { getVercelOidcToken } from '@vercel/functions/oidc';
 // Only need ExternalAccountClient for now
 import { ExternalAccountClient } from 'google-auth-library';
