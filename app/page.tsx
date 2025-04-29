@@ -53,6 +53,9 @@ const HomePage: React.FC = () => {
         console.log("Fetching project trends data from API route");
         const response = await fetch('/api/get-top50-project-trends'); // Vercel API route
 
+        // *** Log HTTP Status ***
+        console.log("API Response Status:", response.status, response.statusText);
+
         if (!response.ok) {
           let errorDetail = `HTTP error! status: ${response.status}`;
           try {
@@ -65,6 +68,15 @@ const HomePage: React.FC = () => {
         }
 
         const fetchedData: TopProjectsTrendsData[] = await response.json();
+        // *** LOG RAW API DATA HERE ***
+        console.log("Raw API Data Received:", fetchedData);
+        // Check if it's an array and if it has items
+        if (!Array.isArray(fetchedData)) {
+          console.error("API did not return an array!");
+          throw new Error("Invalid data format received from API.");
+        }
+        console.log(`Received ${fetchedData.length} items from API.`);
+        
         setApiData(fetchedData); // Store raw data
 
         // Extract unique project titles right after fetch
