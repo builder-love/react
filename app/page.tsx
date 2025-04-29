@@ -149,6 +149,8 @@ const HomePage: React.FC = () => {
       if (isNaN(date.getTime())) return tickItem; // Return original if invalid
       return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', timeZone: 'UTC' });
     } catch (e) {
+      // Log the error to the console for debugging
+      console.error("Error formatting date tick:", tickItem, e);
       return tickItem; // Fallback
     }
   };
