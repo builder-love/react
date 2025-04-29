@@ -1,9 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback
+} from 'react';
 import {
-  LineChart, 
-  Line,      
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -11,47 +16,42 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import type { TopProjectsTrendsData } from './types'; 
+import type { TopProjectsTrendsData } from './types';
 
 // Define a type for the transformed data structure suitable for the LineChart
 interface FormattedLineChartData {
-  report_date: string; // The X-axis value
-  [projectTitle: string]: number | string; // Dynamically add project titles as keys with score as value
+  report_date: string;
+  [projectTitle: string]: number | string;
 }
 
-// Simple color generation function (we might want a more sophisticated one for 50 colors)
+// Simple color generation function
 const generateColors = (count: number): string[] => {
   const colors: string[] = [];
   for (let i = 0; i < count; i++) {
-    // Generate HSL colors with varying hue
     const hue = (i * (360 / count)) % 360;
     colors.push(`hsl(${hue}, 70%, 50%)`);
   }
   return colors;
 };
 
-
 const HomePage: React.FC = () => {
-  // --- State Hooks ---
-  // State for the raw API data
   const [apiData, setApiData] = useState<TopProjectsTrendsData[]>([]);
-  // State for unique project titles found in the data
   const [projectTitles, setProjectTitles] = useState<string[]>([]);
-  // State for loading status
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  // State for error messages
   const [error, setError] = useState<string | null>(null);
 
   // --- Fetch Data ---
   useEffect(() => {
     const fetchData = async () => {
+      // Reset states for fetch cycle
       setIsLoading(true);
       setError(null);
-      setProjectTitles([]); // Reset titles on new fetch
+      setApiData([]); // Clear previous data
+      setProjectTitles([]);
 
       try {
-        console.log("Fetching project trends data from API route");
-        const response = await fetch('/api/get-top50-project-trends'); // Vercel API route
+        console.log("Fetching project trends data from API route..."); // Log start
+        const response = await fetch('/api/get-top50-project-trends');
 
         // *** Log HTTP Status ***
         console.log("API Response Status:", response.status, response.statusText);
@@ -60,6 +60,7 @@ const HomePage: React.FC = () => {
           let errorDetail = `HTTP error! status: ${response.status}`;
           try {
             const errorData = await response.json();
+            console.error("API Error Data:", errorData); // Log error response body
             errorDetail = errorData.message || errorDetail;
           } catch (jsonError) {
              console.error("Error parsing JSON error response:", jsonError);
@@ -68,6 +69,7 @@ const HomePage: React.FC = () => {
         }
 
         const fetchedData: TopProjectsTrendsData[] = await response.json();
+
         // *** LOG RAW API DATA HERE ***
         console.log("Raw API Data Received:", fetchedData);
         // Check if it's an array and if it has items
@@ -76,13 +78,14 @@ const HomePage: React.FC = () => {
           throw new Error("Invalid data format received from API.");
         }
         console.log(`Received ${fetchedData.length} items from API.`);
-        
+
+
         setApiData(fetchedData); // Store raw data
 
-        // Extract unique project titles right after fetch
         const uniqueTitles = [...new Set(fetchedData.map(item => item.project_title))];
+        // *** LOG UNIQUE TITLES ***
+        console.log("Extracted Project Titles:", uniqueTitles);
         setProjectTitles(uniqueTitles); // Store unique titles for line rendering
-
 
       } catch (err: unknown) {
         let message = 'An unknown error occurred fetching project trends data';
@@ -96,6 +99,7 @@ const HomePage: React.FC = () => {
         setError(message);
       } finally {
         setIsLoading(false);
+        console.log("Finished fetching data, loading set to false."); // Log end fetch
       }
     };
 
@@ -103,131 +107,146 @@ const HomePage: React.FC = () => {
   }, []); // Runs once on mount
 
   // --- Data Transformation ---
-  // Use useMemo to transform data only when apiData changes
   const chartData = useMemo(() => {
-    if (!apiData.length) return [];
+    // *** LOG START OF TRANSFORMATION ***
+    console.log("Starting data transformation (useMemo)...", { apiDataLength: apiData.length });
 
-    // Group data by report_date
+    if (!apiData || apiData.length === 0) {
+        console.log("Transformation skipped: apiData is empty.");
+        return []; // Ensure it returns empty array if no apiData
+    }
+
     const groupedData: Record<string, FormattedLineChartData> = {};
-
     apiData.forEach(item => {
       const { report_date, project_title, weighted_score_index } = item;
-
-      if (!groupedData[report_date]) {
-        groupedData[report_date] = { report_date }; // Initialize object for this date
+      if (!report_date || !project_title || weighted_score_index === undefined || weighted_score_index === null) {
+          console.warn("Skipping item with missing data:", item);
+          return; // Skip items with missing essential data
       }
-
-      // Add the project's score for this date
-      // Ensure project_title is a valid key (e.g., handle special characters if necessary)
+      if (!groupedData[report_date]) {
+        groupedData[report_date] = { report_date };
+      }
       groupedData[report_date][project_title] = weighted_score_index;
     });
 
-    // Convert the grouped object into an array and sort by date
     const sortedData = Object.values(groupedData).sort((a, b) =>
       new Date(a.report_date).getTime() - new Date(b.report_date).getTime()
     );
 
+    // *** LOG TRANSFORMED DATA ***
+    console.log("Data transformation complete. Transformed Data:", sortedData);
     return sortedData;
-  }, [apiData]); // Dependency: re-run only if apiData changes
+  }, [apiData]);
 
-  // Generate colors based on the number of unique projects
+  // Generate colors
   const projectColors = useMemo(() => {
       const colors = generateColors(projectTitles.length);
-      return projectTitles.reduce((acc, title, index) => {
-          acc[title] = colors[index % colors.length]; // Use modulo for safety if colors < titles
+      const colorMap = projectTitles.reduce((acc, title, index) => {
+          acc[title] = colors[index % colors.length];
           return acc;
       }, {} as Record<string, string>);
+      // *** LOG PROJECT COLORS ***
+      console.log("Generated Project Colors Map:", colorMap);
+      return colorMap;
   }, [projectTitles]);
 
+  // Date Formatting
+  const formatDateTick = useCallback((tickItem: string): string => { // Wrap in useCallback
+    try {
+      const date = new Date(tickItem + 'T00:00:00Z');
+      if (isNaN(date.getTime())) return tickItem;
+      return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', timeZone: 'UTC' });
+    } catch (e) {
+      console.error("Error formatting date tick:", tickItem, e);
+      return tickItem;
+    }
+  }, []); // No dependencies needed
+
+
+  // *** LOG BEFORE RENDER CHECK ***
+  console.log("Preparing to render. States:", { isLoading, error, chartDataLength: chartData.length, projectTitlesLength: projectTitles.length });
 
   // --- Render Logic ---
   if (isLoading) {
+    console.log("RENDERING: Loading state");
     return <div className="text-center p-10">Loading data...</div>;
   }
 
   if (error) {
+    console.log("RENDERING: Error state -", error);
     return <div className="text-center p-10 text-red-500">Error loading data: {error}</div>;
   }
 
-  if (!chartData.length) {
-    return <div className="text-center p-10">No data available to display the chart.</div>;
+  // Explicit check for chartData length *after* loading and error checks
+  if (!chartData || chartData.length === 0) {
+     console.log("RENDERING: No chart data available state (chartData is empty or null)");
+     // Add extra info here
+     console.log("State when chartData is empty:", { isLoading, error, apiDataLength: apiData.length, projectTitlesLength: projectTitles.length });
+     return <div className="text-center p-10">No data available to display the chart.</div>;
   }
 
-  // --- Date Formatting for XAxis ---
-  const formatDateTick = (tickItem: string): string => {
-    // Example: Convert 'YYYY-MM-DD' to 'MM/DD'
-    try {
-      const date = new Date(tickItem + 'T00:00:00Z'); // Treat as UTC to avoid timezone issues
-      if (isNaN(date.getTime())) return tickItem; // Return original if invalid
-      return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', timeZone: 'UTC' });
-    } catch (e) {
-      // Log the error to the console for debugging
-      console.error("Error formatting date tick:", tickItem, e);
-      return tickItem; // Fallback
-    }
-  };
+  // Explicit check for project titles needed to render lines
+   if (!projectTitles || projectTitles.length === 0) {
+     console.log("RENDERING: No project titles available state (projectTitles is empty or null)");
+     console.log("State when projectTitles is empty:", { isLoading, error, apiDataLength: apiData.length, chartDataLength: chartData.length });
+     return <div className="text-center p-10">Data loaded, but no projects found to display lines.</div>;
+  }
 
+  console.log("RENDERING: Attempting to render LineChart component...");
   return (
     <div className="p-6">
       <div className="flex justify-center w-full">
-        {/* Adjusted title to reflect the new chart */}
         <h2 className="text-2xl font-bold mb-6 text-center">
           Project Weighted Score Index Trends Over Time
         </h2>
       </div>
       <div className="w-full">
         <ResponsiveContainer width="100%" height={600}>
-          <>
-            <LineChart
-              data={chartData}
-              margin={{
-                top: 5,
-                right: 30,
-                left: 20,
-                bottom: 50,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#555" /> {/* Slightly visible grid */}
-              <XAxis
-                dataKey="report_date"
-                type="category" // Dates are categories here
-                tickFormatter={formatDateTick} // Format dates on the axis
-                angle={-45} // Angle labels to prevent overlap
-                textAnchor="end" // Align angled labels correctly
-                height={60} // Allocate height for angled labels
-                interval="preserveStartEnd" // Show first and last, maybe skip some in between
-                // Consider adding tick={{ fontSize: 10 }} if labels are still too crowded
-              />
-              <YAxis
-                type="number" // Score is a number
-                domain={['auto', 'auto']} // Let Recharts determine the scale
-                tickFormatter={(value: number) => value.toLocaleString()} // Format large numbers
-                // You can add a label to the Y-axis if needed:
-                // label={{ value: 'Weighted Score Index', angle: -90, position: 'insideLeft' }}
-              />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px' }}
-                formatter={(value: number, name: string) => [value.toLocaleString(), name]} // Format value in tooltip
-                labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`} // Format date label in tooltip
-              />
-              <Legend layout="horizontal" verticalAlign="top" align="center" wrapperStyle={{ paddingTop: '20px' }} />
+          <LineChart
+            data={chartData} // Data should be [{ report_date: '...', ProjectA: 10, ProjectB: 20 }, ...]
+            margin={{ top: 5, right: 30, left: 20, bottom: 50 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#555" />
+            <XAxis
+              dataKey="report_date"
+              type="category"
+              tickFormatter={formatDateTick}
+              angle={-45}
+              textAnchor="end"
+              height={60}
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              type="number"
+              domain={['auto', 'auto']}
+              tickFormatter={(value: number) => value.toLocaleString()}
+            />
+            <Tooltip
+              contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px' }}
+              formatter={(value: number, name: string) => [value === null || value === undefined ? 'N/A' : value.toLocaleString(), name]} // Handle null/undefined values in tooltip
+              labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
+            />
+            <Legend layout="horizontal" verticalAlign="top" align="center" wrapperStyle={{ paddingTop: '20px' }} />
 
-              {/* Dynamically render a Line for each project */}
-              {projectTitles.map((title) => (
-                <Line
-                  key={title}
-                  type="monotone" // Smooth line, alternatives: 'linear', 'step', etc.
-                  dataKey={title} // This MUST match the keys in your chartData objects
-                  stroke={projectColors[title] || '#8884d8'} // Use generated color, fallback
-                  strokeWidth={2}
-                  dot={false} // Hide dots for cleaner look with many lines
-                  activeDot={{ r: 6 }} // Show a larger dot on hover
-                  connectNulls={true} // Connect line segments even if there's a missing data point
-                  name={title} // Name shown in Legend and Tooltip
-                />
-              ))}
-            </LineChart>
-          </>
+            {/* Render Lines - Check if projectTitles is populated */}
+            {projectTitles.map((title) => {
+                 // *** LOG LINE RENDERING ATTEMPT ***
+                 console.log(`Rendering Line for: ${title}, Color: ${projectColors[title]}`);
+                 return (
+                    <Line
+                        key={title}
+                        type="monotone"
+                        dataKey={title} // This MUST match keys in chartData objects
+                        stroke={projectColors[title] || '#8884d8'}
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 6 }}
+                        connectNulls={true} // Important for gaps in data
+                        name={title}
+                    />
+                );
+            })}
+          </LineChart>
         </ResponsiveContainer>
       </div>
     </div>
