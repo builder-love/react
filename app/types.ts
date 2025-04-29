@@ -42,3 +42,10 @@ export interface TopStarsData {
   latest_data_timestamp: string;
   stargaze_count: number;
 }
+
+// Define the type for the top projects trends data you expect from the API route
+export interface TopProjectsTrendsData {
+  project_title: string;
+  report_date: string;
+  weighted_score_index: number;
+}

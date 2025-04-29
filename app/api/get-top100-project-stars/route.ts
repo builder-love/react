@@ -63,7 +63,6 @@ export async function GET(req: NextRequest) {
         throw new Error('Failed to obtain impersonated service account access token.');
     }
     console.log("Impersonated access token received.");
-    // console.log("SA Access Token:", saAccessToken); // Careful logging in prod
 
     // --- Step 2: Use SA Access Token to generate ID Token for Cloud Run ---
     console.log(`Requesting ID token for audience ${CLOUD_RUN_URL} using SA access token.`);
@@ -92,7 +91,6 @@ export async function GET(req: NextRequest) {
       throw new Error('ID token was not present in the generateIdToken response.');
     }
     console.log("Cloud Run ID token received.");
-    // console.log("Cloud Run ID Token:", cloudRunIdToken); // Careful logging in prod
 
 
     // --- Step 3: Make the request to your Cloud Run API using the ID Token ---
