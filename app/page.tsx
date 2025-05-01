@@ -18,17 +18,48 @@ import {
   ResponsiveContainer,
   Label,
 } from 'recharts';
+import chroma from 'chroma-js';
 import type { TopProjectsTrendsData, FormattedLineChartData } from './types';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
 
-// Simple color generation function
+// Chroma.js color generation function
 const generateColors = (count: number): string[] => {
+  if (count === 0) return []; // Handle edge case
+
   const colors: string[] = [];
+  // Adjust saturation and lightness for desired look (0-1 range)
+  const saturation = 0.75;
+  const lightness = 0.5;
+
   for (let i = 0; i < count; i++) {
+    // Distribute hues evenly around the color wheel (0-360 degrees)
     const hue = (i * (360 / count)) % 360;
-    colors.push(`hsl(${hue}, 70%, 50%)`);
+    // Create HSL color with chroma, then convert to hex string
+    colors.push(chroma.hsl(hue, saturation, lightness).hex());
   }
   return colors;
+
+  /*
+  // --- ALTERNATIVE: Using a Chroma Scale ---
+  // Useful for gradients or predefined scientific palettes
+  // Might be less distinct for many categories compared to hue spread
+  // Examples: 'viridis', 'magma', 'plasma', 'cool', 'hot', 'Set1', 'Set3', etc.
+  // You can also create custom scales: chroma.scale(['yellow', 'lightgreen', '008ae5']).mode('lch')
+  if (count === 0) return [];
+  try {
+    // Generate 'count' colors using the 'viridis' scale in LCH color space
+    // LCH/Lab often produce more perceptually uniform steps
+    return chroma.scale('viridis').mode('lch').colors(count);
+  } catch (error) {
+    console.error("Error generating chroma scale colors, falling back:", error);
+    // Fallback logic if scale fails or count is too high for fixed palettes
+    const fallbackColors: string[] = [];
+    for (let i = 0; i < count; i++) {
+      fallbackColors.push(chroma.random().hex()); // Random fallback
+    }
+    return fallbackColors;
+  }
+  */
 };
 
 const HomePage: React.FC = () => {
