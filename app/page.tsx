@@ -301,23 +301,6 @@ const HomePage: React.FC = () => {
                     />
                 );
             })}
-
-            {/* Render Lines - Check if projectTitles is populated */}
-            {projectTitles.map((title) => {
-                 return (
-                    <Line
-                        key={title}
-                        type="monotone"
-                        dataKey={title} // This MUST match keys in chartData objects
-                        stroke={projectColors[title] || '#8884d8'}
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 6 }}
-                        connectNulls={true} // Important for gaps in data
-                        name={title}
-                    />
-                );
-            })}
           </LineChart>
         </ResponsiveContainer>
       </div>
