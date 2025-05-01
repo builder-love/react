@@ -346,7 +346,7 @@ const HomePage: React.FC = () => {
           <br/><br/>
           Primary source for project mapping is [Electric Capital Crypto Ecosystems](https://github.com/electric-capital/crypto-ecosystems)
           {/* TODO: link to the crypto ecosystmes png logo in public folder */}
-          <img src="public/electric_capital_logo_transparent.png" alt="Crypto Ecosystems" className="w-16 h-16" />
+          <img src="/electric_capital_logo_transparent.png" alt="Crypto Ecosystems" className="w-16 h-16" />
         </p>
         {/* You can add more paragraphs, bullet points (<ul>), etc. as needed */}
       </div>
