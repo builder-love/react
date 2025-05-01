@@ -53,9 +53,6 @@ const HomePage: React.FC = () => {
         console.log("Fetching project trends data from API route..."); // Log start
         const response = await fetch('/api/get-top50-project-trends');
 
-        // *** Log HTTP Status ***
-        console.log("API Response Status:", response.status, response.statusText);
-
         if (!response.ok) {
           let errorDetail = `HTTP error! status: ${response.status}`;
           try {
@@ -70,8 +67,6 @@ const HomePage: React.FC = () => {
 
         const fetchedData: TopProjectsTrendsData[] = await response.json();
 
-        // *** LOG RAW API DATA HERE ***
-        console.log("Raw API Data Received:", fetchedData);
         // Check if it's an array and if it has items
         if (!Array.isArray(fetchedData)) {
           console.error("API did not return an array!");
@@ -83,8 +78,7 @@ const HomePage: React.FC = () => {
         setApiData(fetchedData); // Store raw data
 
         const uniqueTitles = [...new Set(fetchedData.map(item => item.project_title))];
-        // *** LOG UNIQUE TITLES ***
-        console.log("Extracted Project Titles:", uniqueTitles);
+
         setProjectTitles(uniqueTitles); // Store unique titles for line rendering
 
       } catch (err: unknown) {
@@ -108,8 +102,6 @@ const HomePage: React.FC = () => {
 
   // --- Data Transformation ---
   const chartData = useMemo(() => {
-    // *** LOG START OF TRANSFORMATION ***
-    console.log("Starting data transformation (useMemo)...", { apiDataLength: apiData.length });
 
     if (!apiData || apiData.length === 0) {
         console.log("Transformation skipped: apiData is empty.");
@@ -145,50 +137,59 @@ const HomePage: React.FC = () => {
           acc[title] = colors[index % colors.length];
           return acc;
       }, {} as Record<string, string>);
-      // *** LOG PROJECT COLORS ***
-      console.log("Generated Project Colors Map:", colorMap);
       return colorMap;
   }, [projectTitles]);
 
   // Date Formatting
-  const formatDateTick = useCallback((tickItem: string): string => { // Wrap in useCallback
+  const formatDateTick = useCallback((tickItem: string): string => {
     try {
-      const date = new Date(tickItem + 'T00:00:00Z');
-      if (isNaN(date.getTime())) return tickItem;
-      return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', timeZone: 'UTC' });
+      // Assuming tickItem is a string representing a date, potentially like 'YYYY-MM-DD'
+      // or the format seen in your screenshot 'MM-DDTHH:mm:ssZ'.
+      // new Date() should handle these standard formats.
+      const date = new Date(tickItem);
+
+      // Check if the date object is valid
+      if (isNaN(date.getTime())) {
+          console.warn("Invalid date encountered in tickFormatter:", tickItem);
+          return tickItem; // Return original string if parsing fails
+      }
+
+      // Format to 'mmm-dd-yyyy' using UTC methods to align with 'Z' timezone indicator if present
+      // Get the abbreviated month name (e.g., 'Apr')
+      const month = date.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+      // Get the zero-padded day (e.g., '05', '27')
+      const day = date.getUTCDate().toString().padStart(2, '0');
+      // Get the full year (e.g., '2025')
+      const year = date.getUTCFullYear();
+
+      // Combine parts with hyphens
+      console.log("Formatted date:", `${month}-${day}-${year}`);
+      return `${month}-${day}-${year}`;
+
     } catch (e) {
       console.error("Error formatting date tick:", tickItem, e);
-      return tickItem;
+      return tickItem; // Fallback to original tick value on error
     }
   }, []); // No dependencies needed
 
-
-  // *** LOG BEFORE RENDER CHECK ***
-  console.log("Preparing to render. States:", { isLoading, error, chartDataLength: chartData.length, projectTitlesLength: projectTitles.length });
-
   // --- Render Logic ---
   if (isLoading) {
-    console.log("RENDERING: Loading state");
     return <div className="text-center p-10">Loading data...</div>;
   }
 
   if (error) {
-    console.log("RENDERING: Error state -", error);
     return <div className="text-center p-10 text-red-500">Error loading data: {error}</div>;
   }
 
   // Explicit check for chartData length *after* loading and error checks
   if (!chartData || chartData.length === 0) {
      console.log("RENDERING: No chart data available state (chartData is empty or null)");
-     // Add extra info here
-     console.log("State when chartData is empty:", { isLoading, error, apiDataLength: apiData.length, projectTitlesLength: projectTitles.length });
      return <div className="text-center p-10">No data available to display the chart.</div>;
   }
 
   // Explicit check for project titles needed to render lines
    if (!projectTitles || projectTitles.length === 0) {
      console.log("RENDERING: No project titles available state (projectTitles is empty or null)");
-     console.log("State when projectTitles is empty:", { isLoading, error, apiDataLength: apiData.length, chartDataLength: chartData.length });
      return <div className="text-center p-10">Data loaded, but no projects found to display lines.</div>;
   }
 
@@ -197,7 +198,7 @@ const HomePage: React.FC = () => {
     <div className="p-6">
       <div className="flex justify-center w-full">
         <h2 className="text-2xl font-bold mb-6 text-center">
-          Project Weighted Score Index Trends Over Time
+          Top 50 Blockchain Projects by Development Activity
         </h2>
       </div>
       <div className="w-full">
@@ -230,8 +231,6 @@ const HomePage: React.FC = () => {
 
             {/* Render Lines - Check if projectTitles is populated */}
             {projectTitles.map((title) => {
-                 // *** LOG LINE RENDERING ATTEMPT ***
-                 console.log(`Rendering Line for: ${title}, Color: ${projectColors[title]}`);
                  return (
                     <Line
                         key={title}
