@@ -40,6 +40,20 @@ const HomePage: React.FC = () => {
   const [projectTitles, setProjectTitles] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  // --- STATE FOR LEGEND HOVER EFFECT ---
+  const [lineOpacity, setLineOpacity] = useState<Record<string, number>>({});
+
+  // --- Initialize lineOpacity state when projectTitles are loaded ---
+  useEffect(() => {
+    if (projectTitles.length > 0) {
+      const initialOpacity = projectTitles.reduce((acc, title) => {
+        acc[title] = 1; // Start with all lines fully opaque
+        return acc;
+      }, {} as Record<string, number>);
+      setLineOpacity(initialOpacity);
+      console.log("Initialized line opacity state:", initialOpacity);
+    }
+  }, [projectTitles]); // Dependency on projectTitles
 
   // --- Fetch Data ---
   useEffect(() => {
@@ -164,7 +178,6 @@ const HomePage: React.FC = () => {
       const year = date.getUTCFullYear();
 
       // Combine parts with hyphens
-      console.log("Formatted date:", `${month}-${day}-${year}`);
       return `${month}-${day}-${year}`;
 
     } catch (e) {
@@ -172,6 +185,28 @@ const HomePage: React.FC = () => {
       return tickItem; // Fallback to original tick value on error
     }
   }, []); // No dependencies needed
+
+  // --- LEGEND HOVER HANDLERS ---
+  const handleMouseEnter = useCallback((data: any) => {
+    const dataKey = String(data.dataKey);
+    setLineOpacity((prevOpacity) => ({
+      ...prevOpacity,
+      ...Object.keys(prevOpacity).reduce((acc, key) => ({
+        ...acc,
+        [key]: key === dataKey ? 1 : 0.2
+      }), {})
+    }));
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setLineOpacity((prevOpacity) => (
+      Object.keys(prevOpacity).reduce((acc, key) => ({
+        ...acc,
+        [key]: 1
+      }), {})
+    ));
+  }, []);
+
 
   // --- Render Logic ---
   if (isLoading) {
@@ -237,7 +272,35 @@ const HomePage: React.FC = () => {
               formatter={(value: number, name: string) => [value === null || value === undefined ? 'N/A' : value.toLocaleString(), name]} // Handle null/undefined values in tooltip
               labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
             />
-            <Legend layout="horizontal" verticalAlign="top" align="center" wrapperStyle={{ paddingTop: '20px' }} />
+            <Legend 
+              layout="horizontal" 
+              verticalAlign="top" 
+              align="center" 
+              wrapperStyle={{ paddingTop: '20px' }} 
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            />
+            {/* Render Lines - Apply opacity from state */}
+            {projectTitles.map((title) => {
+                 // Get opacity from state, default to 1 if state not yet initialized
+                 const currentOpacity = lineOpacity[title] !== undefined ? lineOpacity[title] : 1;
+                 // console.log(`Rendering line ${title} with opacity: ${currentOpacity}`); // Debugging
+
+                 return (
+                    <Line
+                        key={title}
+                        type="monotone"
+                        dataKey={title}
+                        stroke={projectColors[title] || '#8884d8'}
+                        strokeWidth={2} // Or adjust dynamically: isHovered ? 4 : 2
+                        strokeOpacity={currentOpacity} // <-- Apply opacity from state
+                        dot={false}
+                        activeDot={{ r: 6 }}
+                        connectNulls={true}
+                        name={title}
+                    />
+                );
+            })}
 
             {/* Render Lines - Check if projectTitles is populated */}
             {projectTitles.map((title) => {
