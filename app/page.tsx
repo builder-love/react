@@ -19,6 +19,7 @@ import {
   Label,
 } from 'recharts';
 import chroma from 'chroma-js';
+import { IoInformationCircleOutline } from 'react-icons/io5';
 import type { TopProjectsTrendsData, FormattedLineChartData } from './types';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
 
@@ -246,10 +247,17 @@ const HomePage: React.FC = () => {
   console.log("RENDERING: Attempting to render LineChart component...");
   return (
     <div className="p-6">
-      <div className="flex justify-center w-full">
+      <div className="flex justify-center items-center gap-2 w-full mb-6">
         <h2 className="text-2xl font-bold mb-6 text-center">
           Top 50 Blockchain Projects by Development Activity
         </h2>
+        {/* Info Icon + Tooltip */}
+        <div
+          title="Placeholder: Calculation details here..." // Simple browser tooltip
+          className="cursor-help" // Use Tailwind class for cursor
+        >
+          <IoInformationCircleOutline className="h-5 w-5 text-gray-400 hover:text-gray-200" />
+        </div>
       </div>
       <div className="w-full">
         <ResponsiveContainer width="100%" height={600}>
