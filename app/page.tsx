@@ -323,9 +323,30 @@ const HomePage: React.FC = () => {
         <h3 className="text-lg font-semibold mb-2 text-gray-200"> {/* Heading style */}
           How is weighted score calculated?
         </h3>
-        <p className="text-gray-400 text-sm"> {/* Explanation paragraph style */}
-          {/* Add your calculation details here */}
-          [Your explanation of how the weighted score is calculated will go here...]
+        <p className="text-gray-400 text-sm">
+          The Weighted Score is calculated weekly to rank blockchain projects based on GitHub development activity and community engagement metrics. Here&apos;s the process:
+          <br/><br/>
+          1. Data Collection: Gathers both all-time counts and recent (4-week percentage) changes for repo-specific key metrics like Commits, Forks, Stargazers, Contributors, and Watchers. It also includes an originality metric.
+          <br/><br/>
+          2. Repo metrics are rolled up to the project level. Some projects, like Ethereum have many sub-ecosystems.
+          <br/><br/>
+          3. Normalization: For each metric, every project&apos;s value is compared to all other projects within the same week and scaled to a value between 0 and 1.
+          <br/><br/>
+          4. Weighting: These normalized scores are multiplied by specific weights:
+          <br/>
+          - Major All-Time Metrics (12.5% each): Commits, Forks, Stars, Contributors.
+          <br/>
+          - Major Recent Change Metrics (10% each): 4-week change in Commits, Forks, Stars, Contributors.
+          <br/>
+          - Minor Metrics (2.5% each): All-time Watchers, All-time Originality Ratio, 4-week change in Watchers, 4-week change in Originality Ratio.
+          <br/><br/>
+          5. Summation: The weighted, normalized scores for all metrics are added together to get a final weighted_score between 0 and 1.
+          <br/><br/>
+          6. Index Conversion: The &quot;Weighted Score Index&quot; shown in the chart is simply this weighted_score multiplied by 100.
+          <br/><br/>
+          Primary source for project mapping is [Electric Capital Crypto Ecosystems](https://github.com/electric-capital/crypto-ecosystems)
+          {/* TODO: link to the crypto ecosystmes png logo in public folder */}
+          <img src="public/electric_capital_logo_transparent.png" alt="Crypto Ecosystems" className="w-16 h-16" />
         </p>
         {/* You can add more paragraphs, bullet points (<ul>), etc. as needed */}
       </div>
