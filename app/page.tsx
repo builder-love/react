@@ -344,16 +344,21 @@ const HomePage: React.FC = () => {
           <br/><br/>
           6. Index Conversion: The &quot;Weighted Score Index&quot; shown in the chart is simply this weighted_score multiplied by 100.
           <br/><br/>
-          Primary source for project mapping is <a href="https://github.com/electric-capital/crypto-ecosystems">Electric Capital Crypto Ecosystems</a>
-          <a href="https://github.com/electric-capital/crypto-ecosystems" target="_blank" rel="noopener noreferrer">
+          Primary source for project mapping is Electric Capital Crypto Ecosystems {' '} {/* Add a space before the image link */}
+          <a
+            href="https://github.com/electric-capital/crypto-ecosystems"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block align-middle" // Crucial for alignment
+          >
             <img
               src="/electric_capital_logo_transparent.png"
-              alt="Crypto Ecosystems" 
-              className="w-24 h-8" 
+              alt="Electric Capital Crypto Ecosystems Logo Link"
+              // Adjust size to fit nicely inline, e.g., h-4 or h-5
+              className="inline-block h-4 w-auto align-middle" // Ensure inline and adjust size/vertical alignment
             />
           </a>
         </p>
-        {/* You can add more paragraphs, bullet points (<ul>), etc. as needed */}
       </div>
       {/* --- END: Weighted Score Explanation Section --- */}
     </div>
