@@ -15,6 +15,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Label,
 } from 'recharts';
 import type { TopProjectsTrendsData } from './types';
 
@@ -219,9 +220,18 @@ const HomePage: React.FC = () => {
             />
             <YAxis
               type="number"
-              domain={['auto', 'auto']}
+              domain={['auto', 100]}
               tickFormatter={(value: number) => value.toLocaleString()}
+            >
+            <Label
+            value="Weighted Score" // The text for the label
+            angle={-90} // Rotate the label to be vertical
+            position="insideLeft" // Position it inside the chart area, to the left of the axis line
+            style={{ textAnchor: 'middle', fill: '#f5f5f5' }} // Style to match your theme (using tooltip color)
+            // You might need to adjust the chart's left margin if the label feels cramped
+            // offset={10} // Optional: Adjust offset if needed
             />
+            </YAxis>
             <Tooltip
               contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px' }}
               formatter={(value: number, name: string) => [value === null || value === undefined ? 'N/A' : value.toLocaleString(), name]} // Handle null/undefined values in tooltip
