@@ -39,27 +39,6 @@ const generateColors = (count: number): string[] => {
   }
   return colors;
 
-  /*
-  // --- ALTERNATIVE: Using a Chroma Scale ---
-  // Useful for gradients or predefined scientific palettes
-  // Might be less distinct for many categories compared to hue spread
-  // Examples: 'viridis', 'magma', 'plasma', 'cool', 'hot', 'Set1', 'Set3', etc.
-  // You can also create custom scales: chroma.scale(['yellow', 'lightgreen', '008ae5']).mode('lch')
-  if (count === 0) return [];
-  try {
-    // Generate 'count' colors using the 'viridis' scale in LCH color space
-    // LCH/Lab often produce more perceptually uniform steps
-    return chroma.scale('viridis').mode('lch').colors(count);
-  } catch (error) {
-    console.error("Error generating chroma scale colors, falling back:", error);
-    // Fallback logic if scale fails or count is too high for fixed palettes
-    const fallbackColors: string[] = [];
-    for (let i = 0; i < count; i++) {
-      fallbackColors.push(chroma.random().hex()); // Random fallback
-    }
-    return fallbackColors;
-  }
-  */
 };
 
 const HomePage: React.FC = () => {
@@ -303,10 +282,33 @@ const HomePage: React.FC = () => {
             />
             </YAxis>
             <Tooltip
-              contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px' }}
-              formatter={(value: number, name: string) => [value === null || value === undefined ? 'N/A' : value.toLocaleString(), name]} // Handle null/undefined values in tooltip
-              labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
-            />
+            // Keep existing labelFormatter and formatter
+            labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
+            formatter={(value: number, name: string) => [
+              value === null || value === undefined ? 'N/A' : value.toLocaleString(),
+              name
+            ]}
+            // Modify contentStyle
+            contentStyle={{
+              backgroundColor: '#222',
+              color: '#f5f5f5',
+              border: 'none',
+              borderRadius: '4px',
+              padding: '10px', // Add some padding
+
+              // --- Add these styles ---
+              maxHeight: '350px', // Adjust max height as needed (e.g., '60vh')
+              overflowY: 'auto',  // Enable vertical scrollbar when content exceeds max height
+              // Optional: Style the scrollbar (browser support varies)
+              scrollbarWidth: 'thin', // For Firefox
+              scrollbarColor: '#888 #333', // For Firefox (thumb track)
+            }}
+            // Optional: Add styles for Webkit scrollbars (Chrome, Safari, Edge)
+            // You might need to target '.recharts-tooltip-wrapper' or a custom class via CSS
+            // .recharts-tooltip-wrapper::-webkit-scrollbar { width: 6px; }
+            // .recharts-tooltip-wrapper::-webkit-scrollbar-track { background: #333; }
+            // .recharts-tooltip-wrapper::-webkit-scrollbar-thumb { background-color: #888; border-radius: 3px; }
+          />
             <Legend 
               layout="horizontal" 
               verticalAlign="top" 
