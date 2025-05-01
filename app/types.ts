@@ -17,6 +17,14 @@ export type Payload = {
   stroke?: string;
 };
 
+export interface LineChartLegendPayload {
+  dataKey: string; // The key associated with the legend item/line
+  // You could add other potential properties if needed, e.g.:
+  // value?: string; // The displayed name in the legend
+  // color?: string; // The color swatch shown
+  // payload?: object; // Often includes the original line/item configuration
+}
+
 export type TooltipProps = DefaultTooltipContentProps<number, string> & {
   payload?: Payload[];
   active?: boolean;

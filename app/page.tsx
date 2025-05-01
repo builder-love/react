@@ -17,7 +17,7 @@ import {
   ResponsiveContainer,
   Label,
 } from 'recharts';
-import type { TopProjectsTrendsData } from './types';
+import type { TopProjectsTrendsData, LineChartLegendPayload } from './types';
 
 // Define a type for the transformed data structure suitable for the LineChart
 interface FormattedLineChartData {
@@ -187,7 +187,7 @@ const HomePage: React.FC = () => {
   }, []); // No dependencies needed
 
   // --- LEGEND HOVER HANDLERS ---
-  const handleMouseEnter = useCallback((data: any) => {
+  const handleMouseEnter = useCallback((data: LineChartLegendPayload) => {
     const dataKey = String(data.dataKey);
     setLineOpacity((prevOpacity) => ({
       ...prevOpacity,
