@@ -18,11 +18,18 @@ export type Payload = {
 };
 
 export interface LineChartLegendPayload {
-  dataKey: string; // The key associated with the legend item/line
+  // Make dataKey optional (?) and allow string or number
+  dataKey?: string | number;
   // You could add other potential properties if needed, e.g.:
   // value?: string; // The displayed name in the legend
   // color?: string; // The color swatch shown
   // payload?: object; // Often includes the original line/item configuration
+}
+
+// Define a type for the transformed data structure suitable for the LineChart
+export interface FormattedLineChartData {
+  report_date: string;
+  [projectTitle: string]: number | string;
 }
 
 export type TooltipProps = DefaultTooltipContentProps<number, string> & {

@@ -4,7 +4,8 @@ import React, {
   useState,
   useEffect,
   useMemo,
-  useCallback
+  useCallback,
+  MouseEvent
 } from 'react';
 import {
   LineChart,
@@ -17,13 +18,8 @@ import {
   ResponsiveContainer,
   Label,
 } from 'recharts';
-import type { TopProjectsTrendsData, LineChartLegendPayload } from './types';
-
-// Define a type for the transformed data structure suitable for the LineChart
-interface FormattedLineChartData {
-  report_date: string;
-  [projectTitle: string]: number | string;
-}
+import type { TopProjectsTrendsData, LineChartLegendPayload, FormattedLineChartData } from './types';
+import { Payload } from 'recharts/types/component/DefaultLegendContent';
 
 // Simple color generation function
 const generateColors = (count: number): string[] => {
@@ -187,25 +183,33 @@ const HomePage: React.FC = () => {
   }, []); // No dependencies needed
 
   // --- LEGEND HOVER HANDLERS ---
-  const handleMouseEnter = useCallback((data: LineChartLegendPayload) => {
-    const dataKey = String(data.dataKey);
-    setLineOpacity((prevOpacity) => ({
-      ...prevOpacity,
-      ...Object.keys(prevOpacity).reduce((acc, key) => ({
-        ...acc,
-        [key]: key === dataKey ? 1 : 0.2
-      }), {})
-    }));
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    setLineOpacity((prevOpacity) => (
-      Object.keys(prevOpacity).reduce((acc, key) => ({
-        ...acc,
-        [key]: 1
-      }), {})
-    ));
-  }, []);
+  const handleMouseEnter = useCallback(
+    (data: Payload, index: number, event: MouseEvent<Element>) => {
+      if (data.dataKey) {
+        const dataKey = String(data.dataKey);
+        setLineOpacity((prevOpacity) => ({
+          ...prevOpacity,
+          ...Object.keys(prevOpacity).reduce((acc, key) => ({
+            ...acc,
+            [key]: key === dataKey ? 1 : 0.2
+          }), {})
+        }));
+      }
+    },
+    []
+  );
+  
+  const handleMouseLeave = useCallback(
+    (data: Payload, index: number, event: MouseEvent<Element>) => {
+      setLineOpacity((prevOpacity) => (
+        Object.keys(prevOpacity).reduce((acc, key) => ({
+          ...acc,
+          [key]: 1
+        }), {})
+      ));
+    },
+    []
+  );
 
 
   // --- Render Logic ---
