@@ -346,7 +346,13 @@ const HomePage: React.FC = () => {
           <br/><br/>
           Primary source for project mapping is <a href="https://github.com/electric-capital/crypto-ecosystems">Electric Capital Crypto Ecosystems</a>
           {/* TODO: link to the crypto ecosystmes png logo in public folder */}
-          <img src="/electric_capital_logo_transparent.png" alt="Crypto Ecosystems" className="w-30 h-10" />
+          <a href="https://github.com/electric-capital/crypto-ecosystems" target="_blank" rel="noopener noreferrer">
+            <img
+              src="/electric_capital_logo_transparent.png"
+              alt="Crypto Ecosystems" 
+              className="w-32 h-12" 
+            />
+          </a>
         </p>
         {/* You can add more paragraphs, bullet points (<ul>), etc. as needed */}
       </div>
