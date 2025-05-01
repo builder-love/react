@@ -282,33 +282,10 @@ const HomePage: React.FC = () => {
             />
             </YAxis>
             <Tooltip
-            // Keep existing labelFormatter and formatter
-            labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
-            formatter={(value: number, name: string) => [
-              value === null || value === undefined ? 'N/A' : value.toLocaleString(),
-              name
-            ]}
-            // Modify contentStyle
-            contentStyle={{
-              backgroundColor: '#222',
-              color: '#f5f5f5',
-              border: 'none',
-              borderRadius: '4px',
-              padding: '10px', // Add some padding
-
-              // --- Add these styles ---
-              maxHeight: '350px', // Adjust max height as needed (e.g., '60vh')
-              overflowY: 'auto',  // Enable vertical scrollbar when content exceeds max height
-              // Optional: Style the scrollbar (browser support varies)
-              scrollbarWidth: 'thin', // For Firefox
-              scrollbarColor: '#888 #333', // For Firefox (thumb track)
-            }}
-            // Optional: Add styles for Webkit scrollbars (Chrome, Safari, Edge)
-            // You might need to target '.recharts-tooltip-wrapper' or a custom class via CSS
-            // .recharts-tooltip-wrapper::-webkit-scrollbar { width: 6px; }
-            // .recharts-tooltip-wrapper::-webkit-scrollbar-track { background: #333; }
-            // .recharts-tooltip-wrapper::-webkit-scrollbar-thumb { background-color: #888; border-radius: 3px; }
-          />
+              contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px' }}
+              formatter={(value: number, name: string) => [value === null || value === undefined ? 'N/A' : value.toLocaleString(), name]} // Handle null/undefined values in tooltip
+              labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
+            />
             <Legend 
               layout="horizontal" 
               verticalAlign="top" 
