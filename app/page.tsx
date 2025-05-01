@@ -220,7 +220,7 @@ const HomePage: React.FC = () => {
             />
             <YAxis
               type="number"
-              domain={['auto', 100]}
+              domain={['auto', 'auto']}
               tickFormatter={(value: number) => value.toLocaleString()}
             >
             <Label
