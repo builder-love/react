@@ -17,15 +17,6 @@ export type Payload = {
   stroke?: string;
 };
 
-export interface LineChartLegendPayload {
-  // Make dataKey optional (?) and allow string or number
-  dataKey?: string | number;
-  // You could add other potential properties if needed, e.g.:
-  // value?: string; // The displayed name in the legend
-  // color?: string; // The color swatch shown
-  // payload?: object; // Often includes the original line/item configuration
-}
-
 // Define a type for the transformed data structure suitable for the LineChart
 export interface FormattedLineChartData {
   report_date: string;

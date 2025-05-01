@@ -18,7 +18,7 @@ import {
   ResponsiveContainer,
   Label,
 } from 'recharts';
-import type { TopProjectsTrendsData, LineChartLegendPayload, FormattedLineChartData } from './types';
+import type { TopProjectsTrendsData, FormattedLineChartData } from './types';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
 
 // Simple color generation function
@@ -184,9 +184,9 @@ const HomePage: React.FC = () => {
 
   // --- LEGEND HOVER HANDLERS ---
   const handleMouseEnter = useCallback(
-    (data: Payload, index: number, event: MouseEvent<Element>) => {
-      if (data.dataKey) {
-        const dataKey = String(data.dataKey);
+    (_data: Payload, _index: number, _event: MouseEvent<Element>) => {
+      if (_data.dataKey) {
+        const dataKey = String(_data.dataKey);
         setLineOpacity((prevOpacity) => ({
           ...prevOpacity,
           ...Object.keys(prevOpacity).reduce((acc, key) => ({
@@ -200,7 +200,7 @@ const HomePage: React.FC = () => {
   );
   
   const handleMouseLeave = useCallback(
-    (data: Payload, index: number, event: MouseEvent<Element>) => {
+    (_data: Payload, _index: number, _event: MouseEvent<Element>) => {
       setLineOpacity((prevOpacity) => (
         Object.keys(prevOpacity).reduce((acc, key) => ({
           ...acc,
