@@ -540,21 +540,25 @@ const HomePage: React.FC = () => {
           <br/><br/>
           1. Data Collection: Gathers both all-time counts and recent (4-week percentage) changes for repo-specific key metrics like Commits, Forks, Stargazers, Contributors, and Watchers. It also includes an originality metric.
           <br/><br/>
-          2. Repo metrics are rolled up to the project level. Some projects, like Ethereum have many sub-ecosystems.
+          2. Any missing values are filled from the previous non-missing value. This is why sometimes the trend apears to be flat.
+          3. Repo metrics are rolled up to the project level. Some projects, like Ethereum have many sub-ecosystems.
           <br/><br/>
-          3. Normalization: For each metric, every project&apos;s value is compared to all other projects within the same week and scaled to a value between 0 and 1.
+          4. Normalization: For each metric, every project&apos;s value is compared to all other projects within the same week and scaled to a value between 0 and 1.
           <br/><br/>
-          4. Weighting: These normalized scores are multiplied by specific weights:
-          <br/>
+          5. Weighting: These normalized scores are multiplied by specific weights:
+          <div className="pl-4"> {/* pl-4 adds padding-left: 1rem */}
             - Major All-Time Metrics (12.5% each): Commits, Forks, Stars, Contributors.
-          <br/>
+          </div>
+          <div className="pl-4">
             - Major Recent Change Metrics (10% each): 4-week change in Commits, Forks, Stars, Contributors.
-          <br/>
+          </div>
+          <div className="pl-4">
             - Minor Metrics (2.5% each): All-time Watchers, All-time Originality Ratio, 4-week change in Watchers, 4-week change in Originality Ratio.
+          </div>
           <br/><br/>
-          5. Summation: The weighted, normalized scores for all metrics are added together to get a final weighted_score between 0 and 1.
+          6. Summation: The weighted, normalized scores for all metrics are added together to get a final weighted_score between 0 and 1.
           <br/><br/>
-          6. Index Conversion: The &quot;Weighted Score Index&quot; shown in the chart is simply this weighted_score multiplied by 100.
+          7. Index Conversion: The &quot;Weighted Score Index&quot; shown in the chart is simply this weighted_score multiplied by 100.
           <br/><br/>
           Primary source for project-to-repo mapping is Electric Capital Crypto Ecosystems {' '} {/* Add a space before the image link */}
           <a
@@ -571,6 +575,8 @@ const HomePage: React.FC = () => {
               className="inline-block h-4 w-auto align-middle"
             />
           </a>
+          <br/><br/>
+          Note: the crypto-ecosystems data architecture was up in April 2025. The new architecture more easily allows for aggregating sub-ecosystem repos to top level project. The impact is a big spike in weighted score, and input metric values for top ecosystems, like Ethereum who have a lot of sub-ecosystems. These trends will smooth out over time. 
         </p>
       </div>
       {/* --- END: Weighted Score Explanation Section --- */}
