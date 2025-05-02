@@ -428,7 +428,7 @@ const HomePage: React.FC = () => {
                  angle={-90}
                  position="insideLeft"
                  style={{ textAnchor: 'middle', fill: '#f5f5f5' }}
-                 // offset={-5} // May need adjustment based on label length
+                 offset={-15} // May need adjustment based on label length
                />
              </YAxis>
              <Tooltip
