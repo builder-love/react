@@ -203,10 +203,46 @@ const HomePage: React.FC = () => {
 
   }, [apiData, selectedMetric, projectTitles]); // Add selectedMetric and projectTitles as dependencies
 
+  // begin y axis label offset calculation
+  // get the max value for the currently selected metric in the chart data
+  const maxMetricValue = useMemo(() => {
+    // Return 0 if chartData is empty to avoid errors
+    if (!chartData || chartData.length === 0) return 0;
+
+    let maxVal = -Infinity;
+    chartData.forEach(row => {
+        projectTitles.forEach(title => {
+            const value = row[title]; // Access the metric value for the project
+            // Ensure it's a number before comparing
+            if (typeof value === 'number' && isFinite(value) && value > maxVal) {
+                maxVal = value;
+            }
+        });
+    });
+    // If no valid number was found (e.g., all null/undefined), return 0, otherwise the max
+    return maxVal === -Infinity ? 0 : maxVal;
+  }, [chartData, projectTitles]); // Recalculate when chartData or projectTitles change
+
+  // Calculate the dynamic offset based on the max value
+  const dynamicYLabelOffset = useMemo(() => {
+
+    /* based purely on magnitude */
+    if (maxMetricValue < 1000) {
+        return -15;
+    } else if (maxMetricValue < 1000000) {
+        return -30;
+    } else if (maxMetricValue < 1000000000) {
+        return -45;
+    } else {
+        return -55;
+    }
+  }, [maxMetricValue]); // Recalculate only when maxMetricValue changes
+  // end y axis label offset calculation
+
    // --- Get Current Metric Label for Y-Axis ---
    const currentMetricLabel = useMemo(() => {
     return metricOptions.find(opt => opt.value === selectedMetric)?.label || 'Selected Metric';
-}, [selectedMetric]);
+  }, [selectedMetric]);
 
   // Generate colors
   const projectColors = useMemo(() => {
@@ -428,7 +464,7 @@ const HomePage: React.FC = () => {
                  angle={-90}
                  position="insideLeft"
                  style={{ textAnchor: 'middle', fill: '#f5f5f5' }}
-                 offset={-15} // May need adjustment based on label length
+                 offset={dynamicYLabelOffset} // Use dynamic offset
                />
              </YAxis>
              <Tooltip
