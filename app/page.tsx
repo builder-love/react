@@ -407,41 +407,36 @@ const HomePage: React.FC = () => {
   }, []);
 
   // --- Dynamic Y-Axis Tick Formatter ---
-  const formatYAxisTick = useCallback((value: any) => {
-    // Handle cases where the value might not be a number (though ticks usually are)
+  const formatYAxisTick = useCallback((value: unknown): string => {
     if (typeof value !== 'number' || !isFinite(value)) {
-        return value; // Return as is or an empty string
+      return value !== undefined && value !== null ? String(value) : '';
     }
 
-    // Percentage Formatting (Assuming input value is a decimal, e.g., 0.15 for 15%)
     if (percentMetrics.has(selectedMetric)) {
-        return new Intl.NumberFormat('en-US', {
-            style: 'percent',
-            minimumFractionDigits: 1, // Or 0, or 2, depending on desired precision
-            maximumFractionDigits: 1
-        }).format(value); // IMPORTANT: If API sends 15 for 15%, divide by 100 here: format(value / 100)
+      return new Intl.NumberFormat('en-US', {
+        style: 'percent',
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1
+      }).format(value);
     }
 
-    // Integer Formatting
     if (integerMetrics.has(selectedMetric)) {
-        return new Intl.NumberFormat('en-US', {
-            maximumFractionDigits: 0 // No decimals
-        }).format(value);
+      return new Intl.NumberFormat('en-US', {
+        maximumFractionDigits: 0
+      }).format(value);
     }
 
-    // Specific Decimal Formatting (Example for Weighted Score)
     if (selectedMetric === 'weighted_score_index') {
-         return new Intl.NumberFormat('en-US', {
-             minimumFractionDigits: 1, // Show at least 1 decimal
-             maximumFractionDigits: 1  // Show at most 1 decimal
-         }).format(value);
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1
+      }).format(value);
     }
 
-    // Default Locale String Formatting for other numbers (e.g., maybe is_not_fork_ratio if not percent)
-    // This will add commas for thousands separators automatically.
-    return value.toLocaleString('en-US');
-
-  }, [selectedMetric]); // Dependency: Re-create formatter if selectedMetric changes
+    return value.toLocaleString
+      ? value.toLocaleString('en-US')
+      : String(value);
+  }, [selectedMetric]);
 
    // --- Render Logic ---
    if (isLoading) {
@@ -627,6 +622,7 @@ const HomePage: React.FC = () => {
           1. Data Collection: Gathers both all-time counts and recent (4-week percentage) changes for repo-specific key metrics like Commits, Forks, Stargazers, Contributors, and Watchers. It also includes an originality metric.
           <br/><br/>
           2. Any missing values are filled from the previous non-missing value. This is why sometimes the trend apears to be flat.
+          <br/><br/>
           3. Repo metrics are rolled up to the project level. Some projects, like Ethereum have many sub-ecosystems.
           <br/><br/>
           4. Normalization: For each metric, every project&apos;s value is compared to all other projects within the same week and scaled to a value between 0 and 1.
@@ -641,7 +637,6 @@ const HomePage: React.FC = () => {
           <div className="pl-4">
             - Minor Metrics (2.5% each): All-time Watchers, All-time Originality Ratio, 4-week change in Watchers, 4-week change in Originality Ratio.
           </div>
-          <br/><br/>
           6. Summation: The weighted, normalized scores for all metrics are added together to get a final weighted_score between 0 and 1.
           <br/><br/>
           7. Index Conversion: The &quot;Weighted Score Index&quot; shown in the chart is simply this weighted_score multiplied by 100.
