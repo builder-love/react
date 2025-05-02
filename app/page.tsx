@@ -221,9 +221,71 @@ const HomePage: React.FC = () => {
     []
   );
 
+   // --- CSV Download Handler ---
+   const handleDownloadCSV = useCallback(() => {
+    if (!chartData || chartData.length === 0 || !projectTitles || projectTitles.length === 0) {
+      console.warn("Cannot download CSV: No data available.");
+      alert("No data available to download."); // Optional: User feedback
+      return;
+    }
 
-  // --- Render Logic ---
-  if (isLoading) {
+    // Sanitize data for CSV Injection (basic example)
+    const sanitizeForCSV = (value: any): string => {
+      let strValue = String(value ?? ''); // Handle null/undefined -> empty string
+      // If value starts with '=', '+', '-', or '@', prepend a single quote
+      if (['=', '+', '-', '@'].some(char => strValue.startsWith(char))) {
+        strValue = `'${strValue}`;
+      }
+      // Basic double quote escaping: replace all double quotes with two double quotes
+      strValue = strValue.replace(/"/g, '""');
+      // If the value contains a comma, newline, or double quote, enclose in double quotes
+      if (strValue.includes(',') || strValue.includes('\n') || strValue.includes('"')) {
+        strValue = `"${strValue}"`;
+      }
+      return strValue;
+    };
+
+    // 1. Create Header Row
+    const headers = ['report_date', ...projectTitles].map(sanitizeForCSV).join(',');
+
+    // 2. Create Data Rows
+    const dataRows = chartData.map(row => {
+      // Start with the sanitized date
+      const dateValue = sanitizeForCSV(row.report_date);
+      // Map each project title to its value in the current row, sanitize, handle missing values
+      const projectValues = projectTitles.map(title => {
+        const value = row[title]; // Access value using title as key
+        return sanitizeForCSV(value); // Sanitize, handles null/undefined via sanitizeForCSV
+      }).join(',');
+      return `${dateValue},${projectValues}`; // Combine date and project values
+    });
+
+    // 3. Combine Headers and Rows
+    const csvContent = [headers, ...dataRows].join('\n');
+
+    // 4. Create Blob and Trigger Download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) { // Check if HTML5 download attribute is supported
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      // Generate filename (e.g., project_trends_data_2025-05-02.csv)
+      const dateStamp = new Date().toISOString().split('T')[0];
+      link.setAttribute('download', `project_trends_data_${dateStamp}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url); // Clean up the object URL
+      console.log("CSV download triggered.");
+    } else {
+      console.error("CSV download failed: Browser does not support the download attribute.");
+      alert("CSV download failed: Your browser doesn't support this feature.");
+    }
+  }, [chartData, projectTitles]); // Dependencies: chartData and projectTitles
+
+   // --- Render Logic ---
+   if (isLoading) {
     return <div className="text-center p-10">Loading data...</div>;
   }
 
@@ -231,66 +293,82 @@ const HomePage: React.FC = () => {
     return <div className="text-center p-10 text-red-500">Error loading data: {error}</div>;
   }
 
-  // Explicit check for chartData length *after* loading and error checks
-  if (!chartData || chartData.length === 0) {
-     console.log("RENDERING: No chart data available state (chartData is empty or null)");
-     return <div className="text-center p-10">No data available to display the chart.</div>;
-  }
+  // Check AFTER loading/error checks
+  const noDataAvailable = !chartData || chartData.length === 0;
+  const noProjectsAvailable = !projectTitles || projectTitles.length === 0;
 
-  // Explicit check for project titles needed to render lines
-   if (!projectTitles || projectTitles.length === 0) {
-     console.log("RENDERING: No project titles available state (projectTitles is empty or null)");
-     return <div className="text-center p-10">Data loaded, but no projects found to display lines.</div>;
+  if (noDataAvailable && noProjectsAvailable) {
+      console.log("RENDERING: No chart data or project titles available.");
+      return <div className="text-center p-10">No data available to display the chart.</div>;
+  }
+  if (noProjectsAvailable) {
+      console.log("RENDERING: No project titles available state (projectTitles is empty or null)");
+      return <div className="text-center p-10">Data loaded, but no projects found to display lines.</div>;
+  }
+   // If only chartData is missing but projects exist (less likely with current logic, but safe check)
+  if (noDataAvailable) {
+       console.log("RENDERING: No chart data available state (chartData is empty or null)");
+       return <div className="text-center p-10">Projects loaded, but no time-series data found.</div>;
   }
 
   console.log("RENDERING: Attempting to render LineChart component...");
   return (
     <div className="p-6">
-      <div className="flex justify-center items-center gap-2 w-full mb-6">
-        <h2 className="text-2xl font-bold mb-6 text-center">
-          Top 50 Blockchain Projects by Development Activity
-        </h2>
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 w-full mb-6">
+         {/* Title */}
+         <h2 className="text-2xl font-bold text-center md:text-left">
+            Top 50 Blockchain Projects by Development Activity
+          </h2>
+         {/* Download Button */}
+         <button
+           onClick={handleDownloadCSV}
+           disabled={noDataAvailable || noProjectsAvailable} // Disable if no data/projects
+           className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150 ease-in-out ${ (noDataAvailable || noProjectsAvailable) ? 'opacity-50 cursor-not-allowed' : '' }`}
+         >
+            Download CSV
+         </button>
       </div>
+
+      {/* Chart Area */}
       <div className="w-full">
         <ResponsiveContainer width="100%" height={600}>
-          <LineChart
-            data={chartData} // Data should be [{ report_date: '...', ProjectA: 10, ProjectB: 20 }, ...]
-            margin={{ top: 5, right: 30, left: 20, bottom: 50 }}
+          <LineChart /* ... rest of LineChart props remain the same ... */
+           data={chartData}
+           margin={{ top: 5, right: 30, left: 20, bottom: 50 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#555" />
             <XAxis
-              dataKey="report_date"
-              type="category"
-              tickFormatter={formatDateTick}
-              angle={-45}
-              textAnchor="end"
-              height={60}
-              interval="preserveStartEnd"
-            />
-            <YAxis
+             dataKey="report_date"
+             type="category"
+             tickFormatter={formatDateTick}
+             angle={-45}
+             textAnchor="end"
+             height={60}
+             interval="preserveStartEnd"
+           />
+            <YAxis /* ... YAxis props ... */
               type="number"
               domain={['auto', 'auto']}
               tickFormatter={(value: number) => value.toLocaleString()}
             >
-            <Label
-            value="Weighted Score" // The text for the label
-            angle={-90} // Rotate the label to be vertical
-            position="insideLeft" // Position it inside the chart area, to the left of the axis line
-            style={{ textAnchor: 'middle', fill: '#f5f5f5' }} // Style to match your theme (using tooltip color)
-            // You might need to adjust the chart's left margin if the label feels cramped
-            // offset={10} // Optional: Adjust offset if needed
-            />
+                <Label /* ... YAxis Label props ... */
+                   value="Weighted Score Index" // Updated Label Text
+                   angle={-90}
+                   position="insideLeft"
+                   style={{ textAnchor: 'middle', fill: '#f5f5f5' }}
+                   offset={-5} // Adjust offset if needed
+                />
             </YAxis>
-            <Tooltip
+            <Tooltip /* ... Tooltip props ... */
               contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px' }}
-              formatter={(value: number, name: string) => [value === null || value === undefined ? 'N/A' : value.toLocaleString(), name]} // Handle null/undefined values in tooltip
+              formatter={(value: number, name: string) => [value === null || value === undefined ? 'N/A' : value.toLocaleString(), name]}
               labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
             />
-            <Legend 
-              layout="horizontal" 
-              verticalAlign="top" 
-              align="center" 
-              wrapperStyle={{ paddingTop: '20px' }} 
+            <Legend /* ... Legend props ... */
+              layout="horizontal"
+              verticalAlign="top"
+              align="center"
+              wrapperStyle={{ paddingTop: '20px' }}
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
             />
@@ -334,17 +412,17 @@ const HomePage: React.FC = () => {
           <br/><br/>
           4. Weighting: These normalized scores are multiplied by specific weights:
           <br/>
-          - Major All-Time Metrics (12.5% each): Commits, Forks, Stars, Contributors.
+            - Major All-Time Metrics (12.5% each): Commits, Forks, Stars, Contributors.
           <br/>
-          - Major Recent Change Metrics (10% each): 4-week change in Commits, Forks, Stars, Contributors.
+            - Major Recent Change Metrics (10% each): 4-week change in Commits, Forks, Stars, Contributors.
           <br/>
-          - Minor Metrics (2.5% each): All-time Watchers, All-time Originality Ratio, 4-week change in Watchers, 4-week change in Originality Ratio.
+            - Minor Metrics (2.5% each): All-time Watchers, All-time Originality Ratio, 4-week change in Watchers, 4-week change in Originality Ratio.
           <br/><br/>
           5. Summation: The weighted, normalized scores for all metrics are added together to get a final weighted_score between 0 and 1.
           <br/><br/>
           6. Index Conversion: The &quot;Weighted Score Index&quot; shown in the chart is simply this weighted_score multiplied by 100.
           <br/><br/>
-          Primary source for project mapping is Electric Capital Crypto Ecosystems {' '} {/* Add a space before the image link */}
+          Primary source for project-to-repo mapping is Electric Capital Crypto Ecosystems {' '} {/* Add a space before the image link */}
           <a
             href="https://github.com/electric-capital/crypto-ecosystems"
             target="_blank"
