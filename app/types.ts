@@ -54,4 +54,17 @@ export interface TopProjectsTrendsData {
   project_title: string;
   report_date: string;
   weighted_score_index: number;
+  fork_count: number;
+  stargaze_count: number;
+  commit_count: number;
+  contributor_count: number;
+  watcher_count: number;
+  is_not_fork_ratio: number;
+  commit_count_pct_change_over_4_weeks: number;
+  contributor_count_pct_change_over_4_weeks: number;
+  fork_count_pct_change_over_4_weeks: number;
+  stargaze_count_pct_change_over_4_weeks: number; 
+  watcher_count_pct_change_over_4_weeks: number;
+  is_not_fork_ratio_pct_change_over_4_weeks: number; 
+  project_rank_category: string;
 }

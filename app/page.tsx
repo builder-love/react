@@ -275,13 +275,12 @@ const HomePage: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const dateStamp = new Date().toISOString().split('T')[0];
       link.setAttribute('href', url);
-      link.setAttribute('download', `project_trends_long_${dateStamp}.csv`);
+      link.setAttribute('download', `project_trends_data_${dateStamp}.csv`);
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      console.log("Long format CSV download triggered.");
     } else {
       console.error("CSV download failed: Browser does not support the download attribute.");
       alert("CSV download failed: Your browser doesn't support this feature.");
@@ -329,14 +328,14 @@ const HomePage: React.FC = () => {
            disabled={noDataAvailable || noProjectsAvailable} // Disable if no data/projects
            className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150 ease-in-out ${ (noDataAvailable || noProjectsAvailable) ? 'opacity-50 cursor-not-allowed' : '' }`}
          >
-            Download CSV
+            Download Chart Data
          </button>
       </div>
 
       {/* Chart Area */}
       <div className="w-full">
         <ResponsiveContainer width="100%" height={600}>
-          <LineChart /* ... rest of LineChart props remain the same ... */
+          <LineChart
            data={chartData}
            margin={{ top: 5, right: 30, left: 20, bottom: 50 }}
           >
@@ -356,7 +355,7 @@ const HomePage: React.FC = () => {
               tickFormatter={(value: number) => value.toLocaleString()}
             >
                 <Label /* ... YAxis Label props ... */
-                   value="Weighted Score Index" // Updated Label Text
+                   value="Weighted Score Index" 
                    angle={-90}
                    position="insideLeft"
                    style={{ textAnchor: 'middle', fill: '#f5f5f5' }}
