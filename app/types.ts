@@ -20,7 +20,7 @@ export type Payload = {
 // Define a type for the transformed data structure suitable for the LineChart
 export interface FormattedLineChartData {
   report_date: string;
-  [projectTitle: string]: number | string;
+  [projectTitle: string]: number | string | null | undefined;
 }
 
 export type TooltipProps = DefaultTooltipContentProps<number, string> & {
@@ -49,7 +49,7 @@ export interface TopStarsData {
   stargaze_count: number;
 }
 
-// Define the type for the top projects trends data you expect from the API route
+// Define the interface for the top projects trends data you expect from the API route
 export interface TopProjectsTrendsData {
   project_title: string;
   report_date: string;
@@ -67,4 +67,9 @@ export interface TopProjectsTrendsData {
   watcher_count_pct_change_over_4_weeks: number | null;
   is_not_fork_ratio_pct_change_over_4_weeks: number | null; 
   project_rank_category: string;
+}
+
+// Define the type for the enhanced top projects trends data you expect from the API route
+export type EnhancedTopProjectsTrendsData = TopProjectsTrendsData & {
+  [key: string]: any; // Index signature to allow dynamic access like item[selectedMetric]
 }

@@ -5,7 +5,8 @@ import React, {
   useEffect,
   useMemo,
   useCallback,
-  MouseEvent
+  MouseEvent,
+  ChangeEvent
 } from 'react';
 import {
   LineChart,
@@ -19,9 +20,27 @@ import {
   Label,
 } from 'recharts';
 import chroma from 'chroma-js';
-import type { TopProjectsTrendsData, FormattedLineChartData } from './types';
+import type { TopProjectsTrendsData, EnhancedTopProjectsTrendsData, FormattedLineChartData } from './types';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
 import Image from 'next/image';
+
+// --- Define Metric Options ---
+// Map user-friendly labels to the actual data keys expected from the API
+const metricOptions = [
+  { label: 'Weighted Score Index', value: 'weighted_score_index' },
+  { label: 'Commit Count', value: 'commit_count' },
+  { label: 'Fork Count', value: 'fork_count' },
+  { label: 'Stargazer Count', value: 'stargaze_count' },
+  { label: 'Contributor Count', value: 'contributor_count' },
+  { label: 'Watcher Count', value: 'watcher_count' },
+  { label: 'Not-Fork Ratio', value: 'is_not_fork_ratio' }, 
+  { label: '4wk Change Commit Count', value: 'commit_count_pct_change_over_4_weeks' },
+  { label: '4wk Change Fork Count', value: 'fork_count_pct_change_over_4_weeks' },
+  { label: '4wk Change Stargazer Count', value: 'stargaze_count_pct_change_over_4_weeks' },
+  { label: '4wk Change Contributor Count', value: 'contributor_count_pct_change_over_4_weeks' },
+  { label: '4wk Change Watcher Count', value: 'watcher_count_pct_change_over_4_weeks' },
+  { label: '4wk Change Not-Fork Ratio', value: 'is_not_fork_ratio_pct_change_over_4_weeks' },
+];
 
 // Chroma.js color generation function
 const generateColors = (count: number): string[] => {
@@ -43,12 +62,15 @@ const generateColors = (count: number): string[] => {
 };
 
 const HomePage: React.FC = () => {
-  const [apiData, setApiData] = useState<TopProjectsTrendsData[]>([]);
+  // Use the enhanced type for apiData state
+  const [apiData, setApiData] = useState<EnhancedTopProjectsTrendsData[]>([]);
   const [projectTitles, setProjectTitles] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  // --- STATE FOR LEGEND HOVER EFFECT ---
   const [lineOpacity, setLineOpacity] = useState<Record<string, number>>({});
+
+  // --- STATE FOR SELECTED METRIC ---
+  const [selectedMetric, setSelectedMetric] = useState<string>(metricOptions[0].value); // Default to first option's value
 
   // --- Initialize lineOpacity state when projectTitles are loaded ---
   useEffect(() => {
@@ -87,7 +109,8 @@ const HomePage: React.FC = () => {
           throw new Error(errorDetail);
         }
 
-        const fetchedData: TopProjectsTrendsData[] = await response.json();
+         // Cast to the enhanced type
+         const fetchedData: EnhancedTopProjectsTrendsData[] = await response.json();
 
         // Check if it's an array and if it has items
         if (!Array.isArray(fetchedData)) {
@@ -99,9 +122,9 @@ const HomePage: React.FC = () => {
 
         setApiData(fetchedData); // Store raw data
 
-        const uniqueTitles = [...new Set(fetchedData.map(item => item.project_title))];
-
-        setProjectTitles(uniqueTitles); // Store unique titles for line rendering
+         // Get unique project titles (only needs to be done once)
+         const uniqueTitles = [...new Set(fetchedData.map(item => item.project_title))].filter(Boolean); // Filter out potential null/empty titles
+         setProjectTitles(uniqueTitles);
 
       } catch (err: unknown) {
         let message = 'An unknown error occurred fetching project trends data';
@@ -122,35 +145,68 @@ const HomePage: React.FC = () => {
     fetchData();
   }, []); // Runs once on mount
 
-  // --- Data Transformation ---
-  const chartData = useMemo(() => {
-
+   // --- Data Transformation (Now depends on selectedMetric) ---
+   const chartData = useMemo(() => {
+    console.log(`Transforming data for selected metric: ${selectedMetric}`);
     if (!apiData || apiData.length === 0) {
-        console.log("Transformation skipped: apiData is empty.");
-        return []; // Ensure it returns empty array if no apiData
+      console.log("Transformation skipped: apiData is empty.");
+      return [];
     }
 
     const groupedData: Record<string, FormattedLineChartData> = {};
+
     apiData.forEach(item => {
-      const { report_date, project_title, weighted_score_index } = item;
-      if (!report_date || !project_title || weighted_score_index === undefined || weighted_score_index === null) {
-          console.warn("Skipping item with missing data:", item);
-          return; // Skip items with missing essential data
+      const { report_date, project_title } = item;
+      // --- Dynamically access the selected metric's value ---
+      const metricValue = item[selectedMetric];
+
+      // Basic validation for core fields and the *selected* metric
+      if (!report_date || !project_title || metricValue === undefined /* Allow 0 */) {
+          // Only warn if the *selected* metric is missing, allow others to be absent
+          // console.warn(`Skipping item - missing data for metric '${selectedMetric}':`, item);
+          // We still need the date entry, just might have nulls for some projects
+          // Let connectNulls handle it in the chart, but ensure date entry exists
+          if (!groupedData[report_date]) {
+               groupedData[report_date] = { report_date };
+           }
+           // Assign null if value is missing for this specific project/metric/date combo
+           groupedData[report_date][project_title] = null;
+          // return; // Don't skip the whole date entry
+      } else {
+           if (!groupedData[report_date]) {
+               groupedData[report_date] = { report_date };
+           }
+            // Store the value of the currently selected metric
+           groupedData[report_date][project_title] = metricValue;
       }
-      if (!groupedData[report_date]) {
-        groupedData[report_date] = { report_date };
-      }
-      groupedData[report_date][project_title] = weighted_score_index;
+
+
     });
+
+    // Ensure all projects exist as keys for all dates, filling with null if necessary
+     const allDates = Object.keys(groupedData);
+     allDates.forEach(date => {
+       projectTitles.forEach(title => {
+           if (!(title in groupedData[date])) {
+               groupedData[date][title] = null; // Assign null if project has no data for this date/metric
+           }
+       });
+     });
+
 
     const sortedData = Object.values(groupedData).sort((a, b) =>
       new Date(a.report_date).getTime() - new Date(b.report_date).getTime()
     );
 
-    // *** LOG TRANSFORMED DATA ***
-    console.log("Data transformation complete. Transformed Data:", sortedData);
+    console.log("Data transformation complete. Transformed Data:", sortedData.slice(0, 5)); // Log first 5 rows
     return sortedData;
-  }, [apiData]);
+
+  }, [apiData, selectedMetric, projectTitles]); // Add selectedMetric and projectTitles as dependencies
+
+   // --- Get Current Metric Label for Y-Axis ---
+   const currentMetricLabel = useMemo(() => {
+    return metricOptions.find(opt => opt.value === selectedMetric)?.label || 'Selected Metric';
+}, [selectedMetric]);
 
   // Generate colors
   const projectColors = useMemo(() => {
@@ -222,70 +278,78 @@ const HomePage: React.FC = () => {
     []
   );
 
-   // --- CSV Download Handler for Long Format ---
+   // --- CSV Download Handler (Updated to use selected metric label) ---
    const handleDownloadCSV = useCallback(() => {
-    if (!chartData || chartData.length === 0 || !projectTitles || projectTitles.length === 0) {
-      console.warn("Cannot download CSV: No data available.");
-      alert("No data available to download.");
-      return;
-    }
+    // ... (rest of the function is mostly the same)
+       if (!chartData || chartData.length === 0 || !projectTitles || projectTitles.length === 0) {
+           console.warn("Cannot download CSV: No data available.");
+           alert("No data available to download.");
+           return;
+       }
 
-    // Sanitize data for CSV Injection (remains the same)
-    const sanitizeForCSV = (value: string | number | null | undefined): string => {
-      let strValue = String(value ?? ''); // Handle null/undefined -> empty string
-      if (['=', '+', '-', '@'].some(char => strValue.startsWith(char))) {
-        strValue = `'${strValue}`;
-      }
-      strValue = strValue.replace(/"/g, '""');
-      if (strValue.includes(',') || strValue.includes('\n') || strValue.includes('"')) {
-        strValue = `"${strValue}"`;
-      }
-      return strValue;
-    };
+       const sanitizeForCSV = (value: string | number | null | undefined): string => {
+           let strValue = String(value ?? ''); // Handle null/undefined -> empty string
+           if (['=', '+', '-', '@'].some(char => strValue.startsWith(char))) {
+               strValue = `'${strValue}`;
+           }
+           strValue = strValue.replace(/"/g, '""');
+           if (strValue.includes(',') || strValue.includes('\n') || strValue.includes('"')) {
+               strValue = `"${strValue}"`;
+           }
+           return strValue;
+       };
 
-    // 1. Create Header Row (New Headers)
-    // No need to sanitize these specific headers, but applying it is safe.
-    const headers = ['report_date', 'project_title', 'weighted_score']
-        .map(sanitizeForCSV) // Optional sanitization for headers
-        .join(',');
+       // 1. Create Header Row (Use current metric label)
+       const currentMetricHeader = selectedMetric; // Use the actual data key for the header
+       const headers = ['report_date', 'project_title', currentMetricHeader]
+           // .map(sanitizeForCSV) // Sanitizing these specific headers isn't strictly necessary
+           .join(',');
 
-    // 2. Create Data Rows
-    const dataRows: string[] = [];
-    chartData.forEach(row => { // Iterate through each date object
-      const reportDate = row.report_date; // Get the date for this row
-      projectTitles.forEach(projectTitle => { // Iterate through each project title
-        const score = row[projectTitle]; // Get the score for this project on this date
-        // Create a CSV row string with sanitized values
-        const csvRow = [
-            sanitizeForCSV(reportDate),
-            sanitizeForCSV(projectTitle),
-            sanitizeForCSV(score) // Score can be number, null, undefined
-        ].join(',');
-        dataRows.push(csvRow); // Add the row to our collection
-      });
-    });
+       // 2. Create Data Rows (remains the same logic as long format)
+       const dataRows: string[] = [];
+       chartData.forEach(row => {
+           const reportDate = row.report_date;
+           projectTitles.forEach(projectTitle => {
+               const score = row[projectTitle]; // This score is already the selected metric's value
+               const csvRow = [
+                   sanitizeForCSV(reportDate),
+                   sanitizeForCSV(projectTitle),
+                   sanitizeForCSV(score)
+               ].join(',');
+               dataRows.push(csvRow);
+           });
+       });
 
-    // 3. Combine Headers and Rows
-    const csvContent = [headers, ...dataRows].join('\n');
+       // 3. Combine Headers and Rows
+       const csvContent = [headers, ...dataRows].join('\n');
 
-    // 4. Create Blob and Trigger Download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      const dateStamp = new Date().toISOString().split('T')[0];
-      link.setAttribute('href', url);
-      link.setAttribute('download', `project_trends_data_${dateStamp}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } else {
-      console.error("CSV download failed: Browser does not support the download attribute.");
-      alert("CSV download failed: Your browser doesn't support this feature.");
-    }
-  }, [chartData, projectTitles]); // Dependencies 
+       // 4. Create Blob and Trigger Download
+       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+       const link = document.createElement('a');
+       if (link.download !== undefined) {
+           const url = URL.createObjectURL(blob);
+           const dateStamp = new Date().toISOString().split('T')[0];
+           // Make filename dynamic based on metric
+           const filename = `project_trends_${selectedMetric}_${dateStamp}.csv`;
+           link.setAttribute('href', url);
+           link.setAttribute('download', filename);
+           link.style.visibility = 'hidden';
+           document.body.appendChild(link);
+           link.click();
+           document.body.removeChild(link);
+           URL.revokeObjectURL(url);
+       } else {
+           console.error("CSV download failed: Browser does not support the download attribute.");
+           alert("CSV download failed: Your browser doesn't support this feature.");
+       }
+
+  }, [chartData, projectTitles, selectedMetric]); // Add selectedMetric dependency
+
+  // --- Dropdown Change Handler ---
+  const handleMetricChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
+       setSelectedMetric(event.target.value);
+       console.log("Metric changed to:", event.target.value);
+  }, []);
 
    // --- Render Logic ---
    if (isLoading) {
@@ -308,11 +372,15 @@ const HomePage: React.FC = () => {
       console.log("RENDERING: No project titles available state (projectTitles is empty or null)");
       return <div className="text-center p-10">Data loaded, but no projects found to display lines.</div>;
   }
-   // If only chartData is missing but projects exist (less likely with current logic, but safe check)
+  // If only chartData is missing but projects exist (less likely with current logic, but safe check)
   if (noDataAvailable) {
-       console.log("RENDERING: No chart data available state (chartData is empty or null)");
-       return <div className="text-center p-10">Projects loaded, but no time-series data found.</div>;
-  }
+    console.log("RENDERING: No chart data available state (chartData is empty or null)");
+    // Be more specific if a metric was selected but yielded no chart data
+    if (selectedMetric !== metricOptions[0].value) {
+        return <div className="text-center p-10">No data available for the selected metric: {currentMetricLabel}.</div>;
+    }
+    return <div className="text-center p-10">Projects loaded, but no time-series data found.</div>;
+  } 
 
   console.log("RENDERING: Attempting to render LineChart component...");
   return (
@@ -331,50 +399,58 @@ const HomePage: React.FC = () => {
             Download Chart Data
          </button>
       </div>
-
-      {/* Chart Area */}
-      <div className="w-full">
-        <ResponsiveContainer width="100%" height={600}>
-          <LineChart
-           data={chartData}
-           margin={{ top: 5, right: 30, left: 20, bottom: 50 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#555" />
-            <XAxis
-             dataKey="report_date"
-             type="category"
-             tickFormatter={formatDateTick}
-             angle={-45}
-             textAnchor="end"
-             height={60}
-             interval="preserveStartEnd"
-           />
-            <YAxis /* ... YAxis props ... */
-              type="number"
-              domain={['auto', 'auto']}
-              tickFormatter={(value: number) => value.toLocaleString()}
-            >
-                <Label /* ... YAxis Label props ... */
-                   value="Weighted Score Index" 
-                   angle={-90}
-                   position="insideLeft"
-                   style={{ textAnchor: 'middle', fill: '#f5f5f5' }}
-                   offset={-5} // Adjust offset if needed
-                />
-            </YAxis>
-            <Tooltip /* ... Tooltip props ... */
-              contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px' }}
-              formatter={(value: number, name: string) => [value === null || value === undefined ? 'N/A' : value.toLocaleString(), name]}
-              labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
-            />
-            <Legend /* ... Legend props ... */
-              layout="horizontal"
-              verticalAlign="top"
-              align="center"
-              wrapperStyle={{ paddingTop: '20px' }}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-            />
+       {/* Chart Area */}
+       <div className="w-full">
+         <ResponsiveContainer width="100%" height={600}>
+           <LineChart
+             data={chartData} // Data now dynamically reflects selectedMetric
+             margin={{ top: 5, right: 30, left: 20, bottom: 50 }} // Adjust left margin if Y-label gets long
+           >
+             <CartesianGrid strokeDasharray="3 3" stroke="#555" />
+             <XAxis
+                // ... (XAxis props - no changes needed)
+                 dataKey="report_date"
+                 type="category"
+                 tickFormatter={formatDateTick}
+                 angle={-45}
+                 textAnchor="end"
+                 height={60}
+                 interval="preserveStartEnd"
+             />
+             <YAxis
+               type="number"
+               domain={['auto', 'auto']} // Keep auto domain for different metric scales
+               tickFormatter={(value: number) => value.toLocaleString()} // Format ticks
+             >
+                {/* Dynamic Y-Axis Label */}
+               <Label
+                 value={currentMetricLabel} // Use dynamic label
+                 angle={-90}
+                 position="insideLeft"
+                 style={{ textAnchor: 'middle', fill: '#f5f5f5' }}
+                 // offset={-5} // May need adjustment based on label length
+               />
+             </YAxis>
+             <Tooltip
+                // ... (Tooltip props - no changes needed, maybe adjust formatter if needed for non-numeric?)
+                 contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px' }}
+                 formatter={(value, name) => { // Value might not always be number
+                     const formattedValue = (value === null || value === undefined)
+                        ? 'N/A'
+                        : typeof value === 'number' ? value.toLocaleString() : String(value);
+                    return [formattedValue, name];
+                 }}
+                 labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
+             />
+             <Legend
+                // ... (Legend props - no changes needed)
+                 layout="horizontal"
+                 verticalAlign="top"
+                 align="center"
+                 wrapperStyle={{ paddingTop: '20px' }}
+                 onMouseEnter={handleMouseEnter}
+                 onMouseLeave={handleMouseLeave}
+             />
             {/* Render Lines - Apply opacity from state */}
             {projectTitles.map((title) => {
                  // Get opacity from state, default to 1 if state not yet initialized
@@ -399,6 +475,25 @@ const HomePage: React.FC = () => {
           </LineChart>
         </ResponsiveContainer>
       </div> {/* End Chart Area div */}
+      {/* --- START: Metric Selector Dropdown --- */}
+      {/* Position this div where the red square was */}
+      <div className="flex justify-end mt-4 mb-6 pr-4 md:pr-8"> {/* Adjust padding/margin as needed */}
+          <label htmlFor="metric-select" className="mr-2 self-center text-sm text-gray-400">Chart Metric:</label>
+          <select
+              id="metric-select"
+              value={selectedMetric}
+              onChange={handleMetricChange}
+              className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2"
+              disabled={isLoading} // Disable while loading
+          >
+              {metricOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                      {option.label}
+                  </option>
+              ))}
+          </select>
+      </div>
+      {/* --- END: Metric Selector Dropdown --- */}
       {/* --- START: Weighted Score Explanation Section --- */}
       <div className="mt-8 pt-6 border-t border-gray-600"> {/* Add margin, padding, and a top border */}
         <h3 className="text-lg font-semibold mb-2 text-gray-200"> {/* Heading style */}
