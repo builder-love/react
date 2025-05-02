@@ -71,5 +71,5 @@ export interface TopProjectsTrendsData {
 
 // Define the type for the enhanced top projects trends data you expect from the API route
 export type EnhancedTopProjectsTrendsData = TopProjectsTrendsData & {
-  [key: string]: any; // Index signature to allow dynamic access like item[selectedMetric]
+  [key: string]: string | number | null | undefined; // Index signature to allow dynamic access like item[selectedMetric]
 }
