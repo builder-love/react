@@ -42,6 +42,25 @@ const metricOptions = [
   { label: '4wk Change Not-Fork Ratio', value: 'is_not_fork_ratio_pct_change_over_4_weeks' },
 ];
 
+// formatting for the y axis labels
+const percentMetrics = new Set([
+  'is_not_fork_ratio', 
+  'commit_count_pct_change_over_4_weeks',
+  'fork_count_pct_change_over_4_weeks',
+  'stargaze_count_pct_change_over_4_weeks',
+  'contributor_count_pct_change_over_4_weeks',
+  'watcher_count_pct_change_over_4_weeks',
+  'is_not_fork_ratio_pct_change_over_4_weeks'
+]);
+
+const integerMetrics = new Set([
+  'commit_count',
+  'fork_count',
+  'stargaze_count',
+  'contributor_count',
+  'watcher_count'
+]);
+
 // Chroma.js color generation function
 const generateColors = (count: number): string[] => {
   if (count === 0) return []; // Handle edge case
@@ -387,6 +406,43 @@ const HomePage: React.FC = () => {
        console.log("Metric changed to:", event.target.value);
   }, []);
 
+  // --- Dynamic Y-Axis Tick Formatter ---
+  const formatYAxisTick = useCallback((value: any) => {
+    // Handle cases where the value might not be a number (though ticks usually are)
+    if (typeof value !== 'number' || !isFinite(value)) {
+        return value; // Return as is or an empty string
+    }
+
+    // Percentage Formatting (Assuming input value is a decimal, e.g., 0.15 for 15%)
+    if (percentMetrics.has(selectedMetric)) {
+        return new Intl.NumberFormat('en-US', {
+            style: 'percent',
+            minimumFractionDigits: 1, // Or 0, or 2, depending on desired precision
+            maximumFractionDigits: 1
+        }).format(value); // IMPORTANT: If API sends 15 for 15%, divide by 100 here: format(value / 100)
+    }
+
+    // Integer Formatting
+    if (integerMetrics.has(selectedMetric)) {
+        return new Intl.NumberFormat('en-US', {
+            maximumFractionDigits: 0 // No decimals
+        }).format(value);
+    }
+
+    // Specific Decimal Formatting (Example for Weighted Score)
+    if (selectedMetric === 'weighted_score_index') {
+         return new Intl.NumberFormat('en-US', {
+             minimumFractionDigits: 1, // Show at least 1 decimal
+             maximumFractionDigits: 1  // Show at most 1 decimal
+         }).format(value);
+    }
+
+    // Default Locale String Formatting for other numbers (e.g., maybe is_not_fork_ratio if not percent)
+    // This will add commas for thousands separators automatically.
+    return value.toLocaleString('en-US');
+
+  }, [selectedMetric]); // Dependency: Re-create formatter if selectedMetric changes
+
    // --- Render Logic ---
    if (isLoading) {
     return <div className="text-center p-10">Loading data...</div>;
@@ -456,7 +512,8 @@ const HomePage: React.FC = () => {
              <YAxis
                type="number"
                domain={['auto', 'auto']} // Keep auto domain for different metric scales
-               tickFormatter={(value: number) => value.toLocaleString()} // Format ticks
+               // Use the dynamic tick formatter function
+               tickFormatter={formatYAxisTick}
              >
                 {/* Dynamic Y-Axis Label */}
                <Label
@@ -468,12 +525,41 @@ const HomePage: React.FC = () => {
                />
              </YAxis>
              <Tooltip
-                // ... (Tooltip props - no changes needed, maybe adjust formatter if needed for non-numeric?)
                  contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px' }}
-                 formatter={(value, name) => { // Value might not always be number
-                     const formattedValue = (value === null || value === undefined)
-                        ? 'N/A'
-                        : typeof value === 'number' ? value.toLocaleString() : String(value);
+                 formatter={(value, name) => { // value type is inferred correctly here
+                     // Handle null/undefined first
+                     if (value === null || value === undefined) {
+                         return ['N/A', name];
+                     }
+
+                     let formattedValue: string;
+
+                     // Check type AFTER null/undefined check
+                     if (typeof value !== 'number' || !isFinite(value)) {
+                         // Handle potential non-numeric data if necessary
+                          formattedValue = String(value);
+                     }
+                     // Apply conditional formatting based on selectedMetric
+                     else if (percentMetrics.has(selectedMetric)) {
+                         formattedValue = new Intl.NumberFormat('en-US', {
+                             style: 'percent',
+                             minimumFractionDigits: 1,
+                             maximumFractionDigits: 1
+                         }).format(value); // Again, divide by 100 if API sends whole numbers for percent
+                     } else if (integerMetrics.has(selectedMetric)) {
+                         formattedValue = new Intl.NumberFormat('en-US', {
+                             maximumFractionDigits: 0
+                         }).format(value);
+                     } else if (selectedMetric === 'weighted_score_index') {
+                          formattedValue = new Intl.NumberFormat('en-US', {
+                             minimumFractionDigits: 1,
+                             maximumFractionDigits: 1
+                          }).format(value);
+                     } else {
+                         // Default formatting for other numbers
+                         formattedValue = value.toLocaleString('en-US');
+                     }
+
                     return [formattedValue, name];
                  }}
                  labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
