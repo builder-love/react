@@ -179,6 +179,10 @@ const HomePage: React.FC = () => {
       // --- Dynamically access the selected metric's value ---
       const metricValue = item[selectedMetric];
 
+      if (project_title === 'Ethereum' && report_date.startsWith('2025-04-27')) {
+        console.log('Processing:', report_date, project_title, selectedMetric, metricValue);
+      }
+
       // Basic validation for core fields and the *selected* metric
       if (!report_date || !project_title || metricValue === undefined /* Allow 0 */) {
           // Only warn if the *selected* metric is missing, allow others to be absent
@@ -634,7 +638,7 @@ const HomePage: React.FC = () => {
           <div className="pl-4">
             - Major Recent Change Metrics (10% each): 4-week change in Commits, Forks, Stars, Contributors.
           </div>
-          <div className="pl-4">
+          <div className="pl-4 mb-2">
             - Minor Metrics (2.5% each): All-time Watchers, All-time Originality Ratio, 4-week change in Watchers, 4-week change in Originality Ratio.
           </div>
           6. Summation: The weighted, normalized scores for all metrics are added together to get a final weighted_score between 0 and 1.
