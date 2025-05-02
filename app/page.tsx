@@ -226,42 +226,6 @@ const HomePage: React.FC = () => {
 
   }, [apiData, selectedMetric, projectTitles]); // Add selectedMetric and projectTitles as dependencies
 
-  // begin y axis label offset calculation
-  // get the max value for the currently selected metric in the chart data
-  const maxMetricValue = useMemo(() => {
-    // Return 0 if chartData is empty to avoid errors
-    if (!chartData || chartData.length === 0) return 0;
-
-    let maxVal = -Infinity;
-    chartData.forEach(row => {
-        projectTitles.forEach(title => {
-            const value = row[title]; // Access the metric value for the project
-            // Ensure it's a number before comparing
-            if (typeof value === 'number' && isFinite(value) && value > maxVal) {
-                maxVal = value;
-            }
-        });
-    });
-    // If no valid number was found (e.g., all null/undefined), return 0, otherwise the max
-    return maxVal === -Infinity ? 0 : maxVal;
-  }, [chartData, projectTitles]); // Recalculate when chartData or projectTitles change
-
-  // Calculate the dynamic offset based on the max value
-  const dynamicYLabelOffset = useMemo(() => {
-
-    /* based purely on magnitude */
-    if (maxMetricValue < 1000) {
-        return -15;
-    } else if (maxMetricValue < 1000000) {
-        return -30;
-    } else if (maxMetricValue < 1000000000) {
-        return -45;
-    } else {
-        return -55;
-    }
-  }, [maxMetricValue]); // Recalculate only when maxMetricValue changes
-  // end y axis label offset calculation
-
    // --- Get Current Metric Label for Y-Axis ---
    const currentMetricLabel = useMemo(() => {
     return metricOptions.find(opt => opt.value === selectedMetric)?.label || 'Selected Metric';
@@ -441,6 +405,79 @@ const HomePage: React.FC = () => {
       ? value.toLocaleString('en-US')
       : String(value);
   }, [selectedMetric]);
+
+  // begin y axis label offset calculation
+
+  // Get the max/min values for the currently selected metric in the chart data
+  // We need both max and min now to gauge the potential width of formatted labels
+  const { maxValue, minValue } = useMemo(() => {
+    if (!chartData || chartData.length === 0) return { maxValue: 0, minValue: 0 };
+
+    let maxVal = -Infinity;
+    let minVal = Infinity;
+
+    chartData.forEach(row => {
+        projectTitles.forEach(title => {
+            const value = row[title]; // Access the metric value for the project
+            // Ensure it's a number before comparing
+            if (typeof value === 'number' && isFinite(value)) {
+                if (value > maxVal) maxVal = value;
+                if (value < minVal) minVal = value;
+            }
+        });
+    });
+
+    // Return 0 if no valid numbers found
+    return {
+        maxValue: maxVal === -Infinity ? 0 : maxVal,
+        minValue: minVal === Infinity ? 0 : minVal
+    };
+  }, [chartData, projectTitles]); // Recalculate when chartData or projectTitles change
+
+  // Calculate the dynamic offset based on the potential width of formatted tick labels
+  const dynamicYLabelOffset = useMemo(() => {
+    // Determine if the selected metric is a percentage
+    const isPercent = percentMetrics.has(selectedMetric);
+
+    // If it's a percent metric, use a larger fixed offset because percentage labels
+    // (e.g., "-1,234.5%") can be wide regardless of the absolute max value.
+    if (isPercent) {
+        // Consider the formatted length of both max and min values
+        const maxFormatted = formatYAxisTick(maxValue);
+        const minFormatted = formatYAxisTick(minValue);
+        // Use a larger offset if either formatted string is long (e.g., includes thousands separator or negative sign)
+        if (maxFormatted.length > 6 || minFormatted.length > 6) { // Adjust '6' based on testing
+           return -50; // Increased offset for wide percentages
+        }
+        return -40; // Standard offset for narrower percentages
+    }
+
+    // --- Logic for Non-Percentage Metrics (based on magnitude) ---
+    // Format the max value using the *non-percent* logic to estimate width
+    let formattedMaxMagnitude: string;
+    if (integerMetrics.has(selectedMetric)) {
+         formattedMaxMagnitude = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(maxValue);
+    } else if (selectedMetric === 'weighted_score_index') {
+         formattedMaxMagnitude = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(maxValue);
+    } else {
+         // Fallback for any other potential non-percent, non-integer types
+         formattedMaxMagnitude = maxValue.toLocaleString('en-US');
+    }
+
+    // Adjust offset based on the *length* of the formatted largest magnitude number
+    const numDigits = formattedMaxMagnitude.replace(/[^0-9]/g, '').length; // Approx number of digits
+
+    if (numDigits < 4) { // e.g., < 1,000
+        return -15;
+    } else if (numDigits < 7) { // e.g., < 1,000,000
+        return -30;
+    } else if (numDigits < 10) { // e.g., < 1,000,000,000
+        return -45;
+    } else { // Very large numbers
+        return -55;
+    }
+
+  }, [maxValue, minValue, selectedMetric, formatYAxisTick]); // DEPENDENCIES
 
    // --- Render Logic ---
    if (isLoading) {
