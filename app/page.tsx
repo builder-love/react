@@ -230,7 +230,7 @@ const HomePage: React.FC = () => {
     }
 
     // Sanitize data for CSV Injection (basic example)
-    const sanitizeForCSV = (value: any): string => {
+    const sanitizeForCSV = (value: string | number | null | undefined): string => {
       let strValue = String(value ?? ''); // Handle null/undefined -> empty string
       // If value starts with '=', '+', '-', or '@', prepend a single quote
       if (['=', '+', '-', '@'].some(char => strValue.startsWith(char))) {
