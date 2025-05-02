@@ -20,7 +20,7 @@ import {
   Label,
 } from 'recharts';
 import chroma from 'chroma-js';
-import type { TopProjectsTrendsData, EnhancedTopProjectsTrendsData, FormattedLineChartData } from './types';
+import type { EnhancedTopProjectsTrendsData, FormattedLineChartData } from './types';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
 import Image from 'next/image';
 
