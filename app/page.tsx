@@ -21,6 +21,7 @@ import {
 import chroma from 'chroma-js';
 import type { TopProjectsTrendsData, FormattedLineChartData } from './types';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
+import Image from 'next/image';
 
 // Chroma.js color generation function
 const generateColors = (count: number): string[] => {
@@ -221,43 +222,47 @@ const HomePage: React.FC = () => {
     []
   );
 
-   // --- CSV Download Handler ---
+   // --- CSV Download Handler for Long Format ---
    const handleDownloadCSV = useCallback(() => {
     if (!chartData || chartData.length === 0 || !projectTitles || projectTitles.length === 0) {
       console.warn("Cannot download CSV: No data available.");
-      alert("No data available to download."); // Optional: User feedback
+      alert("No data available to download.");
       return;
     }
 
-    // Sanitize data for CSV Injection (basic example)
+    // Sanitize data for CSV Injection (remains the same)
     const sanitizeForCSV = (value: string | number | null | undefined): string => {
       let strValue = String(value ?? ''); // Handle null/undefined -> empty string
-      // If value starts with '=', '+', '-', or '@', prepend a single quote
       if (['=', '+', '-', '@'].some(char => strValue.startsWith(char))) {
         strValue = `'${strValue}`;
       }
-      // Basic double quote escaping: replace all double quotes with two double quotes
       strValue = strValue.replace(/"/g, '""');
-      // If the value contains a comma, newline, or double quote, enclose in double quotes
       if (strValue.includes(',') || strValue.includes('\n') || strValue.includes('"')) {
         strValue = `"${strValue}"`;
       }
       return strValue;
     };
 
-    // 1. Create Header Row
-    const headers = ['report_date', ...projectTitles].map(sanitizeForCSV).join(',');
+    // 1. Create Header Row (New Headers)
+    // No need to sanitize these specific headers, but applying it is safe.
+    const headers = ['report_date', 'project_title', 'weighted_score']
+        .map(sanitizeForCSV) // Optional sanitization for headers
+        .join(',');
 
     // 2. Create Data Rows
-    const dataRows = chartData.map(row => {
-      // Start with the sanitized date
-      const dateValue = sanitizeForCSV(row.report_date);
-      // Map each project title to its value in the current row, sanitize, handle missing values
-      const projectValues = projectTitles.map(title => {
-        const value = row[title]; // Access value using title as key
-        return sanitizeForCSV(value); // Sanitize, handles null/undefined via sanitizeForCSV
-      }).join(',');
-      return `${dateValue},${projectValues}`; // Combine date and project values
+    const dataRows: string[] = [];
+    chartData.forEach(row => { // Iterate through each date object
+      const reportDate = row.report_date; // Get the date for this row
+      projectTitles.forEach(projectTitle => { // Iterate through each project title
+        const score = row[projectTitle]; // Get the score for this project on this date
+        // Create a CSV row string with sanitized values
+        const csvRow = [
+            sanitizeForCSV(reportDate),
+            sanitizeForCSV(projectTitle),
+            sanitizeForCSV(score) // Score can be number, null, undefined
+        ].join(',');
+        dataRows.push(csvRow); // Add the row to our collection
+      });
     });
 
     // 3. Combine Headers and Rows
@@ -266,23 +271,22 @@ const HomePage: React.FC = () => {
     // 4. Create Blob and Trigger Download
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    if (link.download !== undefined) { // Check if HTML5 download attribute is supported
+    if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      // Generate filename (e.g., project_trends_data_2025-05-02.csv)
       const dateStamp = new Date().toISOString().split('T')[0];
-      link.setAttribute('download', `project_trends_data_${dateStamp}.csv`);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `project_trends_long_${dateStamp}.csv`);
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url); // Clean up the object URL
-      console.log("CSV download triggered.");
+      URL.revokeObjectURL(url);
+      console.log("Long format CSV download triggered.");
     } else {
       console.error("CSV download failed: Browser does not support the download attribute.");
       alert("CSV download failed: Your browser doesn't support this feature.");
     }
-  }, [chartData, projectTitles]); // Dependencies: chartData and projectTitles
+  }, [chartData, projectTitles]); // Dependencies 
 
    // --- Render Logic ---
    if (isLoading) {
@@ -429,11 +433,12 @@ const HomePage: React.FC = () => {
             rel="noopener noreferrer"
             className="inline-block align-middle" // Crucial for alignment
           >
-            <img
-              src="/electric_capital_logo_transparent.png"
+            <Image
+              src="/electric_capital_logo_transparent.png" // Path relative to the 'public' directory
               alt="Electric Capital Crypto Ecosystems Logo Link"
-              // Adjust size to fit nicely inline, e.g., h-4 or h-5
-              className="inline-block h-4 w-auto align-middle" // Ensure inline and adjust size/vertical alignment
+              width={371} 
+              height={32}
+              className="inline-block h-4 w-auto align-middle"
             />
           </a>
         </p>
