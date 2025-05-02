@@ -404,7 +404,7 @@ const HomePage: React.FC = () => {
          <ResponsiveContainer width="100%" height={600}>
            <LineChart
              data={chartData} // Data now dynamically reflects selectedMetric
-             margin={{ top: 5, right: 30, left: 20, bottom: 50 }} // Adjust left margin if Y-label gets long
+             margin={{ top: 5, right: 30, left: 60, bottom: 50 }} // Adjust left margin if Y-label gets long
            >
              <CartesianGrid strokeDasharray="3 3" stroke="#555" />
              <XAxis
