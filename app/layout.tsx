@@ -59,7 +59,7 @@ export default function RootLayout({
         <div className="flex flex-row w-full">
           <Navigation />
           <main className="flex-1 p-5 pt-16 min-h-screen w-full">
-            <h1 className="text-3xl font-bold text-red-500 text-center">
+            <h1 className="text-4xl font-bold text-red-500 text-center mb-5">
               Builder <span className="text-red-500">♥</span>
             </h1>
             {/* Center the content within main */}
