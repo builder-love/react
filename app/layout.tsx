@@ -62,10 +62,6 @@ export default function RootLayout({
             <h1 className="text-3xl font-bold text-red-500 text-center">
               Builder <span className="text-red-500">♥</span>
             </h1>
-            <p className="text-sm text-gray-400 text-center mt-2 md:block hidden">
-              This app is in beta. Please use the data and analysis presented on
-              this page with caution.
-            </p>
             {/* Center the content within main */}
             <div className="flex justify-center items-center w-full">
               <div className="w-full max-w-7xl">
