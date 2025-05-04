@@ -35,20 +35,6 @@ export interface CustomScatterData {
   repo_count: number | null;
 }
 
-// Define the type for the forks data you expect from the API route
-export interface TopForkData {
-  project_title: string;
-  latest_data_timestamp: string;
-  fork_count: number;
-}
-
-// Define the type for the stars data you expect from the API route
-export interface TopStarsData {
-  project_title: string;
-  latest_data_timestamp: string;
-  stargaze_count: number;
-}
-
 // Define the interface for the top projects trends data you expect from the API route
 export interface TopProjectsTrendsData {
   project_title: string;
