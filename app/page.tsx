@@ -23,7 +23,6 @@ import type { EnhancedTopProjectsTrendsData, FormattedLineChartData } from './ty
 import { Payload as RechartsLegendPayload } from 'recharts/types/component/DefaultLegendContent';
 import Image from 'next/image';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
-import { TooltipProps } from 'recharts';
 
 // --- Define Metric Options ---
 // Map user-friendly labels to the actual data keys expected from the API
@@ -137,7 +136,7 @@ const HomePage: React.FC = () => {
           try {
             const errorData = await response.json();
             errorDetail = errorData.message || errorDetail;
-          } catch (_jsonError) { /* ignore */ }
+          } catch (_jsonError) { console.error("Failed to parse API error response:", _jsonError); }
           throw new Error(errorDetail);
         }
         const fetchedData: EnhancedTopProjectsTrendsData[] = await response.json();
@@ -267,7 +266,7 @@ const HomePage: React.FC = () => {
       const day = date.getUTCDate().toString().padStart(2, '0');
       const year = date.getUTCFullYear();
       return `${month}-${day}-${year}`;
-    } catch (_e) { return tickItem; }
+    } catch (_e) { console.error("Error formatting date tick:", tickItem, _e); return tickItem; }
   }, [isMobile]);
 
   // --- LEGEND HOVER HANDLERS ---
@@ -468,7 +467,7 @@ const HomePage: React.FC = () => {
                     name: NameType,   // Name of the data series (project_title)
                     // props is one item from the Tooltip's payload array
                     // Each item in this array typically has a 'color' property
-                    itemPayload: { color?: string; payload?:any /* other properties */ }
+                    itemPayload: { color?: string; payload?: unknown /* other properties */ }
                  ) => {
                      let formattedValue: string;
                      const valueNum = Number(value);
