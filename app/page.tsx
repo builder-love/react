@@ -402,6 +402,22 @@ const HomePage: React.FC = () => {
     else return offset - (isMobile ? 20 : 30);
   }, [maxValue, minValue, selectedMetric, formatYAxisTick, isMobile]);
 
+
+
+  // --------------- testing ---------------
+
+  console.log("Is Mobile:", isMobile);
+  console.log("Sorted Project Titles by Latest Score:", sortedProjectTitlesByLatestScore);
+  console.log("Titles to Render:", titlesToRender);
+  console.log("Chart Data (first 5 rows):", chartData.slice(0, 5));
+  console.log("Chart Data Length:", chartData.length);
+  console.log("Is Loading:", isLoading);
+  console.log("Error State:", error);
+  console.log("Project Colors:", projectColors); // Check if colors are generated
+  console.log("Line Opacity State:", lineOpacity); // Check opacity state
+
+  // --------------- end testing ---------------
+
    // --- Render Logic ---
    if (isLoading) return <div className="text-center p-4 md:p-10">Loading data...</div>;
    if (error) return <div className="text-center p-4 md:p-10 text-red-500">Error: {error}</div>;
