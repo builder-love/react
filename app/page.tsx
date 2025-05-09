@@ -144,6 +144,18 @@ const HomePage: React.FC = () => {
           throw new Error("Invalid data format received from API.");
         }
         setApiData(fetchedData);
+
+        // --------------- testing ---------------
+        setApiData(fetchedData);
+        console.log("Sample apiData items for selectedMetric '", selectedMetric, "':",
+            fetchedData.slice(0, 3).map(item => ({
+                project_title: item.project_title,
+                report_date: item.report_date,
+                metricValue: item[selectedMetric] // Directly inspect the value being used
+            }))
+        );
+        // --------------- end testing ---------------
+
         // Set all unique project titles once from the fetched data
         // This list is used for color generation and opacity state keys.
         const uniqueTitles = [...new Set(fetchedData.map(item => item.project_title))].filter(Boolean);
@@ -409,7 +421,8 @@ const HomePage: React.FC = () => {
   console.log("Is Mobile:", isMobile);
   console.log("Sorted Project Titles by Latest Score:", sortedProjectTitlesByLatestScore);
   console.log("Titles to Render:", titlesToRender);
-  console.log("Chart Data (first 5 rows):", chartData.slice(0, 5));
+  // console.log("Chart Data (first 5 rows):", chartData.slice(0, 5));
+  console.log("Chart Data CONTENT (first 2 rows):", JSON.stringify(chartData.slice(0, 2), null, 2));
   console.log("Chart Data Length:", chartData.length);
   console.log("Is Loading:", isLoading);
   console.log("Error State:", error);
