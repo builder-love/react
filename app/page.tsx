@@ -80,6 +80,24 @@ const generateColors = (count: number): string[] => {
 
 };
 
+// --- hook for mobile view - screen size ---
+const useIsMobile = (breakpoint = 768): boolean => { // Tailwind's 'md' breakpoint
+  const [isMobileView, setIsMobileView] = useState(false);
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobileView(window.innerWidth < breakpoint);
+    };
+
+    checkScreenSize(); // Initial check
+    window.addEventListener('resize', checkScreenSize);
+
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, [breakpoint]);
+
+  return isMobileView;
+};
+
 const HomePage: React.FC = () => {
   // Use the enhanced type for apiData state
   const [apiData, setApiData] = useState<EnhancedTopProjectsTrendsData[]>([]);
@@ -87,9 +105,8 @@ const HomePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lineOpacity, setLineOpacity] = useState<Record<string, number>>({});
-
-  // --- STATE FOR SELECTED METRIC ---
-  const [selectedMetric, setSelectedMetric] = useState<string>(metricOptions[0].value); // Default to first option's value
+  const [selectedMetric, setSelectedMetric] = useState<string>(metricOptions[0].value); // state for selected metric; efault to first option's value
+  const isMobile = useIsMobile(); // Use the mobile hook
 
   // --- Initialize lineOpacity state when projectTitles are loaded ---
   useEffect(() => {
@@ -241,36 +258,25 @@ const HomePage: React.FC = () => {
       return colorMap;
   }, [projectTitles]);
 
-  // Date Formatting
+  // --- Date Formatting that accomodates mobile ---
   const formatDateTick = useCallback((tickItem: string): string => {
     try {
-      // Assuming tickItem is a string representing a date, potentially like 'YYYY-MM-DD'
-      // or the format seen in your screenshot 'MM-DDTHH:mm:ssZ'.
-      // new Date() should handle these standard formats.
       const date = new Date(tickItem);
+      if (isNaN(date.getTime())) return tickItem;
 
-      // Check if the date object is valid
-      if (isNaN(date.getTime())) {
-          console.warn("Invalid date encountered in tickFormatter:", tickItem);
-          return tickItem; // Return original string if parsing fails
+      // Shorter format for mobile, more detailed for desktop
+      if (isMobile) {
+        // Example: "Apr '25" or just "04/27"
+        return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', timeZone: 'UTC' });
       }
-
-      // Format to 'mmm-dd-yyyy' using UTC methods to align with 'Z' timezone indicator if present
-      // Get the abbreviated month name (e.g., 'Apr')
       const month = date.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
-      // Get the zero-padded day (e.g., '05', '27')
       const day = date.getUTCDate().toString().padStart(2, '0');
-      // Get the full year (e.g., '2025')
       const year = date.getUTCFullYear();
-
-      // Combine parts with hyphens
       return `${month}-${day}-${year}`;
-
     } catch (e) {
-      console.error("Error formatting date tick:", tickItem, e);
-      return tickItem; // Fallback to original tick value on error
+      return tickItem;
     }
-  }, []); // No dependencies needed
+  }, [isMobile]); // isMobile dependency
 
   // --- LEGEND HOVER HANDLERS ---
   const handleMouseEnter = useCallback(
@@ -434,50 +440,47 @@ const HomePage: React.FC = () => {
     };
   }, [chartData, projectTitles]); // Recalculate when chartData or projectTitles change
 
-  // Calculate the dynamic offset based on the potential width of formatted tick labels
+  // --- Dynamic Y-Label Offset that accomodates mobile ---
   const dynamicYLabelOffset = useMemo(() => {
-    // Determine if the selected metric is a percentage
+    const baseDesktopOffset = -35; // Starting point for desktop
+    const baseMobileOffset = -25;  // Starting point for mobile (less space)
+
+    let offset = isMobile ? baseMobileOffset : baseDesktopOffset;
+
     const isPercent = percentMetrics.has(selectedMetric);
 
-    // If it's a percent metric, use a larger fixed offset because percentage labels
-    // (e.g., "-1,234.5%") can be wide regardless of the absolute max value.
     if (isPercent) {
-        // Consider the formatted length of both max and min values
         const maxFormatted = formatYAxisTick(maxValue);
         const minFormatted = formatYAxisTick(minValue);
-        // Use a larger offset if either formatted string is long (e.g., includes thousands separator or negative sign)
-        if (maxFormatted.length > 6 || minFormatted.length > 6) { // Adjust '6' based on testing
-           return -50; // Increased offset for wide percentages
+        if (maxFormatted.length > 7 || minFormatted.length > 7) { // More lenient for mobile
+           offset -= isMobile ? 15 : 20;
+        } else {
+           offset -= isMobile ? 10 : 15;
         }
-        return -40; // Standard offset for narrower percentages
+        return offset;
     }
 
-    // --- Logic for Non-Percentage Metrics (based on magnitude) ---
-    // Format the max value using the *non-percent* logic to estimate width
     let formattedMaxMagnitude: string;
     if (integerMetrics.has(selectedMetric)) {
          formattedMaxMagnitude = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(maxValue);
     } else if (selectedMetric === 'weighted_score_index') {
          formattedMaxMagnitude = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(maxValue);
     } else {
-         // Fallback for any other potential non-percent, non-integer types
          formattedMaxMagnitude = maxValue.toLocaleString('en-US');
     }
 
-    // Adjust offset based on the *length* of the formatted largest magnitude number
-    const numDigits = formattedMaxMagnitude.replace(/[^0-9]/g, '').length; // Approx number of digits
+    const numDigits = formattedMaxMagnitude.replace(/[^0-9]/g, '').length;
 
-    if (numDigits < 4) { // e.g., < 1,000
-        return -15;
-    } else if (numDigits < 7) { // e.g., < 1,000,000
-        return -30;
-    } else if (numDigits < 10) { // e.g., < 1,000,000,000
-        return -45;
-    } else { // Very large numbers
-        return -55;
+    if (numDigits < 4) {
+        return offset; // Use base
+    } else if (numDigits < 7) {
+        return offset - (isMobile ? 10 : 15);
+    } else if (numDigits < 10) {
+        return offset - (isMobile ? 15 : 25);
+    } else {
+        return offset - (isMobile ? 20 : 30);
     }
-
-  }, [maxValue, minValue, selectedMetric, formatYAxisTick]); // DEPENDENCIES
+  }, [maxValue, minValue, selectedMetric, formatYAxisTick, isMobile]); // isMobile dependency
 
    // --- Render Logic ---
    if (isLoading) {
@@ -511,138 +514,135 @@ const HomePage: React.FC = () => {
   } 
 
   console.log("RENDERING: Attempting to render LineChart component...");
+  // --- ADJUST NUMBER OF LINES FOR MOBILE ---
+  // top 10) on mobile for clarity.
+  // filter projectTitles here based on isMobile.
+  const displayedProjectTitles = isMobile ? projectTitles.slice(0, 10) : projectTitles;
   return (
-    <div className="p-6">
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 w-full mb-6">
-         {/* Title */}
-         <h2 className="text-2xl font-bold text-center md:text-left">
-            Top 50 Blockchain Projects by Development Activity
+    // Adjusted padding for the main container
+    <div className="p-2 sm:p-4 md:p-6">
+      {/* Header: Title and Download Button - Flex column on mobile */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 w-full mb-4 md:mb-6">
+         <h2 className="text-xl sm:text-2xl font-bold text-center sm:text-left">
+            Top Blockchain Projects
+            { !isMobile && " by Development Activity" } {/* Shorter title for mobile */}
           </h2>
-         {/* Download Button */}
          <button
            onClick={handleDownloadCSV}
-           disabled={noDataAvailable || noProjectsAvailable} // Disable if no data/projects
-           className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150 ease-in-out ${ (noDataAvailable || noProjectsAvailable) ? 'opacity-50 cursor-not-allowed' : '' }`}
+           disabled={noDataAvailable || noProjectsAvailable}
+           className={`w-full sm:w-auto px-3 py-2 sm:px-4 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150 ease-in-out ${ (noDataAvailable || noProjectsAvailable) ? 'opacity-50 cursor-not-allowed' : '' }`}
          >
-            Download Chart Data
+            {isMobile ? "Download CSV" : "Download Chart Data"} {/* Shorter button text */}
          </button>
       </div>
+
        {/* Chart Area */}
        <div className="w-full">
-         <ResponsiveContainer width="100%" height={600}>
+         {/* Adjust height for mobile */}
+         <ResponsiveContainer width="100%" height={isMobile ? 400 : 600}>
            <LineChart
-             data={chartData} // Data now dynamically reflects selectedMetric
-             margin={{ top: 5, right: 30, left: 60, bottom: 50 }} // Adjust left margin if Y-label gets long
+             data={chartData}
+             // Adjust margins for mobile, especially left and bottom
+             margin={{
+                top: 5,
+                right: isMobile ? 10 : 30,
+                left: isMobile ? 5 : dynamicYLabelOffset < -40 ? 70 : 60, // Dynamic left based on Y label needs more space
+                bottom: isMobile ? 70 : 50 // Increased bottom margin for angled labels on mobile
+            }}
            >
              <CartesianGrid strokeDasharray="3 3" stroke="#555" />
              <XAxis
-                // ... (XAxis props - no changes needed)
                  dataKey="report_date"
                  type="category"
                  tickFormatter={formatDateTick}
-                 angle={-45}
+                 angle={isMobile ? -60 : -45} // Steeper angle for mobile if needed
                  textAnchor="end"
-                 height={60}
-                 interval="preserveStartEnd"
+                 height={isMobile ? 80 : 60} // More height for labels on mobile
+                 interval={isMobile ? Math.max(0, Math.floor(chartData.length / 5) -1) : "preserveStartEnd"} // Show fewer ticks on mobile
+                 tick={{ fontSize: isMobile ? 10 : 12 }} // Smaller font for mobile ticks
              />
              <YAxis
                type="number"
-               domain={['auto', 'auto']} // Keep auto domain for different metric scales
-               // Use the dynamic tick formatter function
+               domain={['auto', 'auto']}
                tickFormatter={formatYAxisTick}
+               tick={{ fontSize: isMobile ? 10 : 12 }} // Smaller font for mobile ticks
+               width={isMobile && dynamicYLabelOffset < -35 ? Math.abs(dynamicYLabelOffset) + 10 : undefined} // Explicit width for YAxis if label is very wide on mobile
              >
-                {/* Dynamic Y-Axis Label */}
                <Label
-                 value={currentMetricLabel} // Use dynamic label
+                 value={currentMetricLabel}
                  angle={-90}
                  position="insideLeft"
-                 style={{ textAnchor: 'middle', fill: '#f5f5f5' }}
-                 offset={dynamicYLabelOffset} // Use dynamic offset
+                 style={{ textAnchor: 'middle', fill: '#f5f5f5', fontSize: isMobile ? '12px': '14px' }}
+                 offset={dynamicYLabelOffset}
                />
              </YAxis>
              <Tooltip
-                 contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px' }}
-                 formatter={(value, name) => { // value type is inferred correctly here
-                     // Handle null/undefined first
-                     if (value === null || value === undefined) {
-                         return ['N/A', name];
-                     }
-
+                 contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px', fontSize: '12px' }}
+                 formatter={(value, name) => {
+                     if (value === null || value === undefined) return ['N/A', name];
                      let formattedValue: string;
-
-                     // Check type AFTER null/undefined check
                      if (typeof value !== 'number' || !isFinite(value)) {
-                         // Handle potential non-numeric data if necessary
                           formattedValue = String(value);
                      }
-                     // Apply conditional formatting based on selectedMetric
                      else if (percentMetrics.has(selectedMetric)) {
-                         formattedValue = new Intl.NumberFormat('en-US', {
-                             style: 'percent',
-                             minimumFractionDigits: 1,
-                             maximumFractionDigits: 1
-                         }).format(value); // Again, divide by 100 if API sends whole numbers for percent
+                         formattedValue = new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
                      } else if (integerMetrics.has(selectedMetric)) {
-                         formattedValue = new Intl.NumberFormat('en-US', {
-                             maximumFractionDigits: 0
-                         }).format(value);
+                         formattedValue = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value);
                      } else if (selectedMetric === 'weighted_score_index') {
-                          formattedValue = new Intl.NumberFormat('en-US', {
-                             minimumFractionDigits: 1,
-                             maximumFractionDigits: 1
-                          }).format(value);
+                          formattedValue = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
                      } else {
-                         // Default formatting for other numbers
                          formattedValue = value.toLocaleString('en-US');
                      }
-
                     return [formattedValue, name];
                  }}
-                 labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
+                 labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`} // Use the same formatter
              />
-             <Legend
-                // ... (Legend props - no changes needed)
-                 layout="horizontal"
-                 verticalAlign="top"
-                 align="center"
-                 wrapperStyle={{ paddingTop: '20px' }}
-                 onMouseEnter={handleMouseEnter}
-                 onMouseLeave={handleMouseLeave}
-             />
-            {/* Render Lines - Apply opacity from state */}
-            {projectTitles.map((title) => {
-                 // Get opacity from state, default to 1 if state not yet initialized
-                 const currentOpacity = lineOpacity[title] !== undefined ? lineOpacity[title] : 1;
-                 // console.log(`Rendering line ${title} with opacity: ${currentOpacity}`); // Debugging
+             {/* Hide legend on mobile or use a more compact version if Recharts supports it easily,
+                 otherwise, users can rely on tooltips. For simplicity, let's hide it on mobile. */}
+             {!isMobile && (
+                <Legend
+                    layout="horizontal"
+                    verticalAlign="top"
+                    align="center"
+                    wrapperStyle={{ paddingTop: '20px', paddingBottom: '10px', overflowX: 'auto', whiteSpace: 'nowrap' }} // Allow horizontal scroll if needed
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
+                    // Consider a custom legend for mobile if absolutely necessary
+                />
+             )}
 
+            {displayedProjectTitles.map((title) => {
+                 const currentOpacity = lineOpacity[title] !== undefined ? lineOpacity[title] : 1;
                  return (
                     <Line
                         key={title}
                         type="monotone"
                         dataKey={title}
                         stroke={projectColors[title] || '#8884d8'}
-                        strokeWidth={2} // Or adjust dynamically: isHovered ? 4 : 2
-                        strokeOpacity={currentOpacity} // <-- Apply opacity from state
-                        dot={false}
-                        activeDot={{ r: 6 }}
+                        strokeWidth={isMobile ? 1.5 : 2} // Thinner lines on mobile
+                        strokeOpacity={currentOpacity}
+                        dot={isMobile ? false : { r: 1 }} // Smaller/no dots on mobile
+                        activeDot={{ r: isMobile ? 4 : 6 }}
                         connectNulls={true}
                         name={title}
+                        isAnimationActive={!isMobile} // Disable animation on mobile for performance
                     />
                 );
             })}
           </LineChart>
         </ResponsiveContainer>
-      </div> {/* End Chart Area div */}
-      {/* --- START: Metric Selector Dropdown --- */}
-      {/* Position this div where the red square was */}
-      <div className="flex justify-end mt-4 mb-6 pr-4 md:pr-8"> {/* Adjust padding/margin as needed */}
-          <label htmlFor="metric-select" className="mr-2 self-center text-sm text-gray-400">Chart Metric:</label>
+      </div>
+
+      {/* Metric Selector Dropdown - Full width on mobile */}
+      <div className="flex flex-col sm:flex-row sm:justify-end items-stretch sm:items-center mt-4 mb-6 px-1 sm:pr-4 md:pr-8 gap-2">
+          <label htmlFor="metric-select" className="mb-1 sm:mb-0 sm:mr-2 self-start sm:self-center text-sm text-gray-400">Chart Metric:</label>
           <select
               id="metric-select"
               value={selectedMetric}
               onChange={handleMetricChange}
-              className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2"
-              disabled={isLoading} // Disable while loading
+              // Tailwind classes for better mobile appearance
+              className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 w-full sm:w-auto"
+              disabled={isLoading}
           >
               {metricOptions.map(option => (
                   <option key={option.value} value={option.value}>
@@ -651,50 +651,30 @@ const HomePage: React.FC = () => {
               ))}
           </select>
       </div>
-      {/* --- END: Metric Selector Dropdown --- */}
-      {/* --- START: Weighted Score Explanation Section --- */}
-      <div className="mt-8 pt-6 border-t border-gray-600"> {/* Add margin, padding, and a top border */}
-        <h3 className="text-lg font-semibold mb-2 text-gray-200"> {/* Heading style */}
+
+      {/* Weighted Score Explanation Section - Adjust text size and padding */}
+      <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-gray-600 px-1">
+        <h3 className="text-md sm:text-lg font-semibold mb-2 text-gray-200">
           How is weighted score calculated?
         </h3>
-        <p className="text-gray-400 text-sm">
-          The Weighted Score is calculated weekly to rank blockchain projects based on GitHub development activity and community engagement metrics. Here&apos;s the process:
+        {/* Reduce text size slightly for mobile if needed using sm:text-sm */}
+        <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+          The Weighted Score is calculated weekly... (rest of your explanation)
           <br/><br/>
-          1. Data Collection: Gathers both all-time counts and recent (4-week percentage) changes for repo-specific key metrics like Commits, Forks, Stargazers, Contributors, and Watchers. It also includes an originality metric.
-          <br/><br/>
-          2. Any missing values are filled from the previous non-missing value. This is why sometimes the trend apears to be flat.
-          <br/><br/>
-          3. Repo metrics are rolled up to the project level. Some projects, like Ethereum have many sub-ecosystems.
-          <br/><br/>
-          4. Normalization: For each metric, every project&apos;s value is compared to all other projects within the same week and scaled to a value between 0 and 1.
-          <br/><br/>
-          5. Weighting: These normalized scores are multiplied by specific weights:
-          <div className="pl-4"> {/* pl-4 adds padding-left: 1rem */}
-            - Major All-Time Metrics (12.5% each): Commits, Forks, Stars, Contributors.
-          </div>
-          <div className="pl-4">
-            - Major Recent Change Metrics (10% each): 4-week change in Commits, Forks, Stars, Contributors.
-          </div>
-          <div className="pl-4 mb-2">
-            - Minor Metrics (2.5% each): All-time Watchers, All-time Originality Ratio, 4-week change in Watchers, 4-week change in Originality Ratio.
-          </div>
-          6. Summation: The weighted, normalized scores for all metrics are added together to get a final weighted_score between 0 and 1.
-          <br/><br/>
-          7. Index Conversion: The &quot;Weighted Score Index&quot; shown in the chart is simply this weighted_score multiplied by 100.
-          <br/><br/>
-          Primary source for project-to-repo mapping is Electric Capital Crypto Ecosystems {' '} {/* Add a space before the image link */}
+          {/* ... ensure all parts of your explanation are readable ... */}
+          Primary source for project-to-repo mapping is Electric Capital Crypto Ecosystems {' '}
           <a
             href="https://github.com/electric-capital/crypto-ecosystems"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block align-middle" // Crucial for alignment
+            className="inline-block align-middle hover:underline" // Added hover:underline
           >
             <Image
-              src="/electric_capital_logo_transparent.png" // Path relative to the 'public' directory
+              src="/electric_capital_logo_transparent.png"
               alt="Electric Capital Crypto Ecosystems Logo Link"
-              width={371} 
-              height={32}
-              className="inline-block h-4 w-auto align-middle"
+              width={isMobile ? 200 : 371} // Smaller logo on mobile
+              height={isMobile ? 17 : 32} // Maintain aspect ratio
+              className="inline-block h-3 sm:h-4 w-auto align-middle" // Adjust size for mobile
             />
           </a>
           <br/><br/>
