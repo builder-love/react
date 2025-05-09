@@ -5,7 +5,6 @@ import React, {
   useEffect,
   useMemo,
   useCallback,
-  MouseEvent,
   ChangeEvent
 } from 'react';
 import {
@@ -21,8 +20,10 @@ import {
 } from 'recharts';
 import chroma from 'chroma-js';
 import type { EnhancedTopProjectsTrendsData, FormattedLineChartData } from './types';
-import { Payload } from 'recharts/types/component/DefaultLegendContent';
+import { Payload as RechartsLegendPayload } from 'recharts/types/component/DefaultLegendContent';
 import Image from 'next/image';
+import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
+import { TooltipProps } from 'recharts';
 
 // --- Define Metric Options ---
 // Map user-friendly labels to the actual data keys expected from the API
@@ -136,7 +137,7 @@ const HomePage: React.FC = () => {
           try {
             const errorData = await response.json();
             errorDetail = errorData.message || errorDetail;
-          } catch (jsonError) { /* ignore */ }
+          } catch (_jsonError) { /* ignore */ }
           throw new Error(errorDetail);
         }
         const fetchedData: EnhancedTopProjectsTrendsData[] = await response.json();
@@ -266,38 +267,43 @@ const HomePage: React.FC = () => {
       const day = date.getUTCDate().toString().padStart(2, '0');
       const year = date.getUTCFullYear();
       return `${month}-${day}-${year}`;
-    } catch (e) { return tickItem; }
+    } catch (_e) { return tickItem; }
   }, [isMobile]);
 
   // --- LEGEND HOVER HANDLERS ---
   const handleMouseEnter = useCallback(
-    (o: { dataKey?: string | number} ) => { // Simplified payload structure for dataKey access
-      const dataKey = o.dataKey ? String(o.dataKey) : null;
+    (data: RechartsLegendPayload, _index: number /*, event: React.MouseEvent<SVGElement> */) => {
+      // The 'data' object here is the one from Recharts Legend payload.
+      // It should have a 'dataKey' property.
+      const dataKey = data.dataKey ? String(data.dataKey) : null;
+  
       if (dataKey) {
-        setLineOpacity((prevOpacity) => {
-          const newOpacity = { ...prevOpacity };
-          Object.keys(newOpacity).forEach(key => {
-            newOpacity[key] = key === dataKey ? 1 : 0.2;
+        setLineOpacity(prev => {
+          const newOpacity = { ...prev };
+          Object.keys(newOpacity).forEach(k => {
+            newOpacity[k] = k === dataKey ? 1 : 0.2;
           });
           return newOpacity;
         });
       }
     },
-    [] // No need for prevOpacity in deps if we always base on all keys
+    []
   );
-
+  
   const handleMouseLeave = useCallback(
-    () => {
-      setLineOpacity((prevOpacity) => {
-        const newOpacity = { ...prevOpacity };
-        Object.keys(newOpacity).forEach(key => {
-          newOpacity[key] = 1;
+    (_data: RechartsLegendPayload, _index: number /*, event: React.MouseEvent<SVGElement> */) => {
+      // We don't use data, index, or event here but include them for type compatibility
+      setLineOpacity(prev => {
+        const newOpacity = { ...prev };
+        Object.keys(newOpacity).forEach(k => {
+          newOpacity[k] = 1;
         });
         return newOpacity;
       });
     },
     []
   );
+  
 
    // --- CSV Download Handler (Updated to use selected metric label) ---
    const handleDownloadCSV = useCallback(() => {
@@ -457,19 +463,37 @@ const HomePage: React.FC = () => {
              </YAxis>
              <Tooltip
                  contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px', fontSize: isMobile ? '11px': '12px' }}
-                 formatter={(value, name, props) => { // props can give color
-                     if (value === null || value === undefined) return ['N/A', name];
+                 formatter={(
+                    value: ValueType, // Value of the data point
+                    name: NameType,   // Name of the data series (project_title)
+                    // props is one item from the Tooltip's payload array
+                    // Each item in this array typically has a 'color' property
+                    itemPayload: { color?: string; payload?:any /* other properties */ }
+                 ) => {
                      let formattedValue: string;
-                     const valueNum = Number(value); // Ensure value is number for formatters
-                     if (typeof valueNum !== 'number' || !isFinite(valueNum)) formattedValue = String(value);
-                     else if (percentMetrics.has(selectedMetric)) formattedValue = new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(valueNum);
-                     else if (integerMetrics.has(selectedMetric)) formattedValue = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(valueNum);
-                     else if (selectedMetric === 'weighted_score_index') formattedValue = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(valueNum);
-                     else formattedValue = valueNum.toLocaleString ? valueNum.toLocaleString('en-US') : String(valueNum);
-                     // Add color swatch to tooltip item
-                     const color = props.stroke;
+                     const valueNum = Number(value);
+
+                     if (value === null || value === undefined) { // Handle nulls explicitly first
+                        return [<span key={`${String(name)}-tooltip-value`} style={{ color: itemPayload.color || '#ccc' }}>N/A</span>, name];
+                     }
+
+                     if (typeof valueNum !== 'number' || !isFinite(valueNum)) {
+                         formattedValue = String(value);
+                     } else if (percentMetrics.has(selectedMetric)) {
+                         formattedValue = new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(valueNum);
+                     } else if (integerMetrics.has(selectedMetric)) {
+                         formattedValue = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(valueNum);
+                     } else if (selectedMetric === 'weighted_score_index') {
+                         formattedValue = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(valueNum);
+                     } else {
+                         formattedValue = valueNum.toLocaleString ? valueNum.toLocaleString('en-US') : String(valueNum);
+                     }
+
+                     // Use itemPayload.color directly
+                     const color = itemPayload.color || '#8884d8'; // Fallback color if needed
+
                      return [
-                        <span style={{ color: color }}>{formattedValue}</span>,
+                        <span key={`${String(name)}-tooltip-value`} style={{ color: color }}>{formattedValue}</span>,
                         name
                      ];
                  }}
@@ -480,8 +504,8 @@ const HomePage: React.FC = () => {
                 <Legend
                     layout="horizontal" verticalAlign="top" align="center"
                     wrapperStyle={{ paddingTop: '20px', paddingBottom: '10px', overflowX: 'auto', whiteSpace: 'nowrap', maxWidth: '100%'}}
-                    onMouseEnter={handleMouseEnter as any} // Recharts type issue with MouseEvent vs React.MouseEvent
-                    onMouseLeave={handleMouseLeave as any}
+                    onMouseEnter={handleMouseEnter} // Recharts type issue with MouseEvent vs React.MouseEvent
+                    onMouseLeave={handleMouseLeave}
                     payload={titlesToRender.map(title => ({ // Ensure legend matches rendered lines
                         value: title,
                         type: "line",
