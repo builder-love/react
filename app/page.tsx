@@ -488,6 +488,10 @@ const HomePage: React.FC = () => {
   // --- ADJUST NUMBER OF projectTitles LINES FOR MOBILE ---
   // top 10) on mobile for clarity.
   // filter projectTitles here based on isMobile.
+  const yAxisWidthValue = isMobile && dynamicYLabelOffset < -35 ? Math.abs(dynamicYLabelOffset) + 15 : undefined;
+  console.log('[YAxis Width Debug] isMobile:', isMobile, 'dynamicYLabelOffset:', dynamicYLabelOffset, 'Calculated YAxis Width:', yAxisWidthValue);
+
+
   return (
     <div className="p-2 sm:p-4 md:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 w-full mb-4 md:mb-6">
@@ -525,8 +529,8 @@ const HomePage: React.FC = () => {
                 domain={['auto', 'auto']}
                 tickFormatter={formatYAxisTick}
                 tick={{ fontSize: isMobile ? 10 : 12 }}
-                // Keep the 'width' prop commented out for now
-                // width={isMobile && dynamicYLabelOffset < -35 ? Math.abs(dynamicYLabelOffset) + 15 : undefined}
+                // Keep the 'width' prop commented out for now - testing
+                width={isMobile && dynamicYLabelOffset < -35 ? Math.abs(dynamicYLabelOffset) + 15 : undefined}
               >
                 <Label
                   value={currentMetricLabel}
