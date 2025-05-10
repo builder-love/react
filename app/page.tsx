@@ -521,11 +521,22 @@ const HomePage: React.FC = () => {
              />
              {/* Testing THIS IS WHERE YOU REPLACE YOUR CURRENT YAXIS WITH THE SIMPLIFIED ONE: */}
              <YAxis
-               type="number"
-               domain={['auto', 'auto']} // This could still be a source if data is problematic
-               tickFormatter={formatYAxisTick}
-               tick={{ fontSize: isMobile ? 10 : 12 }}
-             />
+                type="number"
+                domain={['auto', 'auto']}
+                tickFormatter={formatYAxisTick}
+                tick={{ fontSize: isMobile ? 10 : 12 }}
+                // Keep the 'width' prop commented out for now
+                // width={isMobile && dynamicYLabelOffset < -35 ? Math.abs(dynamicYLabelOffset) + 15 : undefined}
+              >
+                <Label
+                  value={currentMetricLabel}
+                  angle={-90}
+                  position="insideLeft"
+                  style={{ textAnchor: 'middle', fill: '#f5f5f5', fontSize: isMobile ? '11px' : '14px' }}
+                  offset={-20} // Use a simple, hardcoded negative number for testing
+                />
+              </YAxis>
+
              {/* YOUR ORIGINAL YAXIS (now commented out or deleted for the test):
                 <YAxis
                   type="number" domain={['auto', 'auto']} tickFormatter={formatYAxisTick}
