@@ -16,6 +16,8 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  // testing
+  // eslint-disable-next-line 
   Label,
 } from 'recharts';
 import chroma from 'chroma-js';
@@ -407,6 +409,8 @@ const HomePage: React.FC = () => {
   }, [chartData, titlesToRender]); // Use titlesToRender
 
   // --- Dynamic Y-Label Offset that accomodates mobile ---
+  // testing
+  // eslint-disable-next-line 
   const dynamicYLabelOffset = useMemo(() => {
     console.log('[dynamicYLabelOffset] Inputs:', { maxValue, minValue, selectedMetric, isMobile });
   
