@@ -530,7 +530,8 @@ const HomePage: React.FC = () => {
                 tickFormatter={formatYAxisTick}
                 tick={{ fontSize: isMobile ? 10 : 12 }}
                 // Keep the 'width' prop commented out for now - testing
-                width={isMobile && dynamicYLabelOffset < -35 ? Math.abs(dynamicYLabelOffset) + 15 : undefined}
+                // width={isMobile && dynamicYLabelOffset < -35 ? Math.abs(dynamicYLabelOffset) + 15 : undefined}
+                width={undefined}
               >
                 <Label
                   value={currentMetricLabel}
