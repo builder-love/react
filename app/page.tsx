@@ -408,40 +408,62 @@ const HomePage: React.FC = () => {
 
   // --- Dynamic Y-Label Offset that accomodates mobile ---
   const dynamicYLabelOffset = useMemo(() => {
+    console.log('[dynamicYLabelOffset] Inputs:', { maxValue, minValue, selectedMetric, isMobile });
+  
     const baseDesktopOffset = -35; const baseMobileOffset = -25;
     let offset = isMobile ? baseMobileOffset : baseDesktopOffset;
+    console.log('[dynamicYLabelOffset] Initial offset:', offset);
+  
     const isPercent = percentMetrics.has(selectedMetric);
+    console.log('[dynamicYLabelOffset] isPercent:', isPercent);
+  
     if (isPercent) {
-        const maxFormatted = formatYAxisTick(maxValue); const minFormatted = formatYAxisTick(minValue);
-        if (maxFormatted.length > 7 || minFormatted.length > 7) offset -= isMobile ? 15 : 20;
-        else offset -= isMobile ? 10 : 15;
-        return offset;
+        const maxFormatted = formatYAxisTick(maxValue);
+        const minFormatted = formatYAxisTick(minValue);
+        console.log('[dynamicYLabelOffset] Percent metrics - maxFormatted:', maxFormatted, 'minFormatted:', minFormatted);
+        if (maxFormatted.length > 7 || minFormatted.length > 7) {
+            offset -= isMobile ? 15 : 20;
+        } else {
+            offset -= isMobile ? 10 : 15;
+        }
+    } else {
+        let formattedMaxMagnitude: string;
+        if (integerMetrics.has(selectedMetric)) {
+            formattedMaxMagnitude = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(maxValue);
+        } else if (selectedMetric === 'weighted_score_index') {
+            formattedMaxMagnitude = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(maxValue);
+        } else {
+            // Ensure maxValue is a number before calling toLocaleString if it could be something else
+            formattedMaxMagnitude = typeof maxValue === 'number' ? maxValue.toLocaleString('en-US') : String(maxValue);
+        }
+        console.log('[dynamicYLabelOffset] Non-percent - formattedMaxMagnitude:', formattedMaxMagnitude);
+  
+        const numDigits = formattedMaxMagnitude.replace(/[^0-9]/g, '').length;
+        console.log('[dynamicYLabelOffset] Non-percent - numDigits:', numDigits);
+  
+        if (numDigits < 4) { /* offset remains base */ }
+        else if (numDigits < 7) offset -= (isMobile ? 10 : 15);
+        else if (numDigits < 10) offset -= (isMobile ? 15 : 25);
+        else offset -= (isMobile ? 20 : 30);
     }
-    let formattedMaxMagnitude: string;
-    if (integerMetrics.has(selectedMetric)) formattedMaxMagnitude = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(maxValue);
-    else if (selectedMetric === 'weighted_score_index') formattedMaxMagnitude = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(maxValue);
-    else formattedMaxMagnitude = maxValue.toLocaleString('en-US');
-    const numDigits = formattedMaxMagnitude.replace(/[^0-9]/g, '').length;
-    if (numDigits < 4) return offset;
-    else if (numDigits < 7) return offset - (isMobile ? 10 : 15);
-    else if (numDigits < 10) return offset - (isMobile ? 15 : 25);
-    else return offset - (isMobile ? 20 : 30);
+    console.log('[dynamicYLabelOffset] Final offset:', offset);
+    return offset;
   }, [maxValue, minValue, selectedMetric, formatYAxisTick, isMobile]);
   // const dynamicYLabelOffset = -20; // Temporary for testing
 
 
   // --------------- testing ---------------
 
-  console.log("Is Mobile:", isMobile);
-  console.log("Sorted Project Titles by Latest Score:", sortedProjectTitlesByLatestScore);
-  console.log("Titles to Render:", titlesToRender);
-  // console.log("Chart Data (first 5 rows):", chartData.slice(0, 5));
-  console.log("Chart Data CONTENT (first 2 rows):", JSON.stringify(chartData.slice(0, 2), null, 2));
-  console.log("Chart Data Length:", chartData.length);
-  console.log("Is Loading:", isLoading);
-  console.log("Error State:", error);
-  console.log("Project Colors:", projectColors); // Check if colors are generated
-  console.log("Line Opacity State:", lineOpacity); // Check opacity state
+  // console.log("Is Mobile:", isMobile);
+  // console.log("Sorted Project Titles by Latest Score:", sortedProjectTitlesByLatestScore);
+  // console.log("Titles to Render:", titlesToRender);
+  // // console.log("Chart Data (first 5 rows):", chartData.slice(0, 5));
+  // console.log("Chart Data CONTENT (first 2 rows):", JSON.stringify(chartData.slice(0, 2), null, 2));
+  // console.log("Chart Data Length:", chartData.length);
+  // console.log("Is Loading:", isLoading);
+  // console.log("Error State:", error);
+  // console.log("Project Colors:", projectColors); // Check if colors are generated
+  // console.log("Line Opacity State:", lineOpacity); // Check opacity state
 
   // --------------- end testing ---------------
 
