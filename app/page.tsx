@@ -16,8 +16,6 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  // testing
-  // eslint-disable-next-line 
   Label,
 } from 'recharts';
 import chroma from 'chroma-js';
@@ -146,17 +144,6 @@ const HomePage: React.FC = () => {
           throw new Error("Invalid data format received from API.");
         }
         setApiData(fetchedData);
-
-        // --------------- testing ---------------
-        setApiData(fetchedData);
-        console.log("Sample apiData items for selectedMetric '", selectedMetric, "':",
-            fetchedData.slice(0, 3).map(item => ({
-                project_title: item.project_title,
-                report_date: item.report_date,
-                metricValue: item[selectedMetric] // Directly inspect the value being used
-            }))
-        );
-        // --------------- end testing ---------------
 
         // Set all unique project titles once from the fetched data
         // This list is used for color generation and opacity state keys.
@@ -391,8 +378,7 @@ const HomePage: React.FC = () => {
     if (selectedMetric === 'weighted_score_index') return new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
     return value.toLocaleString ? value.toLocaleString('en-US') : String(value);
   }, [selectedMetric]);
-  // disable for testing
-  // eslint-disable-next-line
+
   const { maxValue, minValue } = useMemo(() => {
     if (!chartData || chartData.length === 0 || !titlesToRender || titlesToRender.length === 0) return { maxValue: 0, minValue: 0 };
     let maxVal = -Infinity; let minVal = Infinity;
@@ -409,8 +395,6 @@ const HomePage: React.FC = () => {
   }, [chartData, titlesToRender]); // Use titlesToRender
 
   // --- Dynamic Y-Label Offset that accomodates mobile ---
-  // testing
-  // eslint-disable-next-line 
   const dynamicYLabelOffset = useMemo(() => {
     console.log('[dynamicYLabelOffset] Inputs:', { maxValue, minValue, selectedMetric, isMobile });
   
@@ -453,23 +437,6 @@ const HomePage: React.FC = () => {
     console.log('[dynamicYLabelOffset] Final offset:', offset);
     return offset;
   }, [maxValue, minValue, selectedMetric, formatYAxisTick, isMobile]);
-  // const dynamicYLabelOffset = -20; // Temporary for testing
-
-
-  // --------------- testing ---------------
-
-  // console.log("Is Mobile:", isMobile);
-  // console.log("Sorted Project Titles by Latest Score:", sortedProjectTitlesByLatestScore);
-  // console.log("Titles to Render:", titlesToRender);
-  // // console.log("Chart Data (first 5 rows):", chartData.slice(0, 5));
-  // console.log("Chart Data CONTENT (first 2 rows):", JSON.stringify(chartData.slice(0, 2), null, 2));
-  // console.log("Chart Data Length:", chartData.length);
-  // console.log("Is Loading:", isLoading);
-  // console.log("Error State:", error);
-  // console.log("Project Colors:", projectColors); // Check if colors are generated
-  // console.log("Line Opacity State:", lineOpacity); // Check opacity state
-
-  // --------------- end testing ---------------
 
    // --- Render Logic ---
    if (isLoading) return <div className="text-center p-4 md:p-10">Loading data...</div>;
@@ -512,8 +479,7 @@ const HomePage: React.FC = () => {
          <ResponsiveContainer width="100%" height={isMobile ? 400 : 600}>
            <LineChart
              data={chartData}
-            //margin={{ top: 5, right: isMobile ? 10 : 30, left: isMobile ? 5 : dynamicYLabelOffset < -40 ? 70 : 60, bottom: isMobile ? 70 : 50 }}
-            margin={{ top: 20, right: 30, left: 50, bottom: 50 }} // Temporary for testing
+            margin={{ top: 5, right: isMobile ? 10 : 30, left: isMobile ? 5 : dynamicYLabelOffset < -40 ? 70 : 60, bottom: isMobile ? 70 : 50 }}
            >
              <CartesianGrid strokeDasharray="3 3" stroke="#555" />
              <XAxis
@@ -523,38 +489,16 @@ const HomePage: React.FC = () => {
                  interval={isMobile ? Math.max(0, Math.floor(chartData.length / (chartData.length > 10 ? 5: 3) ) -1) : "preserveStartEnd"} // Fewer ticks on mobile, ensure at least a few.
                  tick={{ fontSize: isMobile ? 9 : 12 }} // smaller font for mobile XAxis ticks
              />
-             {/* Testing THIS IS WHERE YOU REPLACE YOUR CURRENT YAXIS WITH THE SIMPLIFIED ONE: */}
-             <YAxis
-                type="number"
-                domain={['auto', 'auto']}
-                tickFormatter={formatYAxisTick}
+              <YAxis
+                type="number" domain={['auto', 'auto']} tickFormatter={formatYAxisTick}
                 tick={{ fontSize: isMobile ? 10 : 12 }}
-                // Keep the 'width' prop commented out for now - testing
-                // width={isMobile && dynamicYLabelOffset < -35 ? Math.abs(dynamicYLabelOffset) + 15 : undefined}
-                width={undefined}
               >
                 <Label
-                  value={currentMetricLabel}
-                  angle={-90}
-                  position="insideLeft"
-                  style={{ textAnchor: 'middle', fill: '#f5f5f5', fontSize: isMobile ? '11px' : '14px' }}
-                  offset={dynamicYLabelOffset} // Use your calculated offset here
+                  value={currentMetricLabel} angle={-90} position="insideLeft"
+                  style={{ textAnchor: 'middle', fill: '#f5f5f5', fontSize: isMobile ? '11px': '14px' }}
+                  offset={dynamicYLabelOffset}
                 />
               </YAxis>
-
-             {/* YOUR ORIGINAL YAXIS (now commented out or deleted for the test):
-                <YAxis
-                  type="number" domain={['auto', 'auto']} tickFormatter={formatYAxisTick}
-                  tick={{ fontSize: isMobile ? 10 : 12 }}
-                  width={isMobile && dynamicYLabelOffset < -35 ? Math.abs(dynamicYLabelOffset) + 15 : undefined}
-                >
-                  <Label
-                    value={currentMetricLabel} angle={-90} position="insideLeft"
-                    style={{ textAnchor: 'middle', fill: '#f5f5f5', fontSize: isMobile ? '11px': '14px' }}
-                    offset={dynamicYLabelOffset}
-                  />
-                </YAxis>
-             */}
              <Tooltip
                  contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px', fontSize: isMobile ? '11px': '12px' }}
                  formatter={(
