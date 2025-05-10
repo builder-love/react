@@ -533,7 +533,7 @@ const HomePage: React.FC = () => {
                   angle={-90}
                   position="insideLeft"
                   style={{ textAnchor: 'middle', fill: '#f5f5f5', fontSize: isMobile ? '11px' : '14px' }}
-                  offset={-20} // Use a simple, hardcoded negative number for testing
+                  offset={dynamicYLabelOffset} // Use your calculated offset here
                 />
               </YAxis>
 
