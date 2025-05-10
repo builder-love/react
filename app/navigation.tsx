@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { useScreenOrientation } from './hooks/useScreenOrientation';
 
@@ -20,11 +20,11 @@ const Navigation: React.FC<React.PropsWithChildren> = ({ children }) => {
   };
 
   // Collapse on route change (only on mobile)
-  const collapseNav = () => {
+  const collapseNav = useCallback(() => { // Make sure collapseNav is memoized if it's complex or passed down
     if (isMobile) {
       setIsNavCollapsed(true);
     }
-  };
+  }, [isMobile]); // Add isMobile as a dependency here
 
   // Collapse by default on mobile, always expanded on desktop
   useEffect(() => {
@@ -33,7 +33,7 @@ const Navigation: React.FC<React.PropsWithChildren> = ({ children }) => {
 
   useEffect(() => {
     collapseNav();
-  }, [pathname]);
+  }, [pathname, collapseNav]); // ADD collapseNav HERE
 
   const getNavWidth = () => {
     if (!isMobile) {

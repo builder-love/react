@@ -5,7 +5,6 @@ import React, {
   useEffect,
   useMemo,
   useCallback,
-  MouseEvent,
   ChangeEvent
 } from 'react';
 import {
@@ -21,8 +20,9 @@ import {
 } from 'recharts';
 import chroma from 'chroma-js';
 import type { EnhancedTopProjectsTrendsData, FormattedLineChartData } from './types';
-import { Payload } from 'recharts/types/component/DefaultLegendContent';
+import { Payload as RechartsLegendPayload } from 'recharts/types/component/DefaultLegendContent';
 import Image from 'next/image';
+import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 
 // --- Define Metric Options ---
 // Map user-friendly labels to the actual data keys expected from the API
@@ -80,6 +80,26 @@ const generateColors = (count: number): string[] => {
 
 };
 
+// --- hook for mobile view - screen size ---
+const useIsMobile = (breakpoint = 768): boolean => { // Tailwind's 'md' breakpoint
+  const [isMobileView, setIsMobileView] = useState(false);
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobileView(window.innerWidth < breakpoint);
+    };
+
+    // Ensure window is defined (for SSR/Next.js)
+    if (typeof window !== 'undefined') {
+      checkScreenSize(); // Initial check
+      window.addEventListener('resize', checkScreenSize);
+      return () => window.removeEventListener('resize', checkScreenSize);
+    }
+  }, [breakpoint]);
+
+  return isMobileView;
+};
+
 const HomePage: React.FC = () => {
   // Use the enhanced type for apiData state
   const [apiData, setApiData] = useState<EnhancedTopProjectsTrendsData[]>([]);
@@ -87,577 +107,496 @@ const HomePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lineOpacity, setLineOpacity] = useState<Record<string, number>>({});
+  const [selectedMetric, setSelectedMetric] = useState<string>(metricOptions[0].value); // state for selected metric; efault to first option's value
+  const isMobile = useIsMobile(); // Use the mobile hook
 
-  // --- STATE FOR SELECTED METRIC ---
-  const [selectedMetric, setSelectedMetric] = useState<string>(metricOptions[0].value); // Default to first option's value
-
-  // --- Initialize lineOpacity state when projectTitles are loaded ---
+  // --- Initialize lineOpacity state when all projectTitles are loaded ---
   useEffect(() => {
     if (projectTitles.length > 0) {
       const initialOpacity = projectTitles.reduce((acc, title) => {
-        acc[title] = 1; // Start with all lines fully opaque
+        acc[title] = 1;
         return acc;
       }, {} as Record<string, number>);
       setLineOpacity(initialOpacity);
-      console.log("Initialized line opacity state:", initialOpacity);
+      // console.log("Initialized line opacity state for all projects:", initialOpacity);
     }
-  }, [projectTitles]); // Dependency on projectTitles
+  }, [projectTitles]); // Dependency on the full list of projectTitles
 
   // --- Fetch Data ---
   useEffect(() => {
     const fetchData = async () => {
-      // Reset states for fetch cycle
       setIsLoading(true);
       setError(null);
-      setApiData([]); // Clear previous data
-      setProjectTitles([]);
-
+      // setApiData([]); // Clear previous data if re-fetching, but not projectTitles yet
+      // setProjectTitles([]);
       try {
-        console.log("Fetching project trends data from API route..."); // Log start
         const response = await fetch('/api/get-top50-project-trends');
-
         if (!response.ok) {
           let errorDetail = `HTTP error! status: ${response.status}`;
           try {
             const errorData = await response.json();
-            console.error("API Error Data:", errorData); // Log error response body
             errorDetail = errorData.message || errorDetail;
-          } catch (jsonError) {
-             console.error("Error parsing JSON error response:", jsonError);
-          }
+          } catch (_jsonError) { console.error("Failed to parse API error response:", _jsonError); }
           throw new Error(errorDetail);
         }
-
-         // Cast to the enhanced type
-         const fetchedData: EnhancedTopProjectsTrendsData[] = await response.json();
-
-        // Check if it's an array and if it has items
+        const fetchedData: EnhancedTopProjectsTrendsData[] = await response.json();
         if (!Array.isArray(fetchedData)) {
-          console.error("API did not return an array!");
           throw new Error("Invalid data format received from API.");
         }
-        console.log(`Received ${fetchedData.length} items from API.`);
+        setApiData(fetchedData);
 
-
-        setApiData(fetchedData); // Store raw data
-
-         // Get unique project titles (only needs to be done once)
-         const uniqueTitles = [...new Set(fetchedData.map(item => item.project_title))].filter(Boolean); // Filter out potential null/empty titles
-         setProjectTitles(uniqueTitles);
+        // Set all unique project titles once from the fetched data
+        // This list is used for color generation and opacity state keys.
+        const uniqueTitles = [...new Set(fetchedData.map(item => item.project_title))].filter(Boolean);
+        setProjectTitles(uniqueTitles);
 
       } catch (err: unknown) {
-        let message = 'An unknown error occurred fetching project trends data';
-        if (err instanceof Error) {
-          message = err.message;
-          console.error("Fetching project trends error:", err);
-        } else {
-          console.error("Unexpected project trends error type:", err);
-          message = String(err) || message;
-        }
+        let message = 'An unknown error occurred';
+        if (err instanceof Error) message = err.message;
+        else message = String(err) || message;
         setError(message);
       } finally {
         setIsLoading(false);
-        console.log("Finished fetching data, loading set to false."); // Log end fetch
       }
     };
-
     fetchData();
-  }, []); // Runs once on mount
+  }, []);
 
-   // --- Data Transformation (Now depends on selectedMetric) ---
-   const chartData = useMemo(() => {
-    console.log(`Transforming data for selected metric: ${selectedMetric}`);
+  // --- Determine Ranked Project Titles (for Top 10 selection) ---
+  const sortedProjectTitlesByLatestScore = useMemo(() => {
     if (!apiData || apiData.length === 0) {
-      console.log("Transformation skipped: apiData is empty.");
-      return [];
+      return projectTitles; // Fallback to fetched order if no data for ranking
     }
 
-    const groupedData: Record<string, FormattedLineChartData> = {};
+    // Find the latest report date in the dataset
+    const latestDate = apiData.reduce((max, p) => (p.report_date > max ? p.report_date : max), apiData[0].report_date);
 
-    apiData.forEach(item => {
-      const { report_date, project_title } = item;
-      // --- Dynamically access the selected metric's value ---
-      const metricValue = item[selectedMetric];
+    // Get projects with their latest weighted_score_index
+    const projectsWithScores = projectTitles.map(title => {
+      const latestEntryForProject = apiData
+        .filter(item => item.project_title === title && item.report_date === latestDate)
+        .sort((a, b) => new Date(b.report_date).getTime() - new Date(a.report_date).getTime())[0]; // Should be unique by date
 
-      if (project_title === 'Ethereum' && report_date.startsWith('2025-04-27')) {
-        console.log('Processing:', report_date, project_title, selectedMetric, metricValue);
-      }
-
-      // Basic validation for core fields and the *selected* metric
-      if (!report_date || !project_title || metricValue === undefined /* Allow 0 */) {
-          // Only warn if the *selected* metric is missing, allow others to be absent
-          // console.warn(`Skipping item - missing data for metric '${selectedMetric}':`, item);
-          // We still need the date entry, just might have nulls for some projects
-          // Let connectNulls handle it in the chart, but ensure date entry exists
-          if (!groupedData[report_date]) {
-               groupedData[report_date] = { report_date };
-           }
-           // Assign null if value is missing for this specific project/metric/date combo
-           groupedData[report_date][project_title] = null;
-          // return; // Don't skip the whole date entry
-      } else {
-           if (!groupedData[report_date]) {
-               groupedData[report_date] = { report_date };
-           }
-            // Store the value of the currently selected metric
-           groupedData[report_date][project_title] = metricValue;
-      }
-
-
+      return {
+        title: title,
+        score: latestEntryForProject?.weighted_score_index ?? -Infinity, // Default score for sorting if not found
+      };
     });
 
-    // Ensure all projects exist as keys for all dates, filling with null if necessary
+    // Sort by score descending
+    projectsWithScores.sort((a, b) => b.score - a.score);
+
+    return projectsWithScores.map(p => p.title);
+  }, [apiData, projectTitles]);
+
+  // --- Determine Titles to Render based on device and ranking ---
+  const titlesToRender = useMemo(() => {
+    if (isMobile) {
+      return sortedProjectTitlesByLatestScore.slice(0, 10);
+    }
+    return sortedProjectTitlesByLatestScore; // Show all (sorted) on desktop
+  }, [isMobile, sortedProjectTitlesByLatestScore]);
+
+  // --- Data Transformation for Chart (uses ALL fetched apiData, but chart will only render lines for titlesToRender) ---
+  const chartData = useMemo(() => {
+    // console.log(`Transforming data for selected metric: ${selectedMetric}`);
+    if (!apiData || apiData.length === 0) {
+      // console.log("Transformation skipped: apiData is empty.");
+      return [];
+    }
+    const groupedData: Record<string, FormattedLineChartData> = {};
+    apiData.forEach(item => {
+      const { report_date, project_title } = item;
+      let metricValue = item[selectedMetric]; // Dynamic access to selected metric
+
+      // Attempt to convert to number if it's a string that represents a number
+      // and ensure it's not an empty string that would become 0
+      if (typeof metricValue === 'string' && metricValue.trim() !== '') {
+        const num = parseFloat(metricValue);
+        metricValue = isNaN(num) ? null : num; // If not a valid number, treat as null
+      } else if (typeof metricValue !== 'number') {
+        // If it's not a number and not a string we could parse, set to null
+        // (handles undefined, empty strings, other non-numeric types)
+        metricValue = null;
+      }
+      // If it was already a number, it remains a number.
+      // If it was undefined, it becomes null.
+
+      if (!groupedData[report_date]) {
+           groupedData[report_date] = { report_date };
+       }
+      // Ensure project_title is valid before using as a key
+      if (project_title) {
+        if (metricValue === undefined) {
+             groupedData[report_date][project_title] = null;
+        } else {
+             groupedData[report_date][project_title] = metricValue;
+        }
+      }
+    });
+
+    // Ensure all *globally known* project titles have an entry for each date,
+    // so connectNulls can work correctly even if a project temporarily has no data for the selected metric.
      const allDates = Object.keys(groupedData);
      allDates.forEach(date => {
-       projectTitles.forEach(title => {
+       projectTitles.forEach(title => { // Iterate over the full list of titles
            if (!(title in groupedData[date])) {
-               groupedData[date][title] = null; // Assign null if project has no data for this date/metric
+               groupedData[date][title] = null;
            }
        });
      });
 
-
     const sortedData = Object.values(groupedData).sort((a, b) =>
       new Date(a.report_date).getTime() - new Date(b.report_date).getTime()
     );
-
-    console.log("Data transformation complete. Transformed Data:", sortedData.slice(0, 5)); // Log first 5 rows
+    // console.log("Data transformation complete. Transformed Data Sample:", sortedData.slice(0, 2));
     return sortedData;
-
-  }, [apiData, selectedMetric, projectTitles]); // Add selectedMetric and projectTitles as dependencies
+  }, [apiData, selectedMetric, projectTitles]); // projectTitles dependency ensures all projects are processed
 
    // --- Get Current Metric Label for Y-Axis ---
    const currentMetricLabel = useMemo(() => {
     return metricOptions.find(opt => opt.value === selectedMetric)?.label || 'Selected Metric';
   }, [selectedMetric]);
 
-  // Generate colors
+  // Generate colors based on ALL unique project titles to maintain consistency
   const projectColors = useMemo(() => {
-      const colors = generateColors(projectTitles.length);
-      const colorMap = projectTitles.reduce((acc, title, index) => {
-          acc[title] = colors[index % colors.length];
-          return acc;
-      }, {} as Record<string, string>);
-      return colorMap;
-  }, [projectTitles]);
+    const colors = generateColors(projectTitles.length); // Use full list
+    const colorMap = projectTitles.reduce((acc, title, index) => {
+        acc[title] = colors[index % colors.length];
+        return acc;
+    }, {} as Record<string, string>);
+    return colorMap;
+}, [projectTitles]); // Use full list
 
-  // Date Formatting
+  // --- Date Formatting that accomodates mobile ---
   const formatDateTick = useCallback((tickItem: string): string => {
     try {
-      // Assuming tickItem is a string representing a date, potentially like 'YYYY-MM-DD'
-      // or the format seen in your screenshot 'MM-DDTHH:mm:ssZ'.
-      // new Date() should handle these standard formats.
       const date = new Date(tickItem);
-
-      // Check if the date object is valid
-      if (isNaN(date.getTime())) {
-          console.warn("Invalid date encountered in tickFormatter:", tickItem);
-          return tickItem; // Return original string if parsing fails
+      if (isNaN(date.getTime())) return tickItem;
+      if (isMobile) {
+        return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', timeZone: 'UTC' });
       }
-
-      // Format to 'mmm-dd-yyyy' using UTC methods to align with 'Z' timezone indicator if present
-      // Get the abbreviated month name (e.g., 'Apr')
       const month = date.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
-      // Get the zero-padded day (e.g., '05', '27')
       const day = date.getUTCDate().toString().padStart(2, '0');
-      // Get the full year (e.g., '2025')
       const year = date.getUTCFullYear();
-
-      // Combine parts with hyphens
       return `${month}-${day}-${year}`;
-
-    } catch (e) {
-      console.error("Error formatting date tick:", tickItem, e);
-      return tickItem; // Fallback to original tick value on error
-    }
-  }, []); // No dependencies needed
+    } catch (_e) { console.error("Error formatting date tick:", tickItem, _e); return tickItem; }
+  }, [isMobile]);
 
   // --- LEGEND HOVER HANDLERS ---
   const handleMouseEnter = useCallback(
-    (_data: Payload, _index: number, _event: MouseEvent<Element>) => {
-      if (_data.dataKey) {
-        const dataKey = String(_data.dataKey);
-        setLineOpacity((prevOpacity) => ({
-          ...prevOpacity,
-          ...Object.keys(prevOpacity).reduce((acc, key) => ({
-            ...acc,
-            [key]: key === dataKey ? 1 : 0.2
-          }), {})
-        }));
+    (data: RechartsLegendPayload, _index: number /*, event: React.MouseEvent<SVGElement> */) => {
+      // The 'data' object here is the one from Recharts Legend payload.
+      // It should have a 'dataKey' property.
+      const dataKey = data.dataKey ? String(data.dataKey) : null;
+  
+      if (dataKey) {
+        setLineOpacity(prev => {
+          const newOpacity = { ...prev };
+          Object.keys(newOpacity).forEach(k => {
+            newOpacity[k] = k === dataKey ? 1 : 0.2;
+          });
+          return newOpacity;
+        });
       }
     },
     []
   );
   
   const handleMouseLeave = useCallback(
-    (_data: Payload, _index: number, _event: MouseEvent<Element>) => {
-      setLineOpacity((prevOpacity) => (
-        Object.keys(prevOpacity).reduce((acc, key) => ({
-          ...acc,
-          [key]: 1
-        }), {})
-      ));
+    (_data: RechartsLegendPayload, _index: number /*, event: React.MouseEvent<SVGElement> */) => {
+      // We don't use data, index, or event here but include them for type compatibility
+      setLineOpacity(prev => {
+        const newOpacity = { ...prev };
+        Object.keys(newOpacity).forEach(k => {
+          newOpacity[k] = 1;
+        });
+        return newOpacity;
+      });
     },
     []
   );
+  
 
    // --- CSV Download Handler (Updated to use selected metric label) ---
    const handleDownloadCSV = useCallback(() => {
-    // ... (rest of the function is mostly the same)
-       if (!chartData || chartData.length === 0 || !projectTitles || projectTitles.length === 0) {
-           console.warn("Cannot download CSV: No data available.");
-           alert("No data available to download.");
-           return;
-       }
-
-       const sanitizeForCSV = (value: string | number | null | undefined): string => {
-           let strValue = String(value ?? ''); // Handle null/undefined -> empty string
-           if (['=', '+', '-', '@'].some(char => strValue.startsWith(char))) {
-               strValue = `'${strValue}`;
-           }
-           strValue = strValue.replace(/"/g, '""');
-           if (strValue.includes(',') || strValue.includes('\n') || strValue.includes('"')) {
-               strValue = `"${strValue}"`;
-           }
-           return strValue;
-       };
-
-       // 1. Create Header Row (Use current metric label)
-       const currentMetricHeader = selectedMetric; // Use the actual data key for the header
-       const headers = ['report_date', 'project_title', currentMetricHeader]
-           // .map(sanitizeForCSV) // Sanitizing these specific headers isn't strictly necessary
-           .join(',');
-
-       // 2. Create Data Rows (remains the same logic as long format)
-       const dataRows: string[] = [];
-       chartData.forEach(row => {
-           const reportDate = row.report_date;
-           projectTitles.forEach(projectTitle => {
-               const score = row[projectTitle]; // This score is already the selected metric's value
-               const csvRow = [
-                   sanitizeForCSV(reportDate),
-                   sanitizeForCSV(projectTitle),
-                   sanitizeForCSV(score)
-               ].join(',');
-               dataRows.push(csvRow);
-           });
-       });
-
-       // 3. Combine Headers and Rows
-       const csvContent = [headers, ...dataRows].join('\n');
-
-       // 4. Create Blob and Trigger Download
-       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-       const link = document.createElement('a');
-       if (link.download !== undefined) {
-           const url = URL.createObjectURL(blob);
-           const dateStamp = new Date().toISOString().split('T')[0];
-           // Make filename dynamic based on metric
-           const filename = `project_trends_${selectedMetric}_${dateStamp}.csv`;
-           link.setAttribute('href', url);
-           link.setAttribute('download', filename);
-           link.style.visibility = 'hidden';
-           document.body.appendChild(link);
-           link.click();
-           document.body.removeChild(link);
-           URL.revokeObjectURL(url);
-       } else {
-           console.error("CSV download failed: Browser does not support the download attribute.");
-           alert("CSV download failed: Your browser doesn't support this feature.");
-       }
-
-  }, [chartData, projectTitles, selectedMetric]); // Add selectedMetric dependency
+    if (!chartData || chartData.length === 0 || !titlesToRender || titlesToRender.length === 0) { // Use titlesToRender for check
+        alert("No data available to download.");
+        return;
+    }
+    const sanitizeForCSV = (value: string | number | null | undefined): string => {
+        let strValue = String(value ?? '');
+        if (['=', '+', '-', '@'].some(char => strValue.startsWith(char))) strValue = `'${strValue}`;
+        strValue = strValue.replace(/"/g, '""');
+        if (strValue.includes(',') || strValue.includes('\n') || strValue.includes('"')) strValue = `"${strValue}"`;
+        return strValue;
+    };
+    const currentMetricHeader = selectedMetric;
+    const headers = ['report_date', 'project_title', currentMetricHeader].join(',');
+    const dataRows: string[] = [];
+    chartData.forEach(row => {
+        const reportDate = row.report_date;
+        titlesToRender.forEach(projectTitle => { // Iterate over titlesToRender for CSV
+            const score = row[projectTitle];
+            const csvRow = [
+                sanitizeForCSV(reportDate),
+                sanitizeForCSV(projectTitle),
+                sanitizeForCSV(score)
+            ].join(',');
+            dataRows.push(csvRow);
+        });
+    });
+    const csvContent = [headers, ...dataRows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        const dateStamp = new Date().toISOString().split('T')[0];
+        const filename = `project_trends_${selectedMetric}_${dateStamp}.csv`;
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } else {
+        alert("CSV download failed.");
+    }
+}, [chartData, titlesToRender, selectedMetric]); // Use titlesToRender
 
   // --- Dropdown Change Handler ---
   const handleMetricChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
-       setSelectedMetric(event.target.value);
-       console.log("Metric changed to:", event.target.value);
-  }, []);
+    setSelectedMetric(event.target.value);
+}, []);
 
   // --- Dynamic Y-Axis Tick Formatter ---
   const formatYAxisTick = useCallback((value: unknown): string => {
-    if (typeof value !== 'number' || !isFinite(value)) {
-      return value !== undefined && value !== null ? String(value) : '';
-    }
-
-    if (percentMetrics.has(selectedMetric)) {
-      return new Intl.NumberFormat('en-US', {
-        style: 'percent',
-        minimumFractionDigits: 1,
-        maximumFractionDigits: 1
-      }).format(value);
-    }
-
-    if (integerMetrics.has(selectedMetric)) {
-      return new Intl.NumberFormat('en-US', {
-        maximumFractionDigits: 0
-      }).format(value);
-    }
-
-    if (selectedMetric === 'weighted_score_index') {
-      return new Intl.NumberFormat('en-US', {
-        minimumFractionDigits: 1,
-        maximumFractionDigits: 1
-      }).format(value);
-    }
-
-    return value.toLocaleString
-      ? value.toLocaleString('en-US')
-      : String(value);
+    if (typeof value !== 'number' || !isFinite(value)) return value !== undefined && value !== null ? String(value) : '';
+    if (percentMetrics.has(selectedMetric)) return new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
+    if (integerMetrics.has(selectedMetric)) return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value);
+    if (selectedMetric === 'weighted_score_index') return new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
+    return value.toLocaleString ? value.toLocaleString('en-US') : String(value);
   }, [selectedMetric]);
 
-  // begin y axis label offset calculation
-
-  // Get the max/min values for the currently selected metric in the chart data
-  // We need both max and min now to gauge the potential width of formatted labels
   const { maxValue, minValue } = useMemo(() => {
-    if (!chartData || chartData.length === 0) return { maxValue: 0, minValue: 0 };
-
-    let maxVal = -Infinity;
-    let minVal = Infinity;
-
+    if (!chartData || chartData.length === 0 || !titlesToRender || titlesToRender.length === 0) return { maxValue: 0, minValue: 0 };
+    let maxVal = -Infinity; let minVal = Infinity;
     chartData.forEach(row => {
-        projectTitles.forEach(title => {
-            const value = row[title]; // Access the metric value for the project
-            // Ensure it's a number before comparing
+        titlesToRender.forEach(title => { // Use titlesToRender for calc
+            const value = row[title];
             if (typeof value === 'number' && isFinite(value)) {
                 if (value > maxVal) maxVal = value;
                 if (value < minVal) minVal = value;
             }
         });
     });
+    return { maxValue: maxVal === -Infinity ? 0 : maxVal, minValue: minVal === Infinity ? 0 : minVal };
+  }, [chartData, titlesToRender]); // Use titlesToRender
 
-    // Return 0 if no valid numbers found
-    return {
-        maxValue: maxVal === -Infinity ? 0 : maxVal,
-        minValue: minVal === Infinity ? 0 : minVal
-    };
-  }, [chartData, projectTitles]); // Recalculate when chartData or projectTitles change
-
-  // Calculate the dynamic offset based on the potential width of formatted tick labels
+  // --- Dynamic Y-Label Offset that accomodates mobile ---
   const dynamicYLabelOffset = useMemo(() => {
-    // Determine if the selected metric is a percentage
+    console.log('[dynamicYLabelOffset] Inputs:', { maxValue, minValue, selectedMetric, isMobile });
+  
+    const baseDesktopOffset = -35; const baseMobileOffset = -25;
+    let offset = isMobile ? baseMobileOffset : baseDesktopOffset;
+    console.log('[dynamicYLabelOffset] Initial offset:', offset);
+  
     const isPercent = percentMetrics.has(selectedMetric);
-
-    // If it's a percent metric, use a larger fixed offset because percentage labels
-    // (e.g., "-1,234.5%") can be wide regardless of the absolute max value.
+    console.log('[dynamicYLabelOffset] isPercent:', isPercent);
+  
     if (isPercent) {
-        // Consider the formatted length of both max and min values
         const maxFormatted = formatYAxisTick(maxValue);
         const minFormatted = formatYAxisTick(minValue);
-        // Use a larger offset if either formatted string is long (e.g., includes thousands separator or negative sign)
-        if (maxFormatted.length > 6 || minFormatted.length > 6) { // Adjust '6' based on testing
-           return -50; // Increased offset for wide percentages
+        console.log('[dynamicYLabelOffset] Percent metrics - maxFormatted:', maxFormatted, 'minFormatted:', minFormatted);
+        if (maxFormatted.length > 7 || minFormatted.length > 7) {
+            offset -= isMobile ? 15 : 20;
+        } else {
+            offset -= isMobile ? 10 : 15;
         }
-        return -40; // Standard offset for narrower percentages
-    }
-
-    // --- Logic for Non-Percentage Metrics (based on magnitude) ---
-    // Format the max value using the *non-percent* logic to estimate width
-    let formattedMaxMagnitude: string;
-    if (integerMetrics.has(selectedMetric)) {
-         formattedMaxMagnitude = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(maxValue);
-    } else if (selectedMetric === 'weighted_score_index') {
-         formattedMaxMagnitude = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(maxValue);
     } else {
-         // Fallback for any other potential non-percent, non-integer types
-         formattedMaxMagnitude = maxValue.toLocaleString('en-US');
+        let formattedMaxMagnitude: string;
+        if (integerMetrics.has(selectedMetric)) {
+            formattedMaxMagnitude = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(maxValue);
+        } else if (selectedMetric === 'weighted_score_index') {
+            formattedMaxMagnitude = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(maxValue);
+        } else {
+            // Ensure maxValue is a number before calling toLocaleString if it could be something else
+            formattedMaxMagnitude = typeof maxValue === 'number' ? maxValue.toLocaleString('en-US') : String(maxValue);
+        }
+        console.log('[dynamicYLabelOffset] Non-percent - formattedMaxMagnitude:', formattedMaxMagnitude);
+  
+        const numDigits = formattedMaxMagnitude.replace(/[^0-9]/g, '').length;
+        console.log('[dynamicYLabelOffset] Non-percent - numDigits:', numDigits);
+  
+        if (numDigits < 4) { /* offset remains base */ }
+        else if (numDigits < 7) offset -= (isMobile ? 10 : 15);
+        else if (numDigits < 10) offset -= (isMobile ? 15 : 25);
+        else offset -= (isMobile ? 20 : 30);
     }
-
-    // Adjust offset based on the *length* of the formatted largest magnitude number
-    const numDigits = formattedMaxMagnitude.replace(/[^0-9]/g, '').length; // Approx number of digits
-
-    if (numDigits < 4) { // e.g., < 1,000
-        return -15;
-    } else if (numDigits < 7) { // e.g., < 1,000,000
-        return -30;
-    } else if (numDigits < 10) { // e.g., < 1,000,000,000
-        return -45;
-    } else { // Very large numbers
-        return -55;
-    }
-
-  }, [maxValue, minValue, selectedMetric, formatYAxisTick]); // DEPENDENCIES
+    console.log('[dynamicYLabelOffset] Final offset:', offset);
+    return offset;
+  }, [maxValue, minValue, selectedMetric, formatYAxisTick, isMobile]);
 
    // --- Render Logic ---
-   if (isLoading) {
-    return <div className="text-center p-10">Loading data...</div>;
-  }
+   if (isLoading) return <div className="text-center p-4 md:p-10">Loading data...</div>;
+   if (error) return <div className="text-center p-4 md:p-10 text-red-500">Error: {error}</div>;
+ 
+   const noDataForChart = !chartData || chartData.length === 0;
+   const noProjectsToDisplay = !titlesToRender || titlesToRender.length === 0;
+ 
+   if (noDataForChart && noProjectsToDisplay) return <div className="text-center p-4 md:p-10">No data available to display the chart.</div>;
+   if (noProjectsToDisplay) return <div className="text-center p-4 md:p-10">Data loaded, but no projects found to display.</div>;
+   if (noDataForChart) {
+     if (selectedMetric !== metricOptions[0].value) return <div className="text-center p-4 md:p-10">No data for: {currentMetricLabel}.</div>;
+     return <div className="text-center p-4 md:p-10">No time-series data found for selected projects.</div>;
+   }
 
-  if (error) {
-    return <div className="text-center p-10 text-red-500">Error loading data: {error}</div>;
-  }
+  // define a legendWrapperStyle that accomodates mobile
+  const legendWrapperStyle: React.CSSProperties = { // Explicitly typed
+    paddingBottom: '10px', // Common padding
+    maxWidth: '100%',      // Common constraint
+    overflowX: 'visible', // Common overflow
+    whiteSpace: 'normal', // Common whiteSpace
+  // Conditional styles
+    paddingTop: isMobile ? '10px' : '20px', // Less padding on top for mobile
+  };
 
-  // Check AFTER loading/error checks
-  const noDataAvailable = !chartData || chartData.length === 0;
-  const noProjectsAvailable = !projectTitles || projectTitles.length === 0;
-
-  if (noDataAvailable && noProjectsAvailable) {
-      console.log("RENDERING: No chart data or project titles available.");
-      return <div className="text-center p-10">No data available to display the chart.</div>;
-  }
-  if (noProjectsAvailable) {
-      console.log("RENDERING: No project titles available state (projectTitles is empty or null)");
-      return <div className="text-center p-10">Data loaded, but no projects found to display lines.</div>;
-  }
-  // If only chartData is missing but projects exist (less likely with current logic, but safe check)
-  if (noDataAvailable) {
-    console.log("RENDERING: No chart data available state (chartData is empty or null)");
-    // Be more specific if a metric was selected but yielded no chart data
-    if (selectedMetric !== metricOptions[0].value) {
-        return <div className="text-center p-10">No data available for the selected metric: {currentMetricLabel}.</div>;
-    }
-    return <div className="text-center p-10">Projects loaded, but no time-series data found.</div>;
-  } 
-
-  console.log("RENDERING: Attempting to render LineChart component...");
+  // --- ADJUST NUMBER OF projectTitles LINES FOR MOBILE ---
+  // top 10) on mobile for clarity.
+  // filter projectTitles here based on isMobile.
   return (
-    <div className="p-6">
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 w-full mb-6">
-         {/* Title */}
-         <h2 className="text-2xl font-bold text-center md:text-left">
-            Top 50 Blockchain Projects by Development Activity
+    <div className="p-2 sm:p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 w-full mb-4 md:mb-6">
+         <h2 className="text-xl sm:text-2xl font-bold text-center sm:text-left">
+            {isMobile ? "Top 10 Blockchain Projects" : "Top Blockchain Projects"}
+            { !isMobile && " by Development Activity" }
           </h2>
-         {/* Download Button */}
          <button
            onClick={handleDownloadCSV}
-           disabled={noDataAvailable || noProjectsAvailable} // Disable if no data/projects
-           className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150 ease-in-out ${ (noDataAvailable || noProjectsAvailable) ? 'opacity-50 cursor-not-allowed' : '' }`}
+           disabled={noDataForChart || noProjectsToDisplay}
+           className={`w-full sm:w-auto px-3 py-2 sm:px-4 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150 ease-in-out ${ (noDataForChart || noProjectsToDisplay) ? 'opacity-50 cursor-not-allowed' : '' }`}
          >
-            Download Chart Data
+            {isMobile ? "Download CSV" : "Download Chart Data"}
          </button>
       </div>
-       {/* Chart Area */}
+
        <div className="w-full">
-         <ResponsiveContainer width="100%" height={600}>
+         <ResponsiveContainer width="100%" height={isMobile ? 400 : 600}>
            <LineChart
-             data={chartData} // Data now dynamically reflects selectedMetric
-             margin={{ top: 5, right: 30, left: 60, bottom: 50 }} // Adjust left margin if Y-label gets long
+             data={chartData}
+            margin={{ top: 5, right: isMobile ? 10 : 30, left: isMobile ? 5 : dynamicYLabelOffset < -40 ? 70 : 60, bottom: isMobile ? 70 : 50 }}
            >
              <CartesianGrid strokeDasharray="3 3" stroke="#555" />
              <XAxis
-                // ... (XAxis props - no changes needed)
-                 dataKey="report_date"
-                 type="category"
-                 tickFormatter={formatDateTick}
-                 angle={-45}
-                 textAnchor="end"
-                 height={60}
-                 interval="preserveStartEnd"
+                 dataKey="report_date" type="category" tickFormatter={formatDateTick}
+                 angle={isMobile ? -60 : -45} textAnchor="end"
+                 height={isMobile ? 80 : 60}
+                 interval={isMobile ? Math.max(0, Math.floor(chartData.length / (chartData.length > 10 ? 5: 3) ) -1) : "preserveStartEnd"} // Fewer ticks on mobile, ensure at least a few.
+                 tick={{ fontSize: isMobile ? 9 : 12 }} // smaller font for mobile XAxis ticks
              />
-             <YAxis
-               type="number"
-               domain={['auto', 'auto']} // Keep auto domain for different metric scales
-               // Use the dynamic tick formatter function
-               tickFormatter={formatYAxisTick}
-             >
-                {/* Dynamic Y-Axis Label */}
-               <Label
-                 value={currentMetricLabel} // Use dynamic label
-                 angle={-90}
-                 position="insideLeft"
-                 style={{ textAnchor: 'middle', fill: '#f5f5f5' }}
-                 offset={dynamicYLabelOffset} // Use dynamic offset
-               />
-             </YAxis>
+              <YAxis
+                type="number" domain={['auto', 'auto']} tickFormatter={formatYAxisTick}
+                tick={{ fontSize: isMobile ? 10 : 12 }}
+              >
+                <Label
+                  value={currentMetricLabel} angle={-90} position="insideLeft"
+                  style={{ textAnchor: 'middle', fill: '#f5f5f5', fontSize: isMobile ? '11px': '14px' }}
+                  offset={dynamicYLabelOffset}
+                />
+              </YAxis>
              <Tooltip
-                 contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px' }}
-                 formatter={(value, name) => { // value type is inferred correctly here
-                     // Handle null/undefined first
-                     if (value === null || value === undefined) {
-                         return ['N/A', name];
-                     }
-
+                 contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px', fontSize: isMobile ? '11px': '12px' }}
+                 formatter={(
+                    value: ValueType, // Value of the data point
+                    name: NameType,   // Name of the data series (project_title)
+                    // props is one item from the Tooltip's payload array
+                    // Each item in this array typically has a 'color' property
+                    itemPayload: { color?: string; payload?: unknown /* other properties */ }
+                 ) => {
                      let formattedValue: string;
+                     const valueNum = Number(value);
 
-                     // Check type AFTER null/undefined check
-                     if (typeof value !== 'number' || !isFinite(value)) {
-                         // Handle potential non-numeric data if necessary
-                          formattedValue = String(value);
+                     if (value === null || value === undefined) { // Handle nulls explicitly first
+                        return [<span key={`${String(name)}-tooltip-value`} style={{ color: itemPayload.color || '#ccc' }}>N/A</span>, name];
                      }
-                     // Apply conditional formatting based on selectedMetric
-                     else if (percentMetrics.has(selectedMetric)) {
-                         formattedValue = new Intl.NumberFormat('en-US', {
-                             style: 'percent',
-                             minimumFractionDigits: 1,
-                             maximumFractionDigits: 1
-                         }).format(value); // Again, divide by 100 if API sends whole numbers for percent
+
+                     if (typeof valueNum !== 'number' || !isFinite(valueNum)) {
+                         formattedValue = String(value);
+                     } else if (percentMetrics.has(selectedMetric)) {
+                         formattedValue = new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(valueNum);
                      } else if (integerMetrics.has(selectedMetric)) {
-                         formattedValue = new Intl.NumberFormat('en-US', {
-                             maximumFractionDigits: 0
-                         }).format(value);
+                         formattedValue = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(valueNum);
                      } else if (selectedMetric === 'weighted_score_index') {
-                          formattedValue = new Intl.NumberFormat('en-US', {
-                             minimumFractionDigits: 1,
-                             maximumFractionDigits: 1
-                          }).format(value);
+                         formattedValue = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(valueNum);
                      } else {
-                         // Default formatting for other numbers
-                         formattedValue = value.toLocaleString('en-US');
+                         formattedValue = valueNum.toLocaleString ? valueNum.toLocaleString('en-US') : String(valueNum);
                      }
 
-                    return [formattedValue, name];
+                     // Use itemPayload.color directly
+                     const color = itemPayload.color || '#8884d8'; // Fallback color if needed
+
+                     return [
+                        <span key={`${String(name)}-tooltip-value`} style={{ color: color }}>{formattedValue}</span>,
+                        name
+                     ];
                  }}
                  labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
              />
-             <Legend
-                // ... (Legend props - no changes needed)
-                 layout="horizontal"
-                 verticalAlign="top"
-                 align="center"
-                 wrapperStyle={{ paddingTop: '20px' }}
-                 onMouseEnter={handleMouseEnter}
-                 onMouseLeave={handleMouseLeave}
-             />
-            {/* Render Lines - Apply opacity from state */}
-            {projectTitles.map((title) => {
-                 // Get opacity from state, default to 1 if state not yet initialized
-                 const currentOpacity = lineOpacity[title] !== undefined ? lineOpacity[title] : 1;
-                 // console.log(`Rendering line ${title} with opacity: ${currentOpacity}`); // Debugging
+            {/* Wrap legend on desktop, but scroll on mobile. Only for titlesToRender. */}
+            <Legend
+              layout="horizontal"
+              verticalAlign="top"
+              align="center"
+              wrapperStyle={legendWrapperStyle} // Apply the dynamic style
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+              payload={titlesToRender.map(title => ({ // This already correctly uses fewer titles on mobile
+                value: title,
+                type: "line",
+                id: title,
+                color: projectColors[title] || '#8884d8',
+                dataKey: title
+              }))}
+            />
 
+            {titlesToRender.map((title) => { // Iterate over titlesToRender
+                 const currentOpacity = lineOpacity[title] !== undefined ? lineOpacity[title] : 1;
                  return (
                     <Line
-                        key={title}
-                        type="monotone"
-                        dataKey={title}
+                        key={title} type="monotone" dataKey={title}
                         stroke={projectColors[title] || '#8884d8'}
-                        strokeWidth={2} // Or adjust dynamically: isHovered ? 4 : 2
-                        strokeOpacity={currentOpacity} // <-- Apply opacity from state
-                        dot={false}
-                        activeDot={{ r: 6 }}
-                        connectNulls={true}
-                        name={title}
+                        strokeWidth={isMobile ? 1.5 : 2}
+                        strokeOpacity={currentOpacity}
+                        dot={isMobile ? false : { r: 1, strokeWidth: 1 }}
+                        activeDot={{ r: isMobile ? 4 : 6 }}
+                        connectNulls={true} name={title}
+                        isAnimationActive={!isMobile}
                     />
                 );
             })}
           </LineChart>
         </ResponsiveContainer>
-      </div> {/* End Chart Area div */}
-      {/* --- START: Metric Selector Dropdown --- */}
-      {/* Position this div where the red square was */}
-      <div className="flex justify-end mt-4 mb-6 pr-4 md:pr-8"> {/* Adjust padding/margin as needed */}
-          <label htmlFor="metric-select" className="mr-2 self-center text-sm text-gray-400">Chart Metric:</label>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:justify-end items-stretch sm:items-center mt-4 mb-6 px-1 sm:pr-4 md:pr-8 gap-2">
+          <label htmlFor="metric-select" className="mb-1 sm:mb-0 sm:mr-2 self-start sm:self-center text-sm text-gray-400">Chart Metric:</label>
           <select
-              id="metric-select"
-              value={selectedMetric}
-              onChange={handleMetricChange}
-              className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2"
-              disabled={isLoading} // Disable while loading
+              id="metric-select" value={selectedMetric} onChange={handleMetricChange}
+              className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 w-full sm:w-auto"
+              disabled={isLoading}
           >
               {metricOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                      {option.label}
-                  </option>
+                  <option key={option.value} value={option.value}> {option.label} </option>
               ))}
           </select>
       </div>
-      {/* --- END: Metric Selector Dropdown --- */}
-      {/* --- START: Weighted Score Explanation Section --- */}
-      <div className="mt-8 pt-6 border-t border-gray-600"> {/* Add margin, padding, and a top border */}
-        <h3 className="text-lg font-semibold mb-2 text-gray-200"> {/* Heading style */}
+
+      <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-gray-600 px-1">
+        <h3 className="text-md sm:text-lg font-semibold mb-2 text-gray-200">
           How is weighted score calculated?
         </h3>
-        <p className="text-gray-400 text-sm">
+        <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
           The Weighted Score is calculated weekly to rank blockchain projects based on GitHub development activity and community engagement metrics. Here&apos;s the process:
           <br/><br/>
           1. Data Collection: Gathers both all-time counts and recent (4-week percentage) changes for repo-specific key metrics like Commits, Forks, Stargazers, Contributors, and Watchers. It also includes an originality metric.
@@ -669,7 +608,7 @@ const HomePage: React.FC = () => {
           4. Normalization: For each metric, every project&apos;s value is compared to all other projects within the same week and scaled to a value between 0 and 1.
           <br/><br/>
           5. Weighting: These normalized scores are multiplied by specific weights:
-          <div className="pl-4"> {/* pl-4 adds padding-left: 1rem */}
+          <div className="pl-4">
             - Major All-Time Metrics (12.5% each): Commits, Forks, Stars, Contributors.
           </div>
           <div className="pl-4">
@@ -682,26 +621,21 @@ const HomePage: React.FC = () => {
           <br/><br/>
           7. Index Conversion: The &quot;Weighted Score Index&quot; shown in the chart is simply this weighted_score multiplied by 100.
           <br/><br/>
-          Primary source for project-to-repo mapping is Electric Capital Crypto Ecosystems {' '} {/* Add a space before the image link */}
+          Primary source for project-to-repo mapping is Electric Capital Crypto Ecosystems {' '}
           <a
-            href="https://github.com/electric-capital/crypto-ecosystems"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block align-middle" // Crucial for alignment
+            href="https://github.com/electric-capital/crypto-ecosystems" target="_blank" rel="noopener noreferrer"
+            className="inline-block align-middle hover:underline"
           >
             <Image
-              src="/electric_capital_logo_transparent.png" // Path relative to the 'public' directory
-              alt="Electric Capital Crypto Ecosystems Logo Link"
-              width={371} 
-              height={32}
-              className="inline-block h-4 w-auto align-middle"
+              src="/electric_capital_logo_transparent.png" alt="Electric Capital Crypto Ecosystems Logo Link"
+              width={isMobile ? 200 : 371} height={isMobile ? 17 : 32}
+              className="inline-block h-3 sm:h-4 w-auto align-middle"
             />
           </a>
           <br/><br/>
-          Note: the crypto-ecosystems data architecture was up in April 2025. The new architecture more easily allows for aggregating sub-ecosystem repos to top level project. The impact is a big spike in weighted score, and input metric values for top ecosystems, like Ethereum who have a lot of sub-ecosystems. These trends will smooth out over time. 
+          Note: the crypto-ecosystems data architecture was up in April 2025. The new architecture more easily allows for aggregating sub-ecosystem repos to top level project. The impact is a big spike in weighted score, and input metric values for top ecosystems, like Ethereum who have a lot of sub-ecosystems. These trends will smooth out over time.
         </p>
       </div>
-      {/* --- END: Weighted Score Explanation Section --- */}
     </div>
   );
 };
