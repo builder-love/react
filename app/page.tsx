@@ -456,10 +456,10 @@ const HomePage: React.FC = () => {
   const legendWrapperStyle: React.CSSProperties = { // Explicitly typed
     paddingBottom: '10px', // Common padding
     maxWidth: '100%',      // Common constraint
+    overflowX: 'visible', // Common overflow
+    whiteSpace: 'normal', // Common whiteSpace
   // Conditional styles
     paddingTop: isMobile ? '10px' : '20px', // Less padding on top for mobile
-    overflowX: isMobile ? 'auto' : 'visible', // 'auto' for scroll on mobile, 'visible' for wrap on desktop
-    whiteSpace: isMobile ? 'nowrap' : 'normal', // 'nowrap' for scroll on mobile, 'normal' for wrap on desktop
   };
 
   // --- ADJUST NUMBER OF projectTitles LINES FOR MOBILE ---
