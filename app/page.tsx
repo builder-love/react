@@ -389,7 +389,8 @@ const HomePage: React.FC = () => {
     if (selectedMetric === 'weighted_score_index') return new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
     return value.toLocaleString ? value.toLocaleString('en-US') : String(value);
   }, [selectedMetric]);
-
+  // disable for testing
+  // eslint-disable-next-line
   const { maxValue, minValue } = useMemo(() => {
     if (!chartData || chartData.length === 0 || !titlesToRender || titlesToRender.length === 0) return { maxValue: 0, minValue: 0 };
     let maxVal = -Infinity; let minVal = Infinity;
@@ -481,7 +482,8 @@ const HomePage: React.FC = () => {
          <ResponsiveContainer width="100%" height={isMobile ? 400 : 600}>
            <LineChart
              data={chartData}
-             margin={{ top: 5, right: isMobile ? 10 : 30, left: isMobile ? 5 : dynamicYLabelOffset < -40 ? 70 : 60, bottom: isMobile ? 70 : 50 }}
+            //  margin={{ top: 5, right: isMobile ? 10 : 30, left: isMobile ? 5 : dynamicYLabelOffset < -40 ? 70 : 60, bottom: isMobile ? 70 : 50 }}
+            margin={{ top: 20, right: 30, left: 50, bottom: 50 }} // Temporary for testing
            >
              <CartesianGrid strokeDasharray="3 3" stroke="#555" />
              <XAxis
@@ -494,7 +496,7 @@ const HomePage: React.FC = () => {
              <YAxis
                type="number" domain={['auto', 'auto']} tickFormatter={formatYAxisTick}
                tick={{ fontSize: isMobile ? 10 : 12 }}
-               width={isMobile && dynamicYLabelOffset < -35 ? Math.abs(dynamicYLabelOffset) + 15 : undefined}
+              //  width={isMobile && dynamicYLabelOffset < -35 ? Math.abs(dynamicYLabelOffset) + 15 : undefined} commented out for testing
              >
                <Label
                  value={currentMetricLabel} angle={-90} position="insideLeft"
