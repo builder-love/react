@@ -482,8 +482,8 @@ const HomePage: React.FC = () => {
          <ResponsiveContainer width="100%" height={isMobile ? 400 : 600}>
            <LineChart
              data={chartData}
-            margin={{ top: 5, right: isMobile ? 10 : 30, left: isMobile ? 5 : dynamicYLabelOffset < -40 ? 70 : 60, bottom: isMobile ? 70 : 50 }}
-            //margin={{ top: 20, right: 30, left: 50, bottom: 50 }} // Temporary for testing
+            //margin={{ top: 5, right: isMobile ? 10 : 30, left: isMobile ? 5 : dynamicYLabelOffset < -40 ? 70 : 60, bottom: isMobile ? 70 : 50 }}
+            margin={{ top: 20, right: 30, left: 50, bottom: 50 }} // Temporary for testing
            >
              <CartesianGrid strokeDasharray="3 3" stroke="#555" />
              <XAxis
