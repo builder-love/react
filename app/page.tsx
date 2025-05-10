@@ -407,27 +407,27 @@ const HomePage: React.FC = () => {
   }, [chartData, titlesToRender]); // Use titlesToRender
 
   // --- Dynamic Y-Label Offset that accomodates mobile ---
-  // const dynamicYLabelOffset = useMemo(() => {
-  //   const baseDesktopOffset = -35; const baseMobileOffset = -25;
-  //   let offset = isMobile ? baseMobileOffset : baseDesktopOffset;
-  //   const isPercent = percentMetrics.has(selectedMetric);
-  //   if (isPercent) {
-  //       const maxFormatted = formatYAxisTick(maxValue); const minFormatted = formatYAxisTick(minValue);
-  //       if (maxFormatted.length > 7 || minFormatted.length > 7) offset -= isMobile ? 15 : 20;
-  //       else offset -= isMobile ? 10 : 15;
-  //       return offset;
-  //   }
-  //   let formattedMaxMagnitude: string;
-  //   if (integerMetrics.has(selectedMetric)) formattedMaxMagnitude = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(maxValue);
-  //   else if (selectedMetric === 'weighted_score_index') formattedMaxMagnitude = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(maxValue);
-  //   else formattedMaxMagnitude = maxValue.toLocaleString('en-US');
-  //   const numDigits = formattedMaxMagnitude.replace(/[^0-9]/g, '').length;
-  //   if (numDigits < 4) return offset;
-  //   else if (numDigits < 7) return offset - (isMobile ? 10 : 15);
-  //   else if (numDigits < 10) return offset - (isMobile ? 15 : 25);
-  //   else return offset - (isMobile ? 20 : 30);
-  // }, [maxValue, minValue, selectedMetric, formatYAxisTick, isMobile]);
-  const dynamicYLabelOffset = -20; // Temporary for testing
+  const dynamicYLabelOffset = useMemo(() => {
+    const baseDesktopOffset = -35; const baseMobileOffset = -25;
+    let offset = isMobile ? baseMobileOffset : baseDesktopOffset;
+    const isPercent = percentMetrics.has(selectedMetric);
+    if (isPercent) {
+        const maxFormatted = formatYAxisTick(maxValue); const minFormatted = formatYAxisTick(minValue);
+        if (maxFormatted.length > 7 || minFormatted.length > 7) offset -= isMobile ? 15 : 20;
+        else offset -= isMobile ? 10 : 15;
+        return offset;
+    }
+    let formattedMaxMagnitude: string;
+    if (integerMetrics.has(selectedMetric)) formattedMaxMagnitude = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(maxValue);
+    else if (selectedMetric === 'weighted_score_index') formattedMaxMagnitude = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(maxValue);
+    else formattedMaxMagnitude = maxValue.toLocaleString('en-US');
+    const numDigits = formattedMaxMagnitude.replace(/[^0-9]/g, '').length;
+    if (numDigits < 4) return offset;
+    else if (numDigits < 7) return offset - (isMobile ? 10 : 15);
+    else if (numDigits < 10) return offset - (isMobile ? 15 : 25);
+    else return offset - (isMobile ? 20 : 30);
+  }, [maxValue, minValue, selectedMetric, formatYAxisTick, isMobile]);
+  // const dynamicYLabelOffset = -20; // Temporary for testing
 
 
   // --------------- testing ---------------
@@ -482,8 +482,8 @@ const HomePage: React.FC = () => {
          <ResponsiveContainer width="100%" height={isMobile ? 400 : 600}>
            <LineChart
              data={chartData}
-            //  margin={{ top: 5, right: isMobile ? 10 : 30, left: isMobile ? 5 : dynamicYLabelOffset < -40 ? 70 : 60, bottom: isMobile ? 70 : 50 }}
-            margin={{ top: 20, right: 30, left: 50, bottom: 50 }} // Temporary for testing
+            margin={{ top: 5, right: isMobile ? 10 : 30, left: isMobile ? 5 : dynamicYLabelOffset < -40 ? 70 : 60, bottom: isMobile ? 70 : 50 }}
+            //margin={{ top: 20, right: 30, left: 50, bottom: 50 }} // Temporary for testing
            >
              <CartesianGrid strokeDasharray="3 3" stroke="#555" />
              <XAxis
@@ -496,7 +496,7 @@ const HomePage: React.FC = () => {
              <YAxis
                type="number" domain={['auto', 'auto']} tickFormatter={formatYAxisTick}
                tick={{ fontSize: isMobile ? 10 : 12 }}
-              //  width={isMobile && dynamicYLabelOffset < -35 ? Math.abs(dynamicYLabelOffset) + 15 : undefined} commented out for testing
+               width={isMobile && dynamicYLabelOffset < -35 ? Math.abs(dynamicYLabelOffset) + 15 : undefined} // commented out for testing
              >
                <Label
                  value={currentMetricLabel} angle={-90} position="insideLeft"
