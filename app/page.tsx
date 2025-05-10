@@ -218,7 +218,20 @@ const HomePage: React.FC = () => {
     const groupedData: Record<string, FormattedLineChartData> = {};
     apiData.forEach(item => {
       const { report_date, project_title } = item;
-      const metricValue = item[selectedMetric]; // Dynamic access to selected metric
+      let metricValue = item[selectedMetric]; // Dynamic access to selected metric
+
+      // Attempt to convert to number if it's a string that represents a number
+      // and ensure it's not an empty string that would become 0
+      if (typeof metricValue === 'string' && metricValue.trim() !== '') {
+        const num = parseFloat(metricValue);
+        metricValue = isNaN(num) ? null : num; // If not a valid number, treat as null
+      } else if (typeof metricValue !== 'number') {
+        // If it's not a number and not a string we could parse, set to null
+        // (handles undefined, empty strings, other non-numeric types)
+        metricValue = null;
+      }
+      // If it was already a number, it remains a number.
+      // If it was undefined, it becomes null.
 
       if (!groupedData[report_date]) {
            groupedData[report_date] = { report_date };
@@ -393,27 +406,27 @@ const HomePage: React.FC = () => {
   }, [chartData, titlesToRender]); // Use titlesToRender
 
   // --- Dynamic Y-Label Offset that accomodates mobile ---
-  const dynamicYLabelOffset = useMemo(() => {
-    const baseDesktopOffset = -35; const baseMobileOffset = -25;
-    let offset = isMobile ? baseMobileOffset : baseDesktopOffset;
-    const isPercent = percentMetrics.has(selectedMetric);
-    if (isPercent) {
-        const maxFormatted = formatYAxisTick(maxValue); const minFormatted = formatYAxisTick(minValue);
-        if (maxFormatted.length > 7 || minFormatted.length > 7) offset -= isMobile ? 15 : 20;
-        else offset -= isMobile ? 10 : 15;
-        return offset;
-    }
-    let formattedMaxMagnitude: string;
-    if (integerMetrics.has(selectedMetric)) formattedMaxMagnitude = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(maxValue);
-    else if (selectedMetric === 'weighted_score_index') formattedMaxMagnitude = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(maxValue);
-    else formattedMaxMagnitude = maxValue.toLocaleString('en-US');
-    const numDigits = formattedMaxMagnitude.replace(/[^0-9]/g, '').length;
-    if (numDigits < 4) return offset;
-    else if (numDigits < 7) return offset - (isMobile ? 10 : 15);
-    else if (numDigits < 10) return offset - (isMobile ? 15 : 25);
-    else return offset - (isMobile ? 20 : 30);
-  }, [maxValue, minValue, selectedMetric, formatYAxisTick, isMobile]);
-
+  // const dynamicYLabelOffset = useMemo(() => {
+  //   const baseDesktopOffset = -35; const baseMobileOffset = -25;
+  //   let offset = isMobile ? baseMobileOffset : baseDesktopOffset;
+  //   const isPercent = percentMetrics.has(selectedMetric);
+  //   if (isPercent) {
+  //       const maxFormatted = formatYAxisTick(maxValue); const minFormatted = formatYAxisTick(minValue);
+  //       if (maxFormatted.length > 7 || minFormatted.length > 7) offset -= isMobile ? 15 : 20;
+  //       else offset -= isMobile ? 10 : 15;
+  //       return offset;
+  //   }
+  //   let formattedMaxMagnitude: string;
+  //   if (integerMetrics.has(selectedMetric)) formattedMaxMagnitude = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(maxValue);
+  //   else if (selectedMetric === 'weighted_score_index') formattedMaxMagnitude = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(maxValue);
+  //   else formattedMaxMagnitude = maxValue.toLocaleString('en-US');
+  //   const numDigits = formattedMaxMagnitude.replace(/[^0-9]/g, '').length;
+  //   if (numDigits < 4) return offset;
+  //   else if (numDigits < 7) return offset - (isMobile ? 10 : 15);
+  //   else if (numDigits < 10) return offset - (isMobile ? 15 : 25);
+  //   else return offset - (isMobile ? 20 : 30);
+  // }, [maxValue, minValue, selectedMetric, formatYAxisTick, isMobile]);
+  const dynamicYLabelOffset = -20; // Temporary for testing
 
 
   // --------------- testing ---------------
