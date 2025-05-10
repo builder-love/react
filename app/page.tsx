@@ -452,13 +452,19 @@ const HomePage: React.FC = () => {
      return <div className="text-center p-4 md:p-10">No time-series data found for selected projects.</div>;
    }
 
+  // define a legendWrapperStyle that accomodates mobile
+  const legendWrapperStyle: React.CSSProperties = { // Explicitly typed
+    paddingBottom: '10px', // Common padding
+    maxWidth: '100%',      // Common constraint
+  // Conditional styles
+    paddingTop: isMobile ? '10px' : '20px', // Less padding on top for mobile
+    overflowX: isMobile ? 'auto' : 'visible', // 'auto' for scroll on mobile, 'visible' for wrap on desktop
+    whiteSpace: isMobile ? 'nowrap' : 'normal', // 'nowrap' for scroll on mobile, 'normal' for wrap on desktop
+  };
+
   // --- ADJUST NUMBER OF projectTitles LINES FOR MOBILE ---
   // top 10) on mobile for clarity.
   // filter projectTitles here based on isMobile.
-  const yAxisWidthValue = isMobile && dynamicYLabelOffset < -35 ? Math.abs(dynamicYLabelOffset) + 15 : undefined;
-  console.log('[YAxis Width Debug] isMobile:', isMobile, 'dynamicYLabelOffset:', dynamicYLabelOffset, 'Calculated YAxis Width:', yAxisWidthValue);
-
-
   return (
     <div className="p-2 sm:p-4 md:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 w-full mb-4 md:mb-6">
@@ -537,22 +543,22 @@ const HomePage: React.FC = () => {
                  }}
                  labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
              />
-            {/* Show legend on desktop, but only for titlesToRender if you want it to match the chart */}
-             {!isMobile && (
-                <Legend
-                    layout="horizontal" verticalAlign="top" align="center"
-                    wrapperStyle={{ paddingTop: '20px', paddingBottom: '10px', overflowX: 'auto', whiteSpace: 'nowrap', maxWidth: '100%'}}
-                    onMouseEnter={handleMouseEnter} // Recharts type issue with MouseEvent vs React.MouseEvent
-                    onMouseLeave={handleMouseLeave}
-                    payload={titlesToRender.map(title => ({ // Ensure legend matches rendered lines
-                        value: title,
-                        type: "line",
-                        id: title,
-                        color: projectColors[title] || '#8884d8',
-                        dataKey: title // Important for hover effects to work
-                    }))}
-                />
-             )}
+            {/* Wrap legend on desktop, but scroll on mobile. Only for titlesToRender. */}
+            <Legend
+              layout="horizontal"
+              verticalAlign="top"
+              align="center"
+              wrapperStyle={legendWrapperStyle} // Apply the dynamic style
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+              payload={titlesToRender.map(title => ({ // This already correctly uses fewer titles on mobile
+                value: title,
+                type: "line",
+                id: title,
+                color: projectColors[title] || '#8884d8',
+                dataKey: title
+              }))}
+            />
 
             {titlesToRender.map((title) => { // Iterate over titlesToRender
                  const currentOpacity = lineOpacity[title] !== undefined ? lineOpacity[title] : 1;
