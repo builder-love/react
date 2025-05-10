@@ -515,17 +515,26 @@ const HomePage: React.FC = () => {
                  interval={isMobile ? Math.max(0, Math.floor(chartData.length / (chartData.length > 10 ? 5: 3) ) -1) : "preserveStartEnd"} // Fewer ticks on mobile, ensure at least a few.
                  tick={{ fontSize: isMobile ? 9 : 12 }} // smaller font for mobile XAxis ticks
              />
+             {/* Testing THIS IS WHERE YOU REPLACE YOUR CURRENT YAXIS WITH THE SIMPLIFIED ONE: */}
              <YAxis
-               type="number" domain={['auto', 'auto']} tickFormatter={formatYAxisTick}
+               type="number"
+               domain={['auto', 'auto']} // This could still be a source if data is problematic
+               tickFormatter={formatYAxisTick}
                tick={{ fontSize: isMobile ? 10 : 12 }}
-               width={isMobile && dynamicYLabelOffset < -35 ? Math.abs(dynamicYLabelOffset) + 15 : undefined} // commented out for testing
-             >
-               <Label
-                 value={currentMetricLabel} angle={-90} position="insideLeft"
-                 style={{ textAnchor: 'middle', fill: '#f5f5f5', fontSize: isMobile ? '11px': '14px' }} // smaller Y label on mobile
-                 offset={dynamicYLabelOffset}
-               />
-             </YAxis>
+             />
+             {/* YOUR ORIGINAL YAXIS (now commented out or deleted for the test):
+                <YAxis
+                  type="number" domain={['auto', 'auto']} tickFormatter={formatYAxisTick}
+                  tick={{ fontSize: isMobile ? 10 : 12 }}
+                  width={isMobile && dynamicYLabelOffset < -35 ? Math.abs(dynamicYLabelOffset) + 15 : undefined}
+                >
+                  <Label
+                    value={currentMetricLabel} angle={-90} position="insideLeft"
+                    style={{ textAnchor: 'middle', fill: '#f5f5f5', fontSize: isMobile ? '11px': '14px' }}
+                    offset={dynamicYLabelOffset}
+                  />
+                </YAxis>
+             */}
              <Tooltip
                  contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px', fontSize: isMobile ? '11px': '12px' }}
                  formatter={(
