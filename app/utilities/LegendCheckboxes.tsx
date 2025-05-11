@@ -7,6 +7,8 @@ interface ProjectLegendCheckboxesProps {
   onToggleProject: (projectTitle: string) => void;
   projectColors: Record<string, string>; // To color the legend item
   isMobile: boolean;
+  onItemMouseEnter: (projectTitle: string) => void;
+  onItemMouseLeave: () => void;
 }
 
 const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
@@ -15,6 +17,8 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
   onToggleProject,
   projectColors,
   isMobile,
+  onItemMouseEnter,
+  onItemMouseLeave,
 }) => {
   const legendStyle: React.CSSProperties = {
     display: 'flex',
@@ -43,6 +47,8 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
           key={title}
           style={itemStyle}
           onClick={() => onToggleProject(title)} // Make the whole item clickable
+          onMouseEnter={() => onItemMouseEnter(title)}
+          onMouseLeave={onItemMouseLeave}
         >
           <input
             type="checkbox"

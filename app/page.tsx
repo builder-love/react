@@ -294,38 +294,40 @@ const HomePage: React.FC = () => {
   }, [isMobile]);
 
   // --- LEGEND HOVER HANDLERS ---
-  // const handleMouseEnter = useCallback(
-  //   (data: RechartsLegendPayload, _index: number /*, event: React.MouseEvent<SVGElement> */) => {
-  //     // The 'data' object here is the one from Recharts Legend payload.
-  //     // It should have a 'dataKey' property.
-  //     const dataKey = data.dataKey ? String(data.dataKey) : null;
-  
-  //     if (dataKey) {
-  //       setLineOpacity(prev => {
-  //         const newOpacity = { ...prev };
-  //         Object.keys(newOpacity).forEach(k => {
-  //           newOpacity[k] = k === dataKey ? 1 : 0.2;
-  //         });
-  //         return newOpacity;
-  //       });
-  //     }
-  //   },
-  //   []
-  // );
-  
-  // const handleMouseLeave = useCallback(
-  //   (_data: RechartsLegendPayload, _index: number /*, event: React.MouseEvent<SVGElement> */) => {
-  //     // We don't use data, index, or event here but include them for type compatibility
-  //     setLineOpacity(prev => {
-  //       const newOpacity = { ...prev };
-  //       Object.keys(newOpacity).forEach(k => {
-  //         newOpacity[k] = 1;
-  //       });
-  //       return newOpacity;
-  //     });
-  //   },
-  //   []
-  // );
+  const handleLegendItemMouseEnter = useCallback((hoveredTitle: string) => {
+    // Only apply hover effect if the project is currently checked (visible)
+    if (!visibleProjects.has(hoveredTitle)) {
+        return; // Do nothing if hovering over an unchecked item's legend entry
+    }
+
+    setLineOpacity(_currentOpacities => {
+        const newOpacities: Record<string, number> = {};
+        projectTitles.forEach(title => {
+            if (visibleProjects.has(title)) { // Only consider lines that are currently checked/visible
+                newOpacities[title] = title === hoveredTitle ? 1 : 0.2; // Highlight hovered, dim others
+            } else {
+                // For unchecked lines, set their opacity to 1 in the state.
+                // Their actual line won't be rendered, but if re-checked, they start at full opacity.
+                newOpacities[title] = 1;
+            }
+        });
+        return newOpacities;
+    });
+  }, [projectTitles, visibleProjects]);
+
+  const handleLegendItemMouseLeave = useCallback(() => {
+      setLineOpacity(_currentOpacities => {
+          const newOpacities: Record<string, number> = {};
+          projectTitles.forEach(title => {
+              if (visibleProjects.has(title)) { // Only consider lines that are currently checked/visible
+                  newOpacities[title] = 1; // Reset all visible lines to full opacity
+              } else {
+                  newOpacities[title] = 1; // Reset unchecked lines' opacity state too
+              }
+          });
+          return newOpacities;
+      });
+  }, [projectTitles, visibleProjects]);
 
   // --- Toggle Project in Legend ---
   const handleToggleProject = useCallback((projectTitle: string) => {
@@ -532,6 +534,8 @@ const HomePage: React.FC = () => {
           onToggleProject={handleToggleProject}
           projectColors={projectColors}
           isMobile={isMobile}
+          onItemMouseEnter={handleLegendItemMouseEnter}
+          onItemMouseLeave={handleLegendItemMouseLeave}
         />
       )}
        <div className="w-full">
