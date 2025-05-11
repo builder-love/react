@@ -165,11 +165,11 @@ const HomePage: React.FC = () => {
 
   // --- Initialize visibleProjects state when projectTitles are loaded ---
   // Allows for toggling projects in the legend.
-  useEffect(() => {
-    if (projectTitles.length > 0 && visibleProjects.size === 0) { // Initialize only once or if reset
-      setVisibleProjects(new Set(projectTitles));
-    }
-  }, [projectTitles, visibleProjects.size]); // Re-run if the master list of projectTitles or visibleProjects changes
+  // useEffect(() => {
+  //   if (projectTitles.length > 0 && visibleProjects.size === 0) { // Initialize only once or if reset
+  //     setVisibleProjects(new Set(projectTitles));
+  //   }
+  // }, [projectTitles, visibleProjects.size]); // Re-run if the master list of projectTitles or visibleProjects changes
   
 
   // --- Determine Ranked Project Titles (for Top 10 selection) ---
