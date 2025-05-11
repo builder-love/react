@@ -19,7 +19,7 @@ import {
 } from 'recharts';
 import chroma from 'chroma-js';
 import type { EnhancedTopProjectsTrendsData, FormattedLineChartData } from './types';
-import { Payload as RechartsLegendPayload } from 'recharts/types/component/DefaultLegendContent';
+// import { Payload as RechartsLegendPayload } from 'recharts/types/component/DefaultLegendContent';
 import Image from 'next/image';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import LegendCheckboxes from './utilities/LegendCheckboxes';
@@ -496,15 +496,15 @@ const HomePage: React.FC = () => {
      return <div className="text-center p-4 md:p-10">No time-series data found for selected projects.</div>;
    }
 
-  // define a legendWrapperStyle that accomodates mobile
-  const legendWrapperStyle: React.CSSProperties = { // Explicitly typed
-    paddingBottom: '10px', // Common padding
-    maxWidth: '100%',      // Common constraint
-    overflowX: 'visible', // Common overflow
-    whiteSpace: 'normal', // Common whiteSpace
-  // Conditional styles
-    paddingTop: isMobile ? '10px' : '20px', // Less padding on top for mobile
-  };
+  // // define a legendWrapperStyle that accomodates mobile
+  // const legendWrapperStyle: React.CSSProperties = { // Explicitly typed
+  //   paddingBottom: '10px', // Common padding
+  //   maxWidth: '100%',      // Common constraint
+  //   overflowX: 'visible', // Common overflow
+  //   whiteSpace: 'normal', // Common whiteSpace
+  // // Conditional styles
+  //   paddingTop: isMobile ? '10px' : '20px', // Less padding on top for mobile
+  // };
 
   // --- ADJUST NUMBER OF projectTitles LINES FOR MOBILE ---
   // top 10) on mobile for clarity.
