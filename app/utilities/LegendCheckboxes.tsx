@@ -24,7 +24,7 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
     display: 'flex',
     flexWrap: 'wrap', 
     overflowX: 'visible',
-    padding: '10px 0',
+    padding: isMobile ? '10px' : '20px',
     justifyContent: 'center',
     gap: '10px 15px', // Adds spacing between items
   };

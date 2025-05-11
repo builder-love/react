@@ -207,6 +207,21 @@ const HomePage: React.FC = () => {
     return sortedProjectTitlesByLatestScore; // Show all (sorted) on desktop
   }, [isMobile, sortedProjectTitlesByLatestScore]);
 
+  // Decide which titles to show in the legend's checkbox list
+  const titlesForLegendCheckboxes = useMemo(() => {
+    if (isMobile) {
+      return titlesToRender; // On mobile, legend checkboxes should only be for the top 10 plotted projects
+    }
+    return sortedProjectTitlesByLatestScore; // On desktop, show all (or projectTitles if you prefer that original list)
+                                            // Using sortedProjectTitlesByLatestScore keeps the legend sorted by rank
+  }, [isMobile, titlesToRender, sortedProjectTitlesByLatestScore]);
+
+  // Legend Checkboxes initializes based on what the legend will show:
+  useEffect(() => {
+    // Initialize visibleProjects based on what's currently shown in the legend checkboxes
+    setVisibleProjects(new Set(titlesForLegendCheckboxes));
+  }, [titlesForLegendCheckboxes]); // Re-initialize if the list of legend items changes
+
   // --- Data Transformation for Chart (uses ALL fetched apiData, but chart will only render lines for titlesToRender) ---
   const chartData = useMemo(() => {
     // console.log(`Transforming data for selected metric: ${selectedMetric}`);
@@ -498,16 +513,6 @@ const HomePage: React.FC = () => {
      return <div className="text-center p-4 md:p-10">No time-series data found for selected projects.</div>;
    }
 
-  // // define a legendWrapperStyle that accomodates mobile
-  // const legendWrapperStyle: React.CSSProperties = { // Explicitly typed
-  //   paddingBottom: '10px', // Common padding
-  //   maxWidth: '100%',      // Common constraint
-  //   overflowX: 'visible', // Common overflow
-  //   whiteSpace: 'normal', // Common whiteSpace
-  // // Conditional styles
-  //   paddingTop: isMobile ? '10px' : '20px', // Less padding on top for mobile
-  // };
-
   // --- ADJUST NUMBER OF projectTitles LINES FOR MOBILE ---
   // top 10) on mobile for clarity.
   // filter projectTitles here based on isMobile.
@@ -529,7 +534,7 @@ const HomePage: React.FC = () => {
       {/* Add the Custom Legend */}
       {projectTitles.length > 0 && ( // Only show if there are titles
         <LegendCheckboxes
-          allProjectTitles={sortedProjectTitlesByLatestScore} // order projects by latest score
+          allProjectTitles={titlesForLegendCheckboxes} // pass the ordered titles for the legend checkboxes
           visibleProjects={visibleProjects}
           onToggleProject={handleToggleProject}
           projectColors={projectColors}
