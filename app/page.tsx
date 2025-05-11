@@ -169,7 +169,7 @@ const HomePage: React.FC = () => {
     if (projectTitles.length > 0 && visibleProjects.size === 0) { // Initialize only once or if reset
       setVisibleProjects(new Set(projectTitles));
     }
-  }, [projectTitles]); // Re-run if the master list of projectTitles changes
+  }, [projectTitles, visibleProjects.size]); // Re-run if the master list of projectTitles or visibleProjects changes
   
 
   // --- Determine Ranked Project Titles (for Top 10 selection) ---
@@ -294,38 +294,38 @@ const HomePage: React.FC = () => {
   }, [isMobile]);
 
   // --- LEGEND HOVER HANDLERS ---
-  const handleMouseEnter = useCallback(
-    (data: RechartsLegendPayload, _index: number /*, event: React.MouseEvent<SVGElement> */) => {
-      // The 'data' object here is the one from Recharts Legend payload.
-      // It should have a 'dataKey' property.
-      const dataKey = data.dataKey ? String(data.dataKey) : null;
+  // const handleMouseEnter = useCallback(
+  //   (data: RechartsLegendPayload, _index: number /*, event: React.MouseEvent<SVGElement> */) => {
+  //     // The 'data' object here is the one from Recharts Legend payload.
+  //     // It should have a 'dataKey' property.
+  //     const dataKey = data.dataKey ? String(data.dataKey) : null;
   
-      if (dataKey) {
-        setLineOpacity(prev => {
-          const newOpacity = { ...prev };
-          Object.keys(newOpacity).forEach(k => {
-            newOpacity[k] = k === dataKey ? 1 : 0.2;
-          });
-          return newOpacity;
-        });
-      }
-    },
-    []
-  );
+  //     if (dataKey) {
+  //       setLineOpacity(prev => {
+  //         const newOpacity = { ...prev };
+  //         Object.keys(newOpacity).forEach(k => {
+  //           newOpacity[k] = k === dataKey ? 1 : 0.2;
+  //         });
+  //         return newOpacity;
+  //       });
+  //     }
+  //   },
+  //   []
+  // );
   
-  const handleMouseLeave = useCallback(
-    (_data: RechartsLegendPayload, _index: number /*, event: React.MouseEvent<SVGElement> */) => {
-      // We don't use data, index, or event here but include them for type compatibility
-      setLineOpacity(prev => {
-        const newOpacity = { ...prev };
-        Object.keys(newOpacity).forEach(k => {
-          newOpacity[k] = 1;
-        });
-        return newOpacity;
-      });
-    },
-    []
-  );
+  // const handleMouseLeave = useCallback(
+  //   (_data: RechartsLegendPayload, _index: number /*, event: React.MouseEvent<SVGElement> */) => {
+  //     // We don't use data, index, or event here but include them for type compatibility
+  //     setLineOpacity(prev => {
+  //       const newOpacity = { ...prev };
+  //       Object.keys(newOpacity).forEach(k => {
+  //         newOpacity[k] = 1;
+  //       });
+  //       return newOpacity;
+  //     });
+  //   },
+  //   []
+  // );
 
   // --- Toggle Project in Legend ---
   const handleToggleProject = useCallback((projectTitle: string) => {
