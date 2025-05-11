@@ -22,8 +22,8 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
 }) => {
   const legendStyle: React.CSSProperties = {
     display: 'flex',
-    flexWrap: isMobile ? 'nowrap' : 'wrap', // Scroll on mobile, wrap on desktop
-    overflowX: isMobile ? 'auto' : 'visible',
+    flexWrap: 'wrap', 
+    overflowX: 'visible',
     padding: '10px 0',
     justifyContent: 'center',
     gap: '10px 15px', // Adds spacing between items
