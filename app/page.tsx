@@ -14,7 +14,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   Label,
 } from 'recharts';
@@ -23,6 +22,7 @@ import type { EnhancedTopProjectsTrendsData, FormattedLineChartData } from './ty
 import { Payload as RechartsLegendPayload } from 'recharts/types/component/DefaultLegendContent';
 import Image from 'next/image';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
+import LegendCheckboxes from './utilities/LegendCheckboxes';
 
 // --- Define Metric Options ---
 // Map user-friendly labels to the actual data keys expected from the API
@@ -109,6 +109,7 @@ const HomePage: React.FC = () => {
   const [lineOpacity, setLineOpacity] = useState<Record<string, number>>({});
   const [selectedMetric, setSelectedMetric] = useState<string>(metricOptions[0].value); // state for selected metric; efault to first option's value
   const isMobile = useIsMobile(); // Use the mobile hook
+  const [visibleProjects, setVisibleProjects] = useState<Set<string>>(new Set()); // state for toggled projects (using legend)
 
   // --- Initialize lineOpacity state when all projectTitles are loaded ---
   useEffect(() => {
@@ -161,6 +162,15 @@ const HomePage: React.FC = () => {
     };
     fetchData();
   }, []);
+
+  // --- Initialize visibleProjects state when projectTitles are loaded ---
+  // Allows for toggling projects in the legend.
+  useEffect(() => {
+    if (projectTitles.length > 0 && visibleProjects.size === 0) { // Initialize only once or if reset
+      setVisibleProjects(new Set(projectTitles));
+    }
+  }, [projectTitles]); // Re-run if the master list of projectTitles changes
+  
 
   // --- Determine Ranked Project Titles (for Top 10 selection) ---
   const sortedProjectTitlesByLatestScore = useMemo(() => {
@@ -316,6 +326,24 @@ const HomePage: React.FC = () => {
     },
     []
   );
+
+  // --- Toggle Project in Legend ---
+  const handleToggleProject = useCallback((projectTitle: string) => {
+    setVisibleProjects(prevVisibleProjects => {
+      const newVisibleProjects = new Set(prevVisibleProjects);
+      if (newVisibleProjects.has(projectTitle)) {
+        newVisibleProjects.delete(projectTitle);
+      } else {
+        newVisibleProjects.add(projectTitle);
+      }
+      return newVisibleProjects;
+    });
+  }, []);
+
+  // --- Filter Titles to Render based on Visible Projects ---
+  const titlesToActuallyPlot = useMemo(() => {
+    return titlesToRender.filter(title => visibleProjects.has(title));
+  }, [titlesToRender, visibleProjects]);
   
 
    // --- CSV Download Handler (Updated to use selected metric label) ---
@@ -380,19 +408,35 @@ const HomePage: React.FC = () => {
   }, [selectedMetric]);
 
   const { maxValue, minValue } = useMemo(() => {
-    if (!chartData || chartData.length === 0 || !titlesToRender || titlesToRender.length === 0) return { maxValue: 0, minValue: 0 };
-    let maxVal = -Infinity; let minVal = Infinity;
+    if (!chartData || chartData.length === 0 || !titlesToActuallyPlot || titlesToActuallyPlot.length === 0) {
+      return { maxValue: 1, minValue: 0 }; // Default domain if no lines are visible/plotted
+    }
+    let maxVal = -Infinity;
+    let minVal = Infinity;
+  
     chartData.forEach(row => {
-        titlesToRender.forEach(title => { // Use titlesToRender for calc
-            const value = row[title];
-            if (typeof value === 'number' && isFinite(value)) {
-                if (value > maxVal) maxVal = value;
-                if (value < minVal) minVal = value;
-            }
-        });
+      titlesToActuallyPlot.forEach(title => { // Use the filtered list
+        const value = row[title];
+        if (typeof value === 'number' && isFinite(value)) {
+          if (value > maxVal) maxVal = value;
+          if (value < minVal) minVal = value;
+        }
+      });
     });
-    return { maxValue: maxVal === -Infinity ? 0 : maxVal, minValue: minVal === Infinity ? 0 : minVal };
-  }, [chartData, titlesToRender]); // Use titlesToRender
+  
+    if (maxVal === -Infinity && minVal === Infinity) { // All visible series have no data
+      return { maxValue: 1, minValue: 0 };
+    }
+    if (maxVal === minVal) { // Handle flat line case for visible series
+       const buffer = percentMetrics.has(selectedMetric) ? 0.01 : Math.max(1, Math.abs(maxVal * 0.1));
+       return { maxValue: maxVal + buffer, minValue: minVal - buffer };
+    }
+  
+    return {
+      maxValue: maxVal,
+      minValue: minVal,
+    };
+  }, [chartData, titlesToActuallyPlot, selectedMetric]);
 
   // --- Dynamic Y-Label Offset that accomodates mobile ---
   const dynamicYLabelOffset = useMemo(() => {
@@ -480,7 +524,16 @@ const HomePage: React.FC = () => {
             {isMobile ? "Download CSV" : "Download Chart Data"}
          </button>
       </div>
-
+      {/* Add the Custom Legend */}
+      {projectTitles.length > 0 && ( // Only show if there are titles
+        <LegendCheckboxes
+          allProjectTitles={sortedProjectTitlesByLatestScore} // order projects by latest score
+          visibleProjects={visibleProjects}
+          onToggleProject={handleToggleProject}
+          projectColors={projectColors}
+          isMobile={isMobile}
+        />
+      )}
        <div className="w-full">
          <ResponsiveContainer width="100%" height={isMobile ? 400 : 600}>
            <LineChart
@@ -543,37 +596,24 @@ const HomePage: React.FC = () => {
                  }}
                  labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
              />
-            {/* Wrap legend on desktop, but scroll on mobile. Only for titlesToRender. */}
-            <Legend
-              layout="horizontal"
-              verticalAlign="top"
-              align="center"
-              wrapperStyle={legendWrapperStyle} // Apply the dynamic style
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-              payload={titlesToRender.map(title => ({ // This already correctly uses fewer titles on mobile
-                value: title,
-                type: "line",
-                id: title,
-                color: projectColors[title] || '#8884d8',
-                dataKey: title
-              }))}
-            />
-
-            {titlesToRender.map((title) => { // Iterate over titlesToRender
-                 const currentOpacity = lineOpacity[title] !== undefined ? lineOpacity[title] : 1;
-                 return (
-                    <Line
-                        key={title} type="monotone" dataKey={title}
-                        stroke={projectColors[title] || '#8884d8'}
-                        strokeWidth={isMobile ? 1.5 : 2}
-                        strokeOpacity={currentOpacity}
-                        dot={isMobile ? false : { r: 1, strokeWidth: 1 }}
-                        activeDot={{ r: isMobile ? 4 : 6 }}
-                        connectNulls={true} name={title}
-                        isAnimationActive={!isMobile}
-                    />
-                );
+            {/* Render only the titles that are in the visibleProjects set */}
+            {titlesToActuallyPlot.map((title) => {
+              const currentOpacity = lineOpacity[title] !== undefined ? lineOpacity[title] : 1; 
+              return (
+                <Line
+                  key={title}
+                  type="monotone"
+                  dataKey={title}
+                  stroke={projectColors[title] || '#8884d8'}
+                  strokeWidth={isMobile ? 1.5 : 2}
+                  strokeOpacity={currentOpacity} // Apply hover opacity
+                  dot={isMobile ? false : { r: 1, strokeWidth: 1 }}
+                  activeDot={{ r: isMobile ? 4 : 6 }}
+                  connectNulls={true}
+                  name={title}
+                  isAnimationActive={!isMobile}
+                />
+              );
             })}
           </LineChart>
         </ResponsiveContainer>
