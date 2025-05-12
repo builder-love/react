@@ -29,6 +29,7 @@ import LegendCheckboxes from './utilities/LegendCheckboxes';
 const metricOptions = [
   { label: 'Weighted Score Index', value: 'weighted_score_index' },
   { label: 'Commit Count', value: 'commit_count' },
+  { label: 'Repo Count', value: 'repo_count' },
   { label: 'Fork Count', value: 'fork_count' },
   { label: 'Stargazer Count', value: 'stargaze_count' },
   { label: 'Contributor Count', value: 'contributor_count' },
@@ -55,6 +56,7 @@ const percentMetrics = new Set([
 
 const integerMetrics = new Set([
   'commit_count',
+  'repo_count',
   'fork_count',
   'stargaze_count',
   'contributor_count',

@@ -40,6 +40,7 @@ export interface TopProjectsTrendsData {
   project_title: string;
   report_date: string;
   weighted_score_index: number;
+  repo_count: number | null;
   fork_count: number | null;
   stargaze_count: number | null;
   commit_count: number | null;
