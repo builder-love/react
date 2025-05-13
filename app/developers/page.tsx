@@ -13,30 +13,17 @@ import {
   ColumnFiltersState,
   FilterFn,
 } from '@tanstack/react-table';
-import topProjectsData from '../data/top_projects.json';
-import { useScreenOrientation } from '../hooks/useScreenOrientation';
-
-interface Project {
-  project_name: string;
-  project_rank: number;
-  bytes_written: number;
-  language_pct: number;
-  stars_count: number;
-  contributor_count: number;
-  repo_count: number;
-  fork_count: number;
-  weighted_score: number;
-  project_category: string;
-  language_name: string;
-}
+import { Top100Contributor } from '../types'; 
+import { useScreenOrientation } from '../hooks/useScreenOrientation'; 
 
 // Define a custom filter function for multi-select
-const multiSelectFilter: FilterFn<Project> = (row, columnId, filterValue: string[]) => {
-  const value = row.getValue(columnId);
-  return filterValue.includes(String(value));
+const multiSelectFilter: FilterFn<Top100Contributor> = (row, columnId, filterValue: string[]) => {
+  const rawValue = row.getValue(columnId);
+  // Convert boolean/null to string representation for consistent filtering
+  const value = String(rawValue);
+  return filterValue.includes(value);
 };
 
-// Add after the Project interface and before DevelopersPage component
 interface CustomCheckboxProps {
   checked: boolean;
   onChange: () => void;
@@ -70,229 +57,168 @@ const CustomCheckbox: React.FC<CustomCheckboxProps> = ({ checked, onChange }) =>
   );
 };
 
-const DevelopersPage: React.FC = () => {
-  const [data, setData] = useState<Project[]>([]);
+const ContributorsPage: React.FC = () => {
+  const [data, setData] = useState<Top100Contributor[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([
     {
-      id: 'project_rank',
+      id: 'contributor_rank',
       desc: false,
     },
   ]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 
-  // Use the custom hook
-  const {
-    // screenWidth,
-    // screenHeight,
-    // orientation,
-    isMobile,
-  } = useScreenOrientation();
+  const { isMobile } = useScreenOrientation();
 
-  // State for multi-select filters
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [selectedContributorLogins, setSelectedContributorLogins] = useState<string[]>([]);
+  const [selectedDominantLanguages, setSelectedDominantLanguages] = useState<string[]>([]);
+  const [selectedIsAnon, setSelectedIsAnon] = useState<string[]>([]); // Stores "true", "false", "null" as strings
 
-  // State for dropdown visibility
-  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState<boolean>(false);
-  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState<boolean>(false);
+  const [isContributorDropdownOpen, setIsContributorDropdownOpen] = useState<boolean>(false);
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState<boolean>(false);
+  const [isAnonDropdownOpen, setIsAnonDropdownOpen] = useState<boolean>(false);
 
-  // Refs for dropdown containers
-  const categoryDropdownRef = useRef<HTMLDivElement>(null);
-  const projectDropdownRef = useRef<HTMLDivElement>(null);
+  const contributorDropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
+  const isAnonDropdownRef = useRef<HTMLDivElement>(null);
 
-  // State for the active row's data (for the tooltip)
-  const [activeRowData, setActiveRowData] = useState<Project | null>(null);
+  const [activeRowData, setActiveRowData] = useState<Top100Contributor | null>(null);
 
   useEffect(() => {
-    setData(topProjectsData);
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/get-top100-contributors');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ detail: `HTTP error! status: ${response.status}` }));
+          throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        }
+        const result: Top100Contributor[] = await response.json();
+        setData(result);
+      } catch (e) {
+        if (e instanceof Error) {
+          setError(e.message);
+        } else {
+          setError("An unknown error occurred while fetching contributor data.");
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
-  const columns = useMemo<ColumnDef<Project>[]>(
+  const columns = useMemo<ColumnDef<Top100Contributor>[]>(
     () => [
       {
-        header: 'Project',
-        accessorKey: 'project_name',
-        id: 'project_name',
-        footer: (props) => props.column.id,
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<string>()}</div>,
-        filterFn: multiSelectFilter, // Use the custom filter function
+        header: 'Builder Rank',
+        accessorKey: 'contributor_rank',
+        id: 'contributor_rank',
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
       },
       {
-        header: 'Language',
-        accessorKey: 'language_name',
-        id: 'language_name',
-        footer: (props) => props.column.id,
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<string>()}</div>,
-        filterFn: multiSelectFilter, // Use the custom filter function
+        header: 'Github Login',
+        accessorKey: 'contributor_login',
+        id: 'contributor_login',
+        cell: ({ row }) => (
+            row.original.contributor_html_url ?
+            <a 
+              href={row.original.contributor_html_url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:text-blue-300 hover:underline text-sm md:text-base"
+            >
+              {row.original.contributor_login}
+            </a> : <div className="text-sm md:text-base">{row.original.contributor_login}</div>
+          ),
+        filterFn: multiSelectFilter,
       },
       {
-        header: 'Rank',
-        accessorKey: 'project_rank',
-        id: 'project_rank',
-        footer: (props) => props.column.id,
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>().toLocaleString()}</div>,
-      },
-      {
-        header: 'Bytes',
-        accessorKey: 'bytes_written',
-        id: 'bytes_written',
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>().toLocaleString()}</div>,
-        footer: (props) => props.column.id,
-      },
-      {
-        header: 'Lang %',
-        accessorKey: 'language_pct',
-        id: 'language_pct',
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{(getValue<number>() * 100).toFixed(2) + '%'}</div>,
-        footer: (props) => props.column.id,
-      },
-      {
-        header: 'Stars',
-        accessorKey: 'stars_count',
-        id: 'stars_count',
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>().toLocaleString()}</div>,
-        footer: (props) => props.column.id,
-      },
-      {
-        header: 'Contrib',
-        accessorKey: 'contributor_count',
-        id: 'contributor_count',
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>().toLocaleString()}</div>,
-        footer: (props) => props.column.id,
-      },
-      {
-        header: 'Repos',
-        accessorKey: 'repo_count',
-        id: 'repo_count',
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>().toLocaleString()}</div>,
-        footer: (props) => props.column.id,
-      },
-      {
-        header: 'Forks',
-        accessorKey: 'fork_count',
-        id: 'fork_count',
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>().toLocaleString()}</div>,
-        footer: (props) => props.column.id,
-      },
-      {
-        header: 'Category',
-        accessorKey: 'project_category',
-        id: 'project_category',
-        cell: ({ row }) => {
-          const category = row.original.project_category;
-          let bgColorClass = '';
-
-          switch (category) {
-            case 'Top Project':
-              bgColorClass = 'bg-green-600'; // Dark green
-              break;
-            case 'Leader':
-              bgColorClass = 'bg-blue-400'; // Light blue
-              break;
-            case 'In-The-Mix':
-              bgColorClass = 'bg-yellow-600 text-black'; // Yellow with black text
-              break;
-            case 'Laggard':
-              bgColorClass = 'bg-red-400 text-black'; // Red
-              break;
-            default:
-              bgColorClass = 'bg-gray-400'; // Default gray if not found
-              break;
-          }
-
-          return <div className={`${bgColorClass} px-2 py-1 rounded text-sm md:text-base`}>{category}</div>;
+        header: 'Anon?',
+        accessorKey: 'is_anon',
+        id: 'is_anon',
+        cell: ({ getValue }) => {
+            const value = getValue<boolean | null>();
+            let displayValue = 'N/A';
+            if (value === true) displayValue = 'Yes';
+            else if (value === false) displayValue = 'No';
+            return <div className="text-sm md:text-base">{displayValue}</div>;
         },
-        footer: (props) => props.column.id,
-        filterFn: multiSelectFilter, // Use the custom filter function
+        filterFn: multiSelectFilter,
       },
       {
-        header: 'Score',
-        accessorKey: 'weighted_score',
-        id: 'weighted_score',
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>().toFixed(2)}</div>,
-        footer: (props) => props.column.id,
+        header: 'Dominant Language',
+        accessorKey: 'dominant_language',
+        id: 'dominant_language',
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<string>() ?? 'N/A'}</div>,
+        filterFn: multiSelectFilter,
+      },
+      {
+        header: 'Location',
+        accessorKey: 'location',
+        id: 'location',
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<string>() ?? 'N/A'}</div>,
+      },
+      {
+        header: 'Total Contributions',
+        accessorKey: 'total_contributions',
+        id: 'total_contributions',
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
+      },
+      {
+        header: 'Repos Contrib To',
+        accessorKey: 'total_repos_contributed_to',
+        id: 'total_repos_contributed_to',
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
+      },
+      {
+        header: 'Followers',
+        accessorKey: 'followers_total_count',
+        id: 'followers_total_count',
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
+      },
+      {
+        header: 'Builder Score',
+        accessorKey: 'weighted_score_index',
+        id: 'weighted_score_index',
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toFixed(2) ?? 'N/A'}</div>,
+      },
+       {
+        header: 'Quartile Rank',
+        accessorKey: 'quartile_bucket',
+        id: 'quartile_bucket',
+        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
       },
     ],
     []
   );
 
-  // Get unique values for filter dropdowns
-  const uniqueCategories = useMemo(() => {
-    const categories = new Set<string>();
-    data.forEach((project) => {
-      categories.add(project.project_category);
-    });
-    return Array.from(categories).sort();
+  const uniqueContributorLogins = useMemo(() => {
+    const logins = new Set<string>();
+    data.forEach((contributor) => contributor.contributor_login && logins.add(contributor.contributor_login));
+    return Array.from(logins).sort();
   }, [data]);
 
-  const uniqueProjects = useMemo(() => {
-    const projects = new Set<string>();
-    data.forEach((project) => {
-      projects.add(project.project_name);
-    });
-    return Array.from(projects).sort();
-  }, [data]);
-
-  const uniqueLanguages = useMemo(() => {
+  const uniqueDominantLanguages = useMemo(() => {
     const languages = new Set<string>();
-    data.forEach((project) => {
-      languages.add(project.language_name);
-    });
+    data.forEach((contributor) => contributor.dominant_language && languages.add(contributor.dominant_language));
     return Array.from(languages).sort();
   }, [data]);
+  
+  // For 'is_anon' filter dropdown
+  const isAnonOptions = useMemo(() => [
+    { label: 'Yes', value: 'true' }, // String "true" for true
+    { label: 'No', value: 'false' },  // String "false" for false
+    { label: 'Unknown', value: 'null' } // String "null" for null
+  ], []);
 
-  // Handle filter changes (Now simplified due to the custom filterFn)
-  const handleCategoryFilterChange = (category: string) => {
-    setSelectedCategories((prevSelectedCategories) => {
-      const isSelected = prevSelectedCategories.includes(category);
-      const nextSelectedCategories = isSelected
-        ? prevSelectedCategories.filter((c) => c !== category)
-        : [...prevSelectedCategories, category];
 
-      // Update column filters (Simplified)
-      updateColumnFilters('project_category', nextSelectedCategories);
-
-      return nextSelectedCategories;
-    });
-  };
-
-  const handleProjectFilterChange = (project: string) => {
-    setSelectedProjects((prevSelectedProjects) => {
-      const isSelected = prevSelectedProjects.includes(project);
-      const nextSelectedProjects = isSelected
-        ? prevSelectedProjects.filter((p) => p !== project)
-        : [...prevSelectedProjects, project];
-
-      // Update column filters (Simplified)
-      updateColumnFilters('project_name', nextSelectedProjects);
-
-      return nextSelectedProjects;
-    });
-  };
-
-  const handleLanguageFilterChange = (language: string) => {
-    setSelectedLanguages((prevSelectedLanguages) => {
-      const isSelected = prevSelectedLanguages.includes(language);
-      const nextSelectedLanguages = isSelected
-        ? prevSelectedLanguages.filter((l) => l !== language)
-        : [...prevSelectedLanguages, language];
-
-      // Update column filters (Simplified)
-      updateColumnFilters('language_name', nextSelectedLanguages);
-
-      return nextSelectedLanguages;
-    });
-  };
-
-  // Helper function to update column filters (DRY principle)
   const updateColumnFilters = (columnId: string, selectedValues: string[]) => {
     setColumnFilters((prevFilters) => {
       const existingFilter = prevFilters.find((f) => f.id === columnId);
-
       if (selectedValues.length === 0) {
         return prevFilters.filter((f) => f.id !== columnId);
       } else {
@@ -302,85 +228,62 @@ const DevelopersPage: React.FC = () => {
     });
   };
 
-  // Toggle dropdown visibility
-  const toggleCategoryDropdown = () => {
-    setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
+  const handleContributorLoginFilterChange = (login: string) => {
+    setSelectedContributorLogins((prevSelected) => {
+      const newSelected = prevSelected.includes(login) ? prevSelected.filter((l) => l !== login) : [...prevSelected, login];
+      updateColumnFilters('contributor_login', newSelected);
+      return newSelected;
+    });
   };
 
-  const toggleProjectDropdown = () => {
-    setIsProjectDropdownOpen(!isProjectDropdownOpen);
+  const handleDominantLanguageFilterChange = (language: string) => {
+    setSelectedDominantLanguages((prevSelected) => {
+      const newSelected = prevSelected.includes(language) ? prevSelected.filter((l) => l !== language) : [...prevSelected, language];
+      updateColumnFilters('dominant_language', newSelected);
+      return newSelected;
+    });
   };
 
-  const toggleLanguageDropdown = () => {
-    setIsLanguageDropdownOpen(!isLanguageDropdownOpen);
+  const handleIsAnonFilterChange = (value: string) => { // value will be "true", "false", or "null"
+    setSelectedIsAnon((prevSelected) => {
+      const newSelected = prevSelected.includes(value) ? prevSelected.filter((v) => v !== value) : [...prevSelected, value];
+      updateColumnFilters('is_anon', newSelected);
+      return newSelected;
+    });
   };
 
-  // Close dropdowns when clicking outside
+  const toggleContributorDropdown = () => setIsContributorDropdownOpen(!isContributorDropdownOpen);
+  const toggleLanguageDropdown = () => setIsLanguageDropdownOpen(!isLanguageDropdownOpen);
+  const toggleIsAnonDropdown = () => setIsAnonDropdownOpen(!isAnonDropdownOpen);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        categoryDropdownRef.current &&
-        !categoryDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsCategoryDropdownOpen(false);
-      }
-      if (
-        projectDropdownRef.current &&
-        !projectDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsProjectDropdownOpen(false);
-      }
-      if (
-        languageDropdownRef.current &&
-        !languageDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsLanguageDropdownOpen(false);
-      }
+      if (contributorDropdownRef.current && !contributorDropdownRef.current.contains(event.target as Node)) setIsContributorDropdownOpen(false);
+      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target as Node)) setIsLanguageDropdownOpen(false);
+      if (isAnonDropdownRef.current && !isAnonDropdownRef.current.contains(event.target as Node)) setIsAnonDropdownOpen(false);
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Handle option click for each filter (These are now simplified)
-  const handleCategoryOptionClick = (category: string) => {
-    handleCategoryFilterChange(category);
-  };
-
-  const handleProjectOptionClick = (project: string) => {
-    handleProjectFilterChange(project);
-  };
-
-  const handleLanguageOptionClick = (language: string) => {
-    handleLanguageFilterChange(language);
-  };
-
-  // Update column visibility based on isMobile
   useEffect(() => {
     if (isMobile) {
       setColumnVisibility({
-        project_rank: false,
-        bytes_written: false,
-        language_pct: false,
-        stars_count: false,
-        contributor_count: false,
-        repo_count: false,
-        fork_count: false,
-        weighted_score: false,
+        location: false,
+        total_repos_contributed_to: false,
+        followers_total_count: false,
+        weighted_score_index: false,
+        quartile_bucket: false,
       });
     } else {
-      setColumnVisibility({}); // Show all columns on desktop
+      setColumnVisibility({});
     }
   }, [isMobile]);
 
   const table = useReactTable({
     data,
     columns,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-    },
+    state: { sorting, columnFilters, columnVisibility },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
@@ -388,162 +291,71 @@ const DevelopersPage: React.FC = () => {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    filterFns: { multiSelect: multiSelectFilter }
   });
 
-  // Handle clicks outside of the tooltip
   useEffect(() => {
     const handleClickOutsideTooltip = (event: MouseEvent) => {
-      if (
-        !event.target ||
-        !(event.target instanceof Element) ||
-        !event.target.closest('.tooltip-trigger')
-      ) {
-        closeTooltip();
-      }
+      if (!(event.target instanceof Element) || !event.target.closest('.tooltip-trigger')) closeTooltip();
     };
-
     document.addEventListener('mousedown', handleClickOutsideTooltip);
-    return () =>
-      document.removeEventListener('mousedown', handleClickOutsideTooltip);
+    return () => document.removeEventListener('mousedown', handleClickOutsideTooltip);
   }, []);
 
-  const handleRowHover = (rowData: Project) => {
-    setActiveRowData(rowData);
-  };
-
-  const closeTooltip = () => {
-    setActiveRowData(null);
-  };
+  const handleRowHover = (rowData: Top100Contributor) => setActiveRowData(rowData);
+  const closeTooltip = () => setActiveRowData(null);
+  
+  if (isLoading) return <div className="p-4 text-center text-white">Loading contributors...</div>;
+  if (error) return <div className="p-4 text-center text-red-500">Error loading data: {error}</div>;
 
   return (
     <div className="p-4 bg-black text-white min-h-screen relative z-0">
-      <h1 className="text-2xl font-bold text-center mt-8 mb-8">
-        Top Projects across Major Languages
-      </h1>
+      <h1 className="text-2xl font-bold text-center mt-8 mb-8">Top 100 Contributors</h1>
 
       <div className="mb-4">
         <div className={`flex space-x-4 ${isMobile ? 'justify-center' : 'justify-start md:justify-center'}`}>
-          <div className="relative" ref={projectDropdownRef}>
-            <button
-              onClick={toggleProjectDropdown}
-              className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm"
-            >
-              Projects
-              <svg
-                className="ml-2 w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
+          <div className="relative" ref={contributorDropdownRef}>
+            <button onClick={toggleContributorDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
+              Contributors <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
-            {isProjectDropdownOpen && (
-              <div
-              className="absolute z-30 mt-1 left-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" // Add overflow-y-auto and max-h-60
-                onClick={(e) => e.stopPropagation()}
-              >
-                {uniqueProjects.map((project) => (
-                  <div
-                    key={project}
-                    className={`flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm`}
-                    onClick={() => handleProjectOptionClick(project)}
-                  >
-                    <CustomCheckbox
-                      checked={selectedProjects.includes(project)}
-                      onChange={() => handleProjectOptionClick(project)}
-                    />
-                    <span className="ml-2">{project}</span>
+            {isContributorDropdownOpen && (
+              <div className="absolute z-30 mt-1 left-0 w-56 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" onClick={(e) => e.stopPropagation()}>
+                {uniqueContributorLogins.map((login) => (
+                  <div key={login} className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm" onClick={() => handleContributorLoginFilterChange(login)}>
+                    <CustomCheckbox checked={selectedContributorLogins.includes(login)} onChange={() => handleContributorLoginFilterChange(login)} />
+                    <span className="ml-2">{login}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
+
           <div className="relative" ref={languageDropdownRef}>
-            <button
-              onClick={toggleLanguageDropdown}
-              className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm"
-            >
-              Languages
-              <svg
-                className="ml-2 w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
+            <button onClick={toggleLanguageDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
+              Languages <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
             {isLanguageDropdownOpen && (
-              <div
-                className="absolute z-30 mt-1 left-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {uniqueLanguages.map((language) => (
-                  <div
-                    key={language}
-                    className={`flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm`}
-                    onClick={() => handleLanguageOptionClick(language)}
-                  >
-                    <CustomCheckbox
-                      checked={selectedLanguages.includes(language)}
-                      onChange={() => handleLanguageOptionClick(language)}
-                    />
+              <div className="absolute z-30 mt-1 left-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" onClick={(e) => e.stopPropagation()}>
+                {uniqueDominantLanguages.map((language) => (
+                  <div key={language} className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm" onClick={() => handleDominantLanguageFilterChange(language)}>
+                    <CustomCheckbox checked={selectedDominantLanguages.includes(language)} onChange={() => handleDominantLanguageFilterChange(language)} />
                     <span className="ml-2">{language}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          <div className="relative" ref={categoryDropdownRef}>
-            <button
-              onClick={toggleCategoryDropdown}
-              className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm"
-            >
-              Categories
-              <svg
-                className="ml-2 w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
+
+          <div className="relative" ref={isAnonDropdownRef}>
+            <button onClick={toggleIsAnonDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
+              Anon? <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
-            {isCategoryDropdownOpen && (
-              <div
-                className="absolute z-30 mt-1 right-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {uniqueCategories.map((category) => (
-                  <div
-                    key={category}
-                    className={`flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm`}
-                    onClick={() => handleCategoryOptionClick(category)}
-                  >
-                    <CustomCheckbox
-                      checked={selectedCategories.includes(category)}
-                      onChange={() => handleCategoryOptionClick(category)}
-                    />
-                    <span className="ml-2">{category}</span>
+            {isAnonDropdownOpen && (
+              <div className="absolute z-30 mt-1 right-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" onClick={(e) => e.stopPropagation()}>
+                {isAnonOptions.map((option) => (
+                  <div key={option.value} className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm" onClick={() => handleIsAnonFilterChange(option.value)}>
+                    <CustomCheckbox checked={selectedIsAnon.includes(option.value)} onChange={() => handleIsAnonFilterChange(option.value)} />
+                    <span className="ml-2">{option.label}</span>
                   </div>
                 ))}
               </div>
@@ -558,21 +370,9 @@ const DevelopersPage: React.FC = () => {
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    onClick={header.column.getToggleSortingHandler()}
-                    className="px-4 py-2 text-left text-xs md:text-sm font-medium text-gray-300 uppercase tracking-wider cursor-pointer whitespace-nowrap"
-                  >
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                    <span className="ml-1">
-                      {{
-                        asc: "↑",
-                        desc: "↓",
-                      }[header.column.getIsSorted() as string] ?? null}
-                    </span>
+                  <th key={header.id} onClick={header.column.getToggleSortingHandler()} className="px-4 py-2 text-left text-xs md:text-sm font-medium text-gray-300 uppercase tracking-wider cursor-pointer whitespace-nowrap">
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    <span className="ml-1">{{ asc: "↑", desc: "↓" }[header.column.getIsSorted() as string] ?? null}</span>
                   </th>
                 ))}
               </tr>
@@ -580,17 +380,9 @@ const DevelopersPage: React.FC = () => {
           </thead>
           <tbody className="bg-black text-white divide-y divide-gray-200">
             {table.getRowModel().rows.map((row) => (
-              <tr
-                key={row.id}
-                className="hover:bg-gray-800 cursor-pointer tooltip-trigger"
-                onMouseEnter={() => isMobile && handleRowHover(row.original)}
-                onMouseLeave={() => isMobile && closeTooltip()}
-              >
+              <tr key={row.id} className="hover:bg-gray-800 cursor-pointer tooltip-trigger" onMouseEnter={() => isMobile && handleRowHover(row.original)} onMouseLeave={() => isMobile && closeTooltip()}>
                 {row.getVisibleCells().map((cell) => (
-                  <td
-                    key={cell.id}
-                    className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap text-gray-300"
-                  >
+                  <td key={cell.id} className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap text-gray-300">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
@@ -600,99 +392,40 @@ const DevelopersPage: React.FC = () => {
         </table>
       </div>
 
-      {/* Tooltip Content */}
       {activeRowData && isMobile && (
-        <div
-          className="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-4 rounded-t-lg shadow-lg z-50"
-          onClick={closeTooltip}
-        >
+        <div className="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-4 rounded-t-lg shadow-lg z-50" onClick={closeTooltip}>
           <h3 className="text-lg font-bold mb-2">
-            {activeRowData.project_name}
+            {activeRowData.contributor_html_url ? 
+                <a href={activeRowData.contributor_html_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+                    {activeRowData.contributor_login}
+                </a> : activeRowData.contributor_login
+            }
           </h3>
-          <p className="text-xs md:text-sm">
-            <strong>Rank:</strong> {activeRowData.project_rank}
-          </p>
-          <p className="text-xs md:text-sm">
-            <strong>Bytes Written:</strong>{" "}
-            {activeRowData.bytes_written.toLocaleString()}
-          </p>
-          <p className="text-xs md:text-sm">
-            <strong>Language %:</strong>{" "}
-            {(activeRowData.language_pct * 100).toFixed(2)}%
-          </p>
-          <p className="text-xs md:text-sm">
-            <strong>Stars:</strong>{" "}
-            {activeRowData.stars_count.toLocaleString()}
-          </p>
-          <p className="text-xs md:text-sm">
-            <strong>Contributors:</strong>{" "}
-            {activeRowData.contributor_count.toLocaleString()}
-          </p>
-          <p className="text-xs md:text-sm">
-            <strong>Repos:</strong> {activeRowData.repo_count.toLocaleString()}
-          </p>
-          <p className="text-xs md:text-sm">
-            <strong>Forks:</strong> {activeRowData.fork_count.toLocaleString()}
-          </p>
-          <p className="text-xs md:text-sm">
-            <strong>Score:</strong> {activeRowData.weighted_score.toFixed(2)}
-          </p>
+          <p className="text-xs md:text-sm"><strong>Rank:</strong> {activeRowData.contributor_rank?.toLocaleString() ?? 'N/A'}</p>
+          <p className="text-xs md:text-sm"><strong>Anon?:</strong> {activeRowData.is_anon === true ? 'Yes' : activeRowData.is_anon === false ? 'No' : 'N/A'}</p>
+          <p className="text-xs md:text-sm"><strong>Language:</strong> {activeRowData.dominant_language ?? 'N/A'}</p>
+          <p className="text-xs md:text-sm"><strong>Location:</strong> {activeRowData.location ?? 'N/A'}</p>
+          <p className="text-xs md:text-sm"><strong>Total Contributions:</strong> {activeRowData.total_contributions?.toLocaleString() ?? 'N/A'}</p>
+          <p className="text-xs md:text-sm"><strong>Repos Contrib To:</strong> {activeRowData.total_repos_contributed_to?.toLocaleString() ?? 'N/A'}</p>
+          <p className="text-xs md:text-sm"><strong>Followers:</strong> {activeRowData.followers_total_count?.toLocaleString() ?? 'N/A'}</p>
+          <p className="text-xs md:text-sm"><strong>Weighted Score:</strong> {activeRowData.weighted_score_index?.toFixed(2) ?? 'N/A'}</p>
+          <p className="text-xs md:text-sm"><strong>Quartile:</strong> {activeRowData.quartile_bucket?.toLocaleString() ?? 'N/A'}</p>
         </div>
       )}
 
       <div className="mt-4 flex justify-between items-center space-y-2 md:space-y-0 md:space-x-2 w-full">
         <div className="flex space-x-2">
-          <button
-            className="px-2 py-1 md:px-3 md:py-1 border border-gray-300 rounded bg-black text-white text-xs md:text-sm"
-            onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
-          >
-            {"<<"}
-          </button>
-          <button
-            className="px-2 py-1 md:px-3 md:py-1 border border-gray-300 rounded bg-black text-white text-xs md:text-sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            {"<"}
-          </button>
-          <button
-            className="px-2 py-1 md:px-3 md:py-1 border border-gray-300 rounded bg-black text-white text-xs md:text-sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            {">"}
-          </button>
-          <button
-            className="px-2 py-1 md:px-3 md:py-1 border border-gray-300 rounded bg-black text-white text-xs md:text-sm"
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
-          >
-            {">>"}
-          </button>
+          <button className="px-2 py-1 md:px-3 md:py-1 border border-gray-300 rounded bg-black text-white text-xs md:text-sm" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}>{"<<"}</button>
+          <button className="px-2 py-1 md:px-3 md:py-1 border border-gray-300 rounded bg-black text-white text-xs md:text-sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>{"<"}</button>
+          <button className="px-2 py-1 md:px-3 md:py-1 border border-gray-300 rounded bg-black text-white text-xs md:text-sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>{">"}</button>
+          <button className="px-2 py-1 md:px-3 md:py-1 border border-gray-300 rounded bg-black text-white text-xs md:text-sm" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()}>{">>"}</button>
         </div>
         <div className="flex-grow flex justify-center">
-          <span className="text-xs md:text-sm text-white">
-            Page{" "}
-            <strong>
-              {table.getState().pagination.pageIndex + 1} of{" "}
-              {table.getPageCount()}
-            </strong>
-          </span>
+          <span className="text-xs md:text-sm text-white">Page <strong>{table.getState().pagination.pageIndex + 1} of {table.getPageCount()}</strong></span>
         </div>
         <div className="hidden md:block">
-          <select
-            className="px-2 py-1 border border-gray-300 rounded bg-black text-white text-xs md:text-sm"
-            value={table.getState().pagination.pageSize}
-            onChange={(e) => {
-              table.setPageSize(Number(e.target.value));
-            }}
-          >
-            {[7, 10, 20, 30, 40, 50].map((pageSize) => (
-              <option key={pageSize} value={pageSize}>
-                Show {pageSize}
-              </option>
-            ))}
+          <select className="px-2 py-1 border border-gray-300 rounded bg-black text-white text-xs md:text-sm" value={table.getState().pagination.pageSize} onChange={(e) => table.setPageSize(Number(e.target.value))}>
+            {[10, 20, 30, 40, 50, 100].map((pageSize) => (<option key={pageSize} value={pageSize}>Show {pageSize}</option>))}
           </select>
         </div>
       </div>
@@ -700,4 +433,4 @@ const DevelopersPage: React.FC = () => {
   );
 };
 
-export default DevelopersPage;
+export default ContributorsPage;

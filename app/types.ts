@@ -60,3 +60,21 @@ export interface TopProjectsTrendsData {
 export type EnhancedTopProjectsTrendsData = TopProjectsTrendsData & {
   [key: string]: string | number | null | undefined; // Index signature to allow dynamic access like item[selectedMetric]
 }
+
+// Define the top 100 Contributor interface based on API
+export interface Top100Contributor {
+  contributor_login: string;
+  is_anon: boolean | null;
+  dominant_language: string | null;
+  location: string | null;
+  contributor_html_url: string | null;
+  total_repos_contributed_to: number | null;
+  total_contributions: number | null;
+  contributions_to_og_repos: number | null;
+  normalized_total_repo_quality_weighted_contribution_score_rank: number | null;
+  followers_total_count: number | null;
+  weighted_score_index: number | null;
+  quartile_bucket: number | null;
+  contributor_rank: number | null;
+  latest_data_timestamp: string | null;
+}
