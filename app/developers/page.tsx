@@ -176,19 +176,26 @@ const ContributorsPage: React.FC = () => {
             return <div className="truncate text-sm md:text-base" title={loc}>{loc}</div>; // Added truncate and title
         },
         filterFn: multiSelectFilter,
-        size: 140, // Explicit size
+        size: 130, // Explicit size
       },
       {
         header: 'Contributions', 
         accessorKey: 'total_contributions',
         id: 'total_contributions',
         cell: ({ getValue }) => <div className="text-right text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
-        size: 120, // Explicit size
+        size: 100, // Explicit size
       },
       {
         header: 'Associated Blockchain Repos',
         accessorKey: 'total_repos_contributed_to',
         id: 'total_repos_contributed_to',
+        cell: ({ getValue }) => <div className="text-right text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
+        size: 80, // Explicit size
+      },
+      {
+        header: 'Associated Repos - Relative Strength',
+        accessorKey: 'normalized_total_repo_quality_weighted_contribution_score_rank',
+        id: 'normalized_total_repo_quality_weighted_contribution_score_rank',
         cell: ({ getValue }) => <div className="text-right text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
         size: 80, // Explicit size
       },
@@ -280,6 +287,7 @@ const ContributorsPage: React.FC = () => {
         is_anon: false, 
         total_contributions: false,
         contributions_to_og_repos: false,
+        normalized_total_repo_quality_weighted_contribution_score_rank: false,
       });
     } else {
       setColumnVisibility({});
@@ -434,6 +442,7 @@ const ContributorsPage: React.FC = () => {
           <p className="text-xs md:text-sm"><strong>Contributions:</strong> {activeRowData.total_contributions?.toLocaleString() ?? 'N/A'}</p>
           <p className="text-xs md:text-sm"><strong>Associated Blockchain Repos:</strong> {activeRowData.total_repos_contributed_to?.toLocaleString() ?? 'N/A'}</p>
           <p className="text-xs md:text-sm"><strong>Contributions to Non-Forked Repos:</strong> {activeRowData.contributions_to_og_repos?.toLocaleString() ?? 'N/A'}</p>
+          <p className="text-xs md:text-sm"><strong>Associated Repos - Relative Strength:</strong> {activeRowData.normalized_total_repo_quality_weighted_contribution_score_rank?.toLocaleString() ?? 'N/A'}</p>
           <p className="text-xs md:text-sm"><strong>Followers:</strong> {activeRowData.followers_total_count?.toLocaleString() ?? 'N/A'}</p>
           <p className="text-xs md:text-sm"><strong>Builder Score:</strong> {activeRowData.weighted_score_index?.toFixed(2) ?? 'N/A'}</p>
         </div>
