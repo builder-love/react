@@ -165,7 +165,7 @@ const ContributorsPage: React.FC = () => {
             return <div className="truncate text-sm md:text-base" title={lang}>{lang}</div>; // Added truncate and title
         },
         filterFn: multiSelectFilter,
-        size: 120, // Explicit size
+        size: 100, // Explicit size
       },
       {
         header: 'Location',
@@ -176,7 +176,7 @@ const ContributorsPage: React.FC = () => {
             return <div className="truncate text-sm md:text-base" title={loc}>{loc}</div>; // Added truncate and title
         },
         filterFn: multiSelectFilter,
-        size: 130, // Explicit size
+        size: 100, // Explicit size
       },
       {
         header: 'Contributions', 
@@ -193,7 +193,7 @@ const ContributorsPage: React.FC = () => {
         size: 80, // Explicit size
       },
       {
-        header: 'Associated Repos - Relative Strength',
+        header: 'Associated Repos - Quality Ranking',
         accessorKey: 'normalized_total_repo_quality_weighted_contribution_score_rank',
         id: 'normalized_total_repo_quality_weighted_contribution_score_rank',
         cell: ({ getValue }) => <div className="text-right text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
