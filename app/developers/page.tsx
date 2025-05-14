@@ -386,7 +386,7 @@ const ContributorsPage: React.FC = () => {
                     onClick={header.column.getToggleSortingHandler()}
                     // Applying width from column definition style
                     style={{ width: header.getSize() !== 0 ? header.getSize() : undefined }}
-                    className="px-2 py-2 text-left text-xs md:text-sm font-medium text-gray-300 uppercase tracking-wider cursor-pointer whitespace-normal group" // Reduced header padding
+                    className="px-2 py-2 text-left text-xs md:text-sm font-medium text-gray-300 tracking-wider cursor-pointer whitespace-normal group" // Reduced header padding
                   >
                     <div className="flex items-center justify-between"> {/* For sort icon alignment */}
                       {flexRender(header.column.columnDef.header, header.getContext())}
