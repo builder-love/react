@@ -317,7 +317,7 @@ const ContributorsPage: React.FC = () => {
 
   return (
     <div className="p-2 md:p-4 bg-black text-white min-h-screen relative z-0"> {/* Reduced overall padding */}
-      <h1 className="text-2xl font-bold text-center mt-8 mb-8">Top 100 Contributors</h1>
+      <h1 className="text-2xl font-bold text-center mt-8 mb-8">Top 100 Builders</h1>
 
       <div className={`mb-4 flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0`}>
         <div className="md:w-1/3 lg:w-1/4">
@@ -445,6 +445,18 @@ const ContributorsPage: React.FC = () => {
             {[10, 20, 30, 40, 50, 100].map((pageSize) => (<option key={pageSize} value={pageSize}>Show {pageSize}</option>))}
           </select>
         </div>
+      </div>
+
+      {/* Link to methodology */}
+      <div className="mt-6 text-center"> {/* Using mt-6 for spacing from pagination */}
+        <a
+          href="https://docs.builder.love/docs/methodology/developer-categories"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-400 hover:text-blue-300 hover:underline text-sm md:text-base"
+        >
+          How do we identify strong builders?
+        </a>
       </div>
     </div>
   );
