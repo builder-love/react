@@ -92,7 +92,6 @@ export async function GET(req: NextRequest) {
     }
     console.log("Cloud Run ID token received.");
 
-
     // --- Step 3: Make the request to your Cloud Run API using the ID Token ---
     console.log("Making request to Cloud Run API with generated ID Token");
     const apiResponse = await fetch(CLOUD_RUN_URL + '/contributors/top100', { // Ensure this path is correct
