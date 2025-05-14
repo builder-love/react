@@ -13,13 +13,12 @@ import {
   ColumnFiltersState,
   FilterFn,
 } from '@tanstack/react-table';
-import { Top100Contributor } from '../types';
+import { Top100Contributor } from '../types'; 
 import { useScreenOrientation } from '../hooks/useScreenOrientation';
 
 // Define a custom filter function for multi-select
 const multiSelectFilter: FilterFn<Top100Contributor> = (row, columnId, filterValue: string[]) => {
   const rawValue = row.getValue(columnId);
-  // Convert boolean/null/number to string representation for consistent filtering
   const value = String(rawValue);
   return filterValue.includes(value);
 };
@@ -69,25 +68,21 @@ const ContributorsPage: React.FC = () => {
   ]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [globalFilter, setGlobalFilter] = useState<string>(''); // State for global search
 
   const { isMobile } = useScreenOrientation();
 
-  // States for filters: Location, Languages, Contributors
+  // States for dropdown filters
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [selectedDominantLanguages, setSelectedDominantLanguages] = useState<string[]>([]);
-  const [selectedContributorLogins, setSelectedContributorLogins] = useState<string[]>([]);
-
 
   // Dropdown open states
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(false);
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState<boolean>(false);
-  const [isContributorDropdownOpen, setIsContributorDropdownOpen] = useState<boolean>(false);
 
   // Refs for dropdowns
   const locationDropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
-  const contributorDropdownRef = useRef<HTMLDivElement>(null);
-
 
   const [activeRowData, setActiveRowData] = useState<Top100Contributor | null>(null);
 
@@ -139,7 +134,6 @@ const ContributorsPage: React.FC = () => {
               {row.original.contributor_login}
             </a> : <div className="text-sm md:text-base">{row.original.contributor_login}</div>
           ),
-        filterFn: multiSelectFilter, // Filter re-added for contributor_login
       },
       {
         header: 'Anon?',
@@ -174,7 +168,7 @@ const ContributorsPage: React.FC = () => {
         cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
       },
       {
-        header: 'Repos Contributed To',
+        header: 'Blockchain Repos Contributed To',
         accessorKey: 'total_repos_contributed_to',
         id: 'total_repos_contributed_to',
         cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
@@ -195,7 +189,6 @@ const ContributorsPage: React.FC = () => {
     []
   );
 
-  // Unique values for filters
   const uniqueLocations = useMemo(() => {
     const locations = new Set<string>();
     data.forEach((contributor) => contributor.location && locations.add(contributor.location));
@@ -207,13 +200,6 @@ const ContributorsPage: React.FC = () => {
     data.forEach((contributor) => contributor.dominant_language && languages.add(contributor.dominant_language));
     return Array.from(languages).sort();
   }, [data]);
-
-  const uniqueContributorLogins = useMemo(() => {
-    const logins = new Set<string>();
-    data.forEach((contributor) => contributor.contributor_login && logins.add(contributor.contributor_login));
-    return Array.from(logins).sort();
-  }, [data]);
-
 
   const updateColumnFilters = (columnId: string, selectedValues: string[]) => {
     setColumnFilters((prevFilters) => {
@@ -227,7 +213,6 @@ const ContributorsPage: React.FC = () => {
     });
   };
 
-  // Filter handlers
   const handleLocationFilterChange = (location: string) => {
     setSelectedLocations((prevSelected) => {
       const newSelected = prevSelected.includes(location) ? prevSelected.filter((l) => l !== location) : [...prevSelected, location];
@@ -244,25 +229,13 @@ const ContributorsPage: React.FC = () => {
     });
   };
 
-  const handleContributorLoginFilterChange = (login: string) => {
-    setSelectedContributorLogins((prevSelected) => {
-      const newSelected = prevSelected.includes(login) ? prevSelected.filter((l) => l !== login) : [...prevSelected, login];
-      updateColumnFilters('contributor_login', newSelected);
-      return newSelected;
-    });
-  };
-
-  // Dropdown toggle functions
   const toggleLocationDropdown = () => setIsLocationDropdownOpen(!isLocationDropdownOpen);
   const toggleLanguageDropdown = () => setIsLanguageDropdownOpen(!isLanguageDropdownOpen);
-  const toggleContributorDropdown = () => setIsContributorDropdownOpen(!isContributorDropdownOpen);
-
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (locationDropdownRef.current && !locationDropdownRef.current.contains(event.target as Node)) setIsLocationDropdownOpen(false);
       if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target as Node)) setIsLanguageDropdownOpen(false);
-      if (contributorDropdownRef.current && !contributorDropdownRef.current.contains(event.target as Node)) setIsContributorDropdownOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -284,14 +257,20 @@ const ContributorsPage: React.FC = () => {
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, columnFilters, columnVisibility },
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      globalFilter, // globalFilter state
+    },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
+    onGlobalFilterChange: setGlobalFilter, // handler for global filter
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+    getFilteredRowModel: getFilteredRowModel(), // Needed for global and column filters
     filterFns: { multiSelect: multiSelectFilter }
   });
 
@@ -313,15 +292,28 @@ const ContributorsPage: React.FC = () => {
     <div className="p-4 bg-black text-white min-h-screen relative z-0">
       <h1 className="text-2xl font-bold text-center mt-8 mb-8">Top 100 Contributors</h1>
 
-      <div className="mb-4">
-        <div className={`flex space-x-4 ${isMobile ? 'justify-center' : 'justify-start md:justify-center'}`}>
+      {/* Filters Section: Search on Left, Dropdowns on Right */}
+      <div className={`mb-4 flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0`}>
+        {/* Global Search Input - Left Aligned */}
+        <div className="md:w-1/3 lg:w-1/4"> {/* Adjust width as needed */}
+          <input
+            type="text"
+            value={globalFilter ?? ''}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            placeholder="Search table..."
+            className="px-3 py-2 border border-gray-600 rounded bg-gray-800 text-white focus:ring-blue-500 focus:border-blue-500 text-sm w-full"
+          />
+        </div>
+
+        {/* Dropdown Filters - Right Aligned */}
+        <div className={`flex space-x-2 sm:space-x-4 ${isMobile ? 'justify-center mt-2 md:mt-0' : 'justify-end'}`}>
           {/* Location Filter Dropdown */}
           <div className="relative" ref={locationDropdownRef}>
             <button onClick={toggleLocationDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
               Location <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
             {isLocationDropdownOpen && (
-              <div className="absolute z-30 mt-1 left-0 w-56 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" onClick={(e) => e.stopPropagation()}>
+              <div className="absolute z-30 mt-1 right-0 md:left-0 w-56 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" onClick={(e) => e.stopPropagation()}>
                 {uniqueLocations.map((location) => (
                   <div key={location} className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm" onClick={() => handleLocationFilterChange(location)}>
                     <CustomCheckbox checked={selectedLocations.includes(location)} onChange={() => handleLocationFilterChange(location)} />
@@ -332,34 +324,17 @@ const ContributorsPage: React.FC = () => {
             )}
           </div>
 
-          {/* Languages Filter Dropdown (Kept) */}
+          {/* Languages Filter Dropdown */}
           <div className="relative" ref={languageDropdownRef}>
             <button onClick={toggleLanguageDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
               Languages <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
             {isLanguageDropdownOpen && (
-              <div className="absolute z-30 mt-1 left-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" onClick={(e) => e.stopPropagation()}>
+              <div className="absolute z-30 mt-1 right-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" onClick={(e) => e.stopPropagation()}>
                 {uniqueDominantLanguages.map((language) => (
                   <div key={language} className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm" onClick={() => handleDominantLanguageFilterChange(language)}>
                     <CustomCheckbox checked={selectedDominantLanguages.includes(language)} onChange={() => handleDominantLanguageFilterChange(language)} />
                     <span className="ml-2">{language}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Contributors (Github Login) Filter Dropdown */}
-          <div className="relative" ref={contributorDropdownRef}>
-            <button onClick={toggleContributorDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
-              Contributors <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </button>
-            {isContributorDropdownOpen && (
-              <div className="absolute z-30 mt-1 right-0 w-56 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" onClick={(e) => e.stopPropagation()}>
-                {uniqueContributorLogins.map((login) => (
-                  <div key={login} className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm" onClick={() => handleContributorLoginFilterChange(login)}>
-                    <CustomCheckbox checked={selectedContributorLogins.includes(login)} onChange={() => handleContributorLoginFilterChange(login)} />
-                    <span className="ml-2">{login}</span>
                   </div>
                 ))}
               </div>
