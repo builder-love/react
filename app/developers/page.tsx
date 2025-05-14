@@ -91,7 +91,7 @@ const ContributorsPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch('../api/get-top100-contributors/route.ts');
+        const response = await fetch('/api/get-top100-contributors');
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ detail: `HTTP error! status: ${response.status}` }));
           throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
