@@ -13,7 +13,7 @@ import {
   ColumnFiltersState,
   FilterFn,
 } from '@tanstack/react-table';
-import { Top100Contributor } from '../types'; 
+import { Top100Contributor } from '../types';
 import { useScreenOrientation } from '../hooks/useScreenOrientation';
 
 // Define a custom filter function for multi-select
@@ -68,19 +68,16 @@ const ContributorsPage: React.FC = () => {
   ]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [globalFilter, setGlobalFilter] = useState<string>(''); // State for global search
+  const [globalFilter, setGlobalFilter] = useState<string>('');
 
   const { isMobile } = useScreenOrientation();
 
-  // States for dropdown filters
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [selectedDominantLanguages, setSelectedDominantLanguages] = useState<string[]>([]);
 
-  // Dropdown open states
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(false);
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState<boolean>(false);
 
-  // Refs for dropdowns
   const locationDropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -117,23 +114,34 @@ const ContributorsPage: React.FC = () => {
         header: 'Builder Rank',
         accessorKey: 'contributor_rank',
         id: 'contributor_rank',
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
+        cell: ({ getValue }) => <div className="text-center text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
+        size: 70, // Explicit size for rank
       },
       {
         header: 'Github Login',
         accessorKey: 'contributor_login',
         id: 'contributor_login',
-        cell: ({ row }) => (
-            row.original.contributor_html_url ?
-            <a
-              href={row.original.contributor_html_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-400 hover:text-blue-300 hover:underline text-sm md:text-base"
-            >
-              {row.original.contributor_login}
-            </a> : <div className="text-sm md:text-base">{row.original.contributor_login}</div>
-          ),
+        cell: ({ row }) => {
+            const login = row.original.contributor_login;
+            const url = row.original.contributor_html_url;
+            return (
+                <div className="truncate text-sm md:text-base" title={login}> {/* Added truncate and title */}
+                    {url ? (
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 hover:underline"
+                        >
+                          {login}
+                        </a>
+                    ) : (
+                        login
+                    )}
+                </div>
+            );
+        },
+        size: 150, // Explicit size
       },
       {
         header: 'Anon?',
@@ -144,46 +152,59 @@ const ContributorsPage: React.FC = () => {
             let displayValue = 'N/A';
             if (value === true) displayValue = 'Yes';
             else if (value === false) displayValue = 'No';
-            return <div className="text-sm md:text-base">{displayValue}</div>;
+            return <div className="text-center text-sm md:text-base">{displayValue}</div>;
         },
+        size: 60, // Explicit size
       },
       {
         header: 'Dominant Language',
         accessorKey: 'dominant_language',
         id: 'dominant_language',
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<string>() ?? 'N/A'}</div>,
+        cell: ({ getValue }) => {
+            const lang = getValue<string>() ?? 'N/A';
+            return <div className="truncate text-sm md:text-base" title={lang}>{lang}</div>; // Added truncate and title
+        },
         filterFn: multiSelectFilter,
+        size: 120, // Explicit size
       },
       {
         header: 'Location',
         accessorKey: 'location',
         id: 'location',
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<string>() ?? 'N/A'}</div>,
+        cell: ({ getValue }) => {
+            const loc = getValue<string>() ?? 'N/A';
+            return <div className="truncate text-sm md:text-base" title={loc}>{loc}</div>; // Added truncate and title
+        },
         filterFn: multiSelectFilter,
+        size: 140, // Explicit size
       },
       {
-        header: 'Total Contributions',
+        header: 'Contributions', 
         accessorKey: 'total_contributions',
         id: 'total_contributions',
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
+        cell: ({ getValue }) => <div className="text-right text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
+        size: 120, // Explicit size
       },
       {
-        header: 'Blockchain Repos Contributed To',
+        header: 'Associated Blockchain Repos',
         accessorKey: 'total_repos_contributed_to',
         id: 'total_repos_contributed_to',
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
+        cell: ({ getValue }) => <div className="text-right text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
+        size: 80, // Explicit size
       },
       {
         header: 'Followers',
         accessorKey: 'followers_total_count',
         id: 'followers_total_count',
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
+        cell: ({ getValue }) => <div className="text-right text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
+        size: 90, // Explicit size
       },
       {
         header: 'Builder Score',
         accessorKey: 'weighted_score_index',
         id: 'weighted_score_index',
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toFixed(2) ?? 'N/A'}</div>,
+        cell: ({ getValue }) => <div className="text-right text-sm md:text-base">{getValue<number>()?.toFixed(2) ?? 'N/A'}</div>,
+        size: 80, // Explicit size
       },
     ],
     []
@@ -242,12 +263,14 @@ const ContributorsPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Current mobile visibility - adjust if Location/Language should be visible on mobile
     if (isMobile) {
       setColumnVisibility({
         location: false,
         total_repos_contributed_to: false,
         followers_total_count: false,
         weighted_score_index: false,
+        dominant_language: false, // Also hiding language on mobile for more space
       });
     } else {
       setColumnVisibility({});
@@ -261,17 +284,20 @@ const ContributorsPage: React.FC = () => {
       sorting,
       columnFilters,
       columnVisibility,
-      globalFilter, // globalFilter state
+      globalFilter,
     },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onGlobalFilterChange: setGlobalFilter, // handler for global filter
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(), // Needed for global and column filters
-    filterFns: { multiSelect: multiSelectFilter }
+    getFilteredRowModel: getFilteredRowModel(),
+    filterFns: { multiSelect: multiSelectFilter },
+    defaultColumn: { // Can set default min/max size for columns if not specified
+      minSize: 50,
+    }
   });
 
   useEffect(() => {
@@ -289,13 +315,11 @@ const ContributorsPage: React.FC = () => {
   if (error) return <div className="p-4 text-center text-red-500">Error loading data: {error}</div>;
 
   return (
-    <div className="p-4 bg-black text-white min-h-screen relative z-0">
+    <div className="p-2 md:p-4 bg-black text-white min-h-screen relative z-0"> {/* Reduced overall padding */}
       <h1 className="text-2xl font-bold text-center mt-8 mb-8">Top 100 Contributors</h1>
 
-      {/* Filters Section: Search on Left, Dropdowns on Right */}
       <div className={`mb-4 flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0`}>
-        {/* Global Search Input - Left Aligned */}
-        <div className="md:w-1/3 lg:w-1/4"> {/* Adjust width as needed */}
+        <div className="md:w-1/3 lg:w-1/4">
           <input
             type="text"
             value={globalFilter ?? ''}
@@ -304,10 +328,7 @@ const ContributorsPage: React.FC = () => {
             className="px-3 py-2 border border-gray-600 rounded bg-gray-800 text-white focus:ring-blue-500 focus:border-blue-500 text-sm w-full"
           />
         </div>
-
-        {/* Dropdown Filters - Right Aligned */}
         <div className={`flex space-x-2 sm:space-x-4 ${isMobile ? 'justify-center mt-2 md:mt-0' : 'justify-end'}`}>
-          {/* Location Filter Dropdown */}
           <div className="relative" ref={locationDropdownRef}>
             <button onClick={toggleLocationDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
               Location <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -323,11 +344,9 @@ const ContributorsPage: React.FC = () => {
               </div>
             )}
           </div>
-
-          {/* Languages Filter Dropdown */}
           <div className="relative" ref={languageDropdownRef}>
             <button onClick={toggleLanguageDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
-              Languages <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              Language <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
             {isLanguageDropdownOpen && (
               <div className="absolute z-30 mt-1 right-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" onClick={(e) => e.stopPropagation()}>
@@ -344,14 +363,28 @@ const ContributorsPage: React.FC = () => {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 table-auto">
+        {/* For column sizing to work effectively, table-layout:fixed can be useful,
+            but TanStack Table often applies widths directly to th/td styles.
+            Ensure the sum of your column sizes is reasonable.
+        */}
+        <table className="min-w-full divide-y divide-gray-200 table-auto"> {/* table-auto is fine, sizes will influence initial layout */}
           <thead className="bg-gray-800">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <th key={header.id} onClick={header.column.getToggleSortingHandler()} className="px-4 py-2 text-left text-xs md:text-sm font-medium text-gray-300 uppercase tracking-wider cursor-pointer whitespace-nowrap">
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                    <span className="ml-1">{{ asc: "↑", desc: "↓" }[header.column.getIsSorted() as string] ?? null}</span>
+                  <th
+                    key={header.id}
+                    onClick={header.column.getToggleSortingHandler()}
+                    // Applying width from column definition style
+                    style={{ width: header.getSize() !== 0 ? header.getSize() : undefined }}
+                    className="px-2 py-2 text-left text-xs md:text-sm font-medium text-gray-300 uppercase tracking-wider cursor-pointer whitespace-normal group" // Reduced header padding
+                  >
+                    <div className="flex items-center justify-between"> {/* For sort icon alignment */}
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                      <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {{ asc: "↑", desc: "↓" }[header.column.getIsSorted() as string] ?? <span className="text-gray-500">↕</span>}
+                      </span>
+                    </div>
                   </th>
                 ))}
               </tr>
@@ -361,7 +394,12 @@ const ContributorsPage: React.FC = () => {
             {table.getRowModel().rows.map((row) => (
               <tr key={row.id} className="hover:bg-gray-800 cursor-pointer tooltip-trigger" onMouseEnter={() => isMobile && handleRowHover(row.original)} onMouseLeave={() => isMobile && closeTooltip()}>
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-2 py-2 md:px-6 md:py-4 text-xs md:text-sm whitespace-nowrap text-gray-300">
+                  <td
+                    key={cell.id}
+                    // Applying width from column definition style
+                    style={{ width: cell.column.getSize() !== 0 ? cell.column.getSize() : undefined }}
+                    className="px-2 py-1 md:px-3 md:py-2 text-xs md:text-sm whitespace-nowrap text-gray-300" // Reduced cell padding
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
@@ -380,12 +418,12 @@ const ContributorsPage: React.FC = () => {
                 </a> : activeRowData.contributor_login
             }
           </h3>
-          <p className="text-xs md:text-sm"><strong>Rank:</strong> {activeRowData.contributor_rank?.toLocaleString() ?? 'N/A'}</p>
+          <p className="text-xs md:text-sm"><strong>Builder Rank:</strong> {activeRowData.contributor_rank?.toLocaleString() ?? 'N/A'}</p>
           <p className="text-xs md:text-sm"><strong>Anon?:</strong> {activeRowData.is_anon === true ? 'Yes' : activeRowData.is_anon === false ? 'No' : 'N/A'}</p>
           <p className="text-xs md:text-sm"><strong>Language:</strong> {activeRowData.dominant_language ?? 'N/A'}</p>
           <p className="text-xs md:text-sm"><strong>Location:</strong> {activeRowData.location ?? 'N/A'}</p>
-          <p className="text-xs md:text-sm"><strong>Total Contributions:</strong> {activeRowData.total_contributions?.toLocaleString() ?? 'N/A'}</p>
-          <p className="text-xs md:text-sm"><strong>Repos Contrib To:</strong> {activeRowData.total_repos_contributed_to?.toLocaleString() ?? 'N/A'}</p>
+          <p className="text-xs md:text-sm"><strong>Contributions:</strong> {activeRowData.total_contributions?.toLocaleString() ?? 'N/A'}</p>
+          <p className="text-xs md:text-sm"><strong>Associated Blockchain Repos:</strong> {activeRowData.total_repos_contributed_to?.toLocaleString() ?? 'N/A'}</p>
           <p className="text-xs md:text-sm"><strong>Followers:</strong> {activeRowData.followers_total_count?.toLocaleString() ?? 'N/A'}</p>
           <p className="text-xs md:text-sm"><strong>Builder Score:</strong> {activeRowData.weighted_score_index?.toFixed(2) ?? 'N/A'}</p>
         </div>
