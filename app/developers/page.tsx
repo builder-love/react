@@ -13,13 +13,13 @@ import {
   ColumnFiltersState,
   FilterFn,
 } from '@tanstack/react-table';
-import { Top100Contributor } from '../types'; 
-import { useScreenOrientation } from '../hooks/useScreenOrientation'; 
+import { Top100Contributor } from '../types';
+import { useScreenOrientation } from '../hooks/useScreenOrientation';
 
 // Define a custom filter function for multi-select
 const multiSelectFilter: FilterFn<Top100Contributor> = (row, columnId, filterValue: string[]) => {
   const rawValue = row.getValue(columnId);
-  // Convert boolean/null to string representation for consistent filtering
+  // Convert boolean/null/number to string representation for consistent filtering
   const value = String(rawValue);
   return filterValue.includes(value);
 };
@@ -72,17 +72,20 @@ const ContributorsPage: React.FC = () => {
 
   const { isMobile } = useScreenOrientation();
 
-  const [selectedContributorLogins, setSelectedContributorLogins] = useState<string[]>([]);
+  // Updated states for new filters
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [selectedDominantLanguages, setSelectedDominantLanguages] = useState<string[]>([]);
-  const [selectedIsAnon, setSelectedIsAnon] = useState<string[]>([]); // Stores "true", "false", "null" as strings
+  const [selectedQuartileRanks, setSelectedQuartileRanks] = useState<string[]>([]); // Store as strings
 
-  const [isContributorDropdownOpen, setIsContributorDropdownOpen] = useState<boolean>(false);
+  // Updated dropdown open states
+  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(false);
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState<boolean>(false);
-  const [isAnonDropdownOpen, setIsAnonDropdownOpen] = useState<boolean>(false);
+  const [isQuartileRankDropdownOpen, setIsQuartileRankDropdownOpen] = useState<boolean>(false);
 
-  const contributorDropdownRef = useRef<HTMLDivElement>(null);
+  // Updated refs for dropdowns
+  const locationDropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
-  const isAnonDropdownRef = useRef<HTMLDivElement>(null);
+  const quartileRankDropdownRef = useRef<HTMLDivElement>(null);
 
   const [activeRowData, setActiveRowData] = useState<Top100Contributor | null>(null);
 
@@ -125,19 +128,18 @@ const ContributorsPage: React.FC = () => {
         id: 'contributor_login',
         cell: ({ row }) => (
             row.original.contributor_html_url ?
-            <a 
-              href={row.original.contributor_html_url} 
-              target="_blank" 
+            <a
+              href={row.original.contributor_html_url}
+              target="_blank"
               rel="noopener noreferrer"
               className="text-blue-400 hover:text-blue-300 hover:underline text-sm md:text-base"
             >
               {row.original.contributor_login}
             </a> : <div className="text-sm md:text-base">{row.original.contributor_login}</div>
           ),
-        filterFn: multiSelectFilter,
       },
       {
-        header: 'Anon?',
+        header: 'Anon?', 
         accessorKey: 'is_anon',
         id: 'is_anon',
         cell: ({ getValue }) => {
@@ -147,7 +149,6 @@ const ContributorsPage: React.FC = () => {
             else if (value === false) displayValue = 'No';
             return <div className="text-sm md:text-base">{displayValue}</div>;
         },
-        filterFn: multiSelectFilter,
       },
       {
         header: 'Dominant Language',
@@ -161,6 +162,7 @@ const ContributorsPage: React.FC = () => {
         accessorKey: 'location',
         id: 'location',
         cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<string>() ?? 'N/A'}</div>,
+        filterFn: multiSelectFilter, 
       },
       {
         header: 'Total Contributions',
@@ -191,15 +193,22 @@ const ContributorsPage: React.FC = () => {
         accessorKey: 'quartile_bucket',
         id: 'quartile_bucket',
         cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
+        filterFn: multiSelectFilter, 
       },
     ],
     []
   );
 
-  const uniqueContributorLogins = useMemo(() => {
-    const logins = new Set<string>();
-    data.forEach((contributor) => contributor.contributor_login && logins.add(contributor.contributor_login));
-    return Array.from(logins).sort();
+  // Unique values for new filters
+  const uniqueLocations = useMemo(() => {
+    const locations = new Set<string>();
+    data.forEach((contributor) => {
+        // Assuming location from API is a string (could be 'Unknown' if coalesced in DB)
+        if (contributor.location) {
+             locations.add(contributor.location);
+        }
+    });
+    return Array.from(locations).sort();
   }, [data]);
 
   const uniqueDominantLanguages = useMemo(() => {
@@ -207,13 +216,16 @@ const ContributorsPage: React.FC = () => {
     data.forEach((contributor) => contributor.dominant_language && languages.add(contributor.dominant_language));
     return Array.from(languages).sort();
   }, [data]);
-  
-  // For 'is_anon' filter dropdown
-  const isAnonOptions = useMemo(() => [
-    { label: 'Yes', value: 'true' }, // String "true" for true
-    { label: 'No', value: 'false' },  // String "false" for false
-    { label: 'Unknown', value: 'null' } // String "null" for null
-  ], []);
+
+  const uniqueQuartileRanks = useMemo(() => {
+    const ranks = new Set<number>();
+    data.forEach((contributor) => {
+      if (contributor.quartile_bucket !== null && contributor.quartile_bucket !== undefined) {
+        ranks.add(contributor.quartile_bucket);
+      }
+    });
+    return Array.from(ranks).sort((a, b) => a - b).map(String); // Sort numerically, then map to strings
+  }, [data]);
 
 
   const updateColumnFilters = (columnId: string, selectedValues: string[]) => {
@@ -228,10 +240,11 @@ const ContributorsPage: React.FC = () => {
     });
   };
 
-  const handleContributorLoginFilterChange = (login: string) => {
-    setSelectedContributorLogins((prevSelected) => {
-      const newSelected = prevSelected.includes(login) ? prevSelected.filter((l) => l !== login) : [...prevSelected, login];
-      updateColumnFilters('contributor_login', newSelected);
+  // New filter handlers
+  const handleLocationFilterChange = (location: string) => {
+    setSelectedLocations((prevSelected) => {
+      const newSelected = prevSelected.includes(location) ? prevSelected.filter((l) => l !== location) : [...prevSelected, location];
+      updateColumnFilters('location', newSelected);
       return newSelected;
     });
   };
@@ -244,23 +257,25 @@ const ContributorsPage: React.FC = () => {
     });
   };
 
-  const handleIsAnonFilterChange = (value: string) => { // value will be "true", "false", or "null"
-    setSelectedIsAnon((prevSelected) => {
-      const newSelected = prevSelected.includes(value) ? prevSelected.filter((v) => v !== value) : [...prevSelected, value];
-      updateColumnFilters('is_anon', newSelected);
+  const handleQuartileRankFilterChange = (rank: string) => {
+    setSelectedQuartileRanks((prevSelected) => {
+      const newSelected = prevSelected.includes(rank) ? prevSelected.filter((r) => r !== rank) : [...prevSelected, rank];
+      updateColumnFilters('quartile_bucket', newSelected);
       return newSelected;
     });
   };
 
-  const toggleContributorDropdown = () => setIsContributorDropdownOpen(!isContributorDropdownOpen);
+  // New dropdown toggle functions
+  const toggleLocationDropdown = () => setIsLocationDropdownOpen(!isLocationDropdownOpen);
   const toggleLanguageDropdown = () => setIsLanguageDropdownOpen(!isLanguageDropdownOpen);
-  const toggleIsAnonDropdown = () => setIsAnonDropdownOpen(!isAnonDropdownOpen);
+  const toggleQuartileRankDropdown = () => setIsQuartileRankDropdownOpen(!isQuartileRankDropdownOpen);
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (contributorDropdownRef.current && !contributorDropdownRef.current.contains(event.target as Node)) setIsContributorDropdownOpen(false);
+      if (locationDropdownRef.current && !locationDropdownRef.current.contains(event.target as Node)) setIsLocationDropdownOpen(false);
       if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target as Node)) setIsLanguageDropdownOpen(false);
-      if (isAnonDropdownRef.current && !isAnonDropdownRef.current.contains(event.target as Node)) setIsAnonDropdownOpen(false);
+      if (quartileRankDropdownRef.current && !quartileRankDropdownRef.current.contains(event.target as Node)) setIsQuartileRankDropdownOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -269,11 +284,11 @@ const ContributorsPage: React.FC = () => {
   useEffect(() => {
     if (isMobile) {
       setColumnVisibility({
-        location: false,
+        location: false, // Location is now a primary filter, might want to keep it visible or adjust logic
         total_repos_contributed_to: false,
         followers_total_count: false,
         weighted_score_index: false,
-        quartile_bucket: false,
+        quartile_bucket: false, // Quartile Rank is also a filter, consider visibility
       });
     } else {
       setColumnVisibility({});
@@ -304,7 +319,7 @@ const ContributorsPage: React.FC = () => {
 
   const handleRowHover = (rowData: Top100Contributor) => setActiveRowData(rowData);
   const closeTooltip = () => setActiveRowData(null);
-  
+
   if (isLoading) return <div className="p-4 text-center text-white">Loading contributors...</div>;
   if (error) return <div className="p-4 text-center text-red-500">Error loading data: {error}</div>;
 
@@ -314,22 +329,24 @@ const ContributorsPage: React.FC = () => {
 
       <div className="mb-4">
         <div className={`flex space-x-4 ${isMobile ? 'justify-center' : 'justify-start md:justify-center'}`}>
-          <div className="relative" ref={contributorDropdownRef}>
-            <button onClick={toggleContributorDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
-              Contributors <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          {/* Location Filter Dropdown */}
+          <div className="relative" ref={locationDropdownRef}>
+            <button onClick={toggleLocationDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
+              Location <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
-            {isContributorDropdownOpen && (
+            {isLocationDropdownOpen && (
               <div className="absolute z-30 mt-1 left-0 w-56 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" onClick={(e) => e.stopPropagation()}>
-                {uniqueContributorLogins.map((login) => (
-                  <div key={login} className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm" onClick={() => handleContributorLoginFilterChange(login)}>
-                    <CustomCheckbox checked={selectedContributorLogins.includes(login)} onChange={() => handleContributorLoginFilterChange(login)} />
-                    <span className="ml-2">{login}</span>
+                {uniqueLocations.map((location) => (
+                  <div key={location} className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm" onClick={() => handleLocationFilterChange(location)}>
+                    <CustomCheckbox checked={selectedLocations.includes(location)} onChange={() => handleLocationFilterChange(location)} />
+                    <span className="ml-2">{location}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
+          {/* Languages Filter Dropdown (Kept) */}
           <div className="relative" ref={languageDropdownRef}>
             <button onClick={toggleLanguageDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
               Languages <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -346,16 +363,17 @@ const ContributorsPage: React.FC = () => {
             )}
           </div>
 
-          <div className="relative" ref={isAnonDropdownRef}>
-            <button onClick={toggleIsAnonDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
-              Anon? <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          {/* Quartile Rank Filter Dropdown */}
+          <div className="relative" ref={quartileRankDropdownRef}>
+            <button onClick={toggleQuartileRankDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
+              Quartile <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
-            {isAnonDropdownOpen && (
+            {isQuartileRankDropdownOpen && (
               <div className="absolute z-30 mt-1 right-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" onClick={(e) => e.stopPropagation()}>
-                {isAnonOptions.map((option) => (
-                  <div key={option.value} className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm" onClick={() => handleIsAnonFilterChange(option.value)}>
-                    <CustomCheckbox checked={selectedIsAnon.includes(option.value)} onChange={() => handleIsAnonFilterChange(option.value)} />
-                    <span className="ml-2">{option.label}</span>
+                {uniqueQuartileRanks.map((rank) => ( // rank is already a string here
+                  <div key={rank} className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm" onClick={() => handleQuartileRankFilterChange(rank)}>
+                    <CustomCheckbox checked={selectedQuartileRanks.includes(rank)} onChange={() => handleQuartileRankFilterChange(rank)} />
+                    <span className="ml-2">{rank}</span>
                   </div>
                 ))}
               </div>
@@ -395,7 +413,7 @@ const ContributorsPage: React.FC = () => {
       {activeRowData && isMobile && (
         <div className="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-4 rounded-t-lg shadow-lg z-50" onClick={closeTooltip}>
           <h3 className="text-lg font-bold mb-2">
-            {activeRowData.contributor_html_url ? 
+            {activeRowData.contributor_html_url ?
                 <a href={activeRowData.contributor_html_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
                     {activeRowData.contributor_login}
                 </a> : activeRowData.contributor_login

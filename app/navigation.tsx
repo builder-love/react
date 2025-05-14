@@ -101,7 +101,7 @@ const Navigation: React.FC<React.PropsWithChildren> = ({ children }) => {
           </li>
           <li className="mb-2">
             <Link href="/developers" className="text-white hover:underline block px-5" prefetch>
-              Builder Segments
+              Top Builders
             </Link>
           </li>
           <li className="mb-2">
