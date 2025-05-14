@@ -193,6 +193,13 @@ const ContributorsPage: React.FC = () => {
         size: 80, // Explicit size
       },
       {
+        header: 'Contributions to Non-Forked Repos',
+        accessorKey: 'contributions_to_og_repos',
+        id: 'contributions_to_og_repos',
+        cell: ({ getValue }) => <div className="text-right text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
+        size: 80, // Explicit size
+      },
+      {
         header: 'Followers',
         accessorKey: 'followers_total_count',
         id: 'followers_total_count',
@@ -272,6 +279,7 @@ const ContributorsPage: React.FC = () => {
         weighted_score_index: false,
         is_anon: false, 
         total_contributions: false,
+        contributions_to_og_repos: false,
       });
     } else {
       setColumnVisibility({});
@@ -425,6 +433,7 @@ const ContributorsPage: React.FC = () => {
           <p className="text-xs md:text-sm"><strong>Location:</strong> {activeRowData.location ?? 'N/A'}</p>
           <p className="text-xs md:text-sm"><strong>Contributions:</strong> {activeRowData.total_contributions?.toLocaleString() ?? 'N/A'}</p>
           <p className="text-xs md:text-sm"><strong>Associated Blockchain Repos:</strong> {activeRowData.total_repos_contributed_to?.toLocaleString() ?? 'N/A'}</p>
+          <p className="text-xs md:text-sm"><strong>Contributions to Non-Forked Repos:</strong> {activeRowData.contributions_to_og_repos?.toLocaleString() ?? 'N/A'}</p>
           <p className="text-xs md:text-sm"><strong>Followers:</strong> {activeRowData.followers_total_count?.toLocaleString() ?? 'N/A'}</p>
           <p className="text-xs md:text-sm"><strong>Builder Score:</strong> {activeRowData.weighted_score_index?.toFixed(2) ?? 'N/A'}</p>
         </div>
