@@ -448,7 +448,7 @@ const ContributorsPage: React.FC = () => {
       </div>
 
       {/* Link to methodology */}
-      <div className="mt-8 text-left"> {/* Using mt-6 for spacing from pagination */}
+      <div className="mt-8 text-center"> {/* Using mt-6 for spacing from pagination */}
         <a
           href="https://docs.builder.love/docs/methodology/developer-categories"
           target="_blank"
