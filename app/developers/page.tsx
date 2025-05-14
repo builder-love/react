@@ -270,7 +270,8 @@ const ContributorsPage: React.FC = () => {
         total_repos_contributed_to: false,
         followers_total_count: false,
         weighted_score_index: false,
-        dominant_language: false, // Also hiding language on mobile for more space
+        is_anon: false, 
+        total_contributions: false,
       });
     } else {
       setColumnVisibility({});
