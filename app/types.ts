@@ -74,7 +74,6 @@ export interface Top100Contributor {
   normalized_total_repo_quality_weighted_contribution_score_rank: number | null;
   followers_total_count: number | null;
   weighted_score_index: number | null;
-  quartile_bucket: number | null;
   contributor_rank: number | null;
   latest_data_timestamp: string | null;
 }

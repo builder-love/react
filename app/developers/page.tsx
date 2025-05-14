@@ -72,20 +72,22 @@ const ContributorsPage: React.FC = () => {
 
   const { isMobile } = useScreenOrientation();
 
-  // Updated states for new filters
+  // States for filters: Location, Languages, Contributors
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [selectedDominantLanguages, setSelectedDominantLanguages] = useState<string[]>([]);
-  const [selectedQuartileRanks, setSelectedQuartileRanks] = useState<string[]>([]); // Store as strings
+  const [selectedContributorLogins, setSelectedContributorLogins] = useState<string[]>([]);
 
-  // Updated dropdown open states
+
+  // Dropdown open states
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(false);
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState<boolean>(false);
-  const [isQuartileRankDropdownOpen, setIsQuartileRankDropdownOpen] = useState<boolean>(false);
+  const [isContributorDropdownOpen, setIsContributorDropdownOpen] = useState<boolean>(false);
 
-  // Updated refs for dropdowns
+  // Refs for dropdowns
   const locationDropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
-  const quartileRankDropdownRef = useRef<HTMLDivElement>(null);
+  const contributorDropdownRef = useRef<HTMLDivElement>(null);
+
 
   const [activeRowData, setActiveRowData] = useState<Top100Contributor | null>(null);
 
@@ -137,9 +139,10 @@ const ContributorsPage: React.FC = () => {
               {row.original.contributor_login}
             </a> : <div className="text-sm md:text-base">{row.original.contributor_login}</div>
           ),
+        filterFn: multiSelectFilter, // Filter re-added for contributor_login
       },
       {
-        header: 'Anon?', 
+        header: 'Anon?',
         accessorKey: 'is_anon',
         id: 'is_anon',
         cell: ({ getValue }) => {
@@ -162,7 +165,7 @@ const ContributorsPage: React.FC = () => {
         accessorKey: 'location',
         id: 'location',
         cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<string>() ?? 'N/A'}</div>,
-        filterFn: multiSelectFilter, 
+        filterFn: multiSelectFilter,
       },
       {
         header: 'Total Contributions',
@@ -171,7 +174,7 @@ const ContributorsPage: React.FC = () => {
         cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
       },
       {
-        header: 'Repos Contrib To',
+        header: 'Repos Contributed To',
         accessorKey: 'total_repos_contributed_to',
         id: 'total_repos_contributed_to',
         cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
@@ -188,26 +191,14 @@ const ContributorsPage: React.FC = () => {
         id: 'weighted_score_index',
         cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toFixed(2) ?? 'N/A'}</div>,
       },
-       {
-        header: 'Quartile Rank',
-        accessorKey: 'quartile_bucket',
-        id: 'quartile_bucket',
-        cell: ({ getValue }) => <div className="text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
-        filterFn: multiSelectFilter, 
-      },
     ],
     []
   );
 
-  // Unique values for new filters
+  // Unique values for filters
   const uniqueLocations = useMemo(() => {
     const locations = new Set<string>();
-    data.forEach((contributor) => {
-        // Assuming location from API is a string (could be 'Unknown' if coalesced in DB)
-        if (contributor.location) {
-             locations.add(contributor.location);
-        }
-    });
+    data.forEach((contributor) => contributor.location && locations.add(contributor.location));
     return Array.from(locations).sort();
   }, [data]);
 
@@ -217,14 +208,10 @@ const ContributorsPage: React.FC = () => {
     return Array.from(languages).sort();
   }, [data]);
 
-  const uniqueQuartileRanks = useMemo(() => {
-    const ranks = new Set<number>();
-    data.forEach((contributor) => {
-      if (contributor.quartile_bucket !== null && contributor.quartile_bucket !== undefined) {
-        ranks.add(contributor.quartile_bucket);
-      }
-    });
-    return Array.from(ranks).sort((a, b) => a - b).map(String); // Sort numerically, then map to strings
+  const uniqueContributorLogins = useMemo(() => {
+    const logins = new Set<string>();
+    data.forEach((contributor) => contributor.contributor_login && logins.add(contributor.contributor_login));
+    return Array.from(logins).sort();
   }, [data]);
 
 
@@ -240,7 +227,7 @@ const ContributorsPage: React.FC = () => {
     });
   };
 
-  // New filter handlers
+  // Filter handlers
   const handleLocationFilterChange = (location: string) => {
     setSelectedLocations((prevSelected) => {
       const newSelected = prevSelected.includes(location) ? prevSelected.filter((l) => l !== location) : [...prevSelected, location];
@@ -257,25 +244,25 @@ const ContributorsPage: React.FC = () => {
     });
   };
 
-  const handleQuartileRankFilterChange = (rank: string) => {
-    setSelectedQuartileRanks((prevSelected) => {
-      const newSelected = prevSelected.includes(rank) ? prevSelected.filter((r) => r !== rank) : [...prevSelected, rank];
-      updateColumnFilters('quartile_bucket', newSelected);
+  const handleContributorLoginFilterChange = (login: string) => {
+    setSelectedContributorLogins((prevSelected) => {
+      const newSelected = prevSelected.includes(login) ? prevSelected.filter((l) => l !== login) : [...prevSelected, login];
+      updateColumnFilters('contributor_login', newSelected);
       return newSelected;
     });
   };
 
-  // New dropdown toggle functions
+  // Dropdown toggle functions
   const toggleLocationDropdown = () => setIsLocationDropdownOpen(!isLocationDropdownOpen);
   const toggleLanguageDropdown = () => setIsLanguageDropdownOpen(!isLanguageDropdownOpen);
-  const toggleQuartileRankDropdown = () => setIsQuartileRankDropdownOpen(!isQuartileRankDropdownOpen);
+  const toggleContributorDropdown = () => setIsContributorDropdownOpen(!isContributorDropdownOpen);
 
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (locationDropdownRef.current && !locationDropdownRef.current.contains(event.target as Node)) setIsLocationDropdownOpen(false);
       if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target as Node)) setIsLanguageDropdownOpen(false);
-      if (quartileRankDropdownRef.current && !quartileRankDropdownRef.current.contains(event.target as Node)) setIsQuartileRankDropdownOpen(false);
+      if (contributorDropdownRef.current && !contributorDropdownRef.current.contains(event.target as Node)) setIsContributorDropdownOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -284,11 +271,10 @@ const ContributorsPage: React.FC = () => {
   useEffect(() => {
     if (isMobile) {
       setColumnVisibility({
-        location: false, // Location is now a primary filter, might want to keep it visible or adjust logic
+        location: false,
         total_repos_contributed_to: false,
         followers_total_count: false,
         weighted_score_index: false,
-        quartile_bucket: false, // Quartile Rank is also a filter, consider visibility
       });
     } else {
       setColumnVisibility({});
@@ -363,17 +349,17 @@ const ContributorsPage: React.FC = () => {
             )}
           </div>
 
-          {/* Quartile Rank Filter Dropdown */}
-          <div className="relative" ref={quartileRankDropdownRef}>
-            <button onClick={toggleQuartileRankDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
-              Quartile <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          {/* Contributors (Github Login) Filter Dropdown */}
+          <div className="relative" ref={contributorDropdownRef}>
+            <button onClick={toggleContributorDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
+              Contributors <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
-            {isQuartileRankDropdownOpen && (
-              <div className="absolute z-30 mt-1 right-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" onClick={(e) => e.stopPropagation()}>
-                {uniqueQuartileRanks.map((rank) => ( // rank is already a string here
-                  <div key={rank} className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm" onClick={() => handleQuartileRankFilterChange(rank)}>
-                    <CustomCheckbox checked={selectedQuartileRanks.includes(rank)} onChange={() => handleQuartileRankFilterChange(rank)} />
-                    <span className="ml-2">{rank}</span>
+            {isContributorDropdownOpen && (
+              <div className="absolute z-30 mt-1 right-0 w-56 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" onClick={(e) => e.stopPropagation()}>
+                {uniqueContributorLogins.map((login) => (
+                  <div key={login} className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm" onClick={() => handleContributorLoginFilterChange(login)}>
+                    <CustomCheckbox checked={selectedContributorLogins.includes(login)} onChange={() => handleContributorLoginFilterChange(login)} />
+                    <span className="ml-2">{login}</span>
                   </div>
                 ))}
               </div>
@@ -426,8 +412,7 @@ const ContributorsPage: React.FC = () => {
           <p className="text-xs md:text-sm"><strong>Total Contributions:</strong> {activeRowData.total_contributions?.toLocaleString() ?? 'N/A'}</p>
           <p className="text-xs md:text-sm"><strong>Repos Contrib To:</strong> {activeRowData.total_repos_contributed_to?.toLocaleString() ?? 'N/A'}</p>
           <p className="text-xs md:text-sm"><strong>Followers:</strong> {activeRowData.followers_total_count?.toLocaleString() ?? 'N/A'}</p>
-          <p className="text-xs md:text-sm"><strong>Weighted Score:</strong> {activeRowData.weighted_score_index?.toFixed(2) ?? 'N/A'}</p>
-          <p className="text-xs md:text-sm"><strong>Quartile:</strong> {activeRowData.quartile_bucket?.toLocaleString() ?? 'N/A'}</p>
+          <p className="text-xs md:text-sm"><strong>Builder Score:</strong> {activeRowData.weighted_score_index?.toFixed(2) ?? 'N/A'}</p>
         </div>
       )}
 
