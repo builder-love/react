@@ -1,8 +1,9 @@
 // app/footer.tsx
+'use client';
 import Link from 'next/link';
 import { Footer, FooterLink, FooterIcon } from 'flowbite-react';
 import { BsGithub, BsDiscord } from 'react-icons/bs';
-import XIcon from '@/app/components/XIcon'; // Make sure this path is correct
+import XIcon from '@/app/components/icons/XIcon'; 
 
 const CustomFooter: React.FC = () => {
   // Define icon components with their classes applied
