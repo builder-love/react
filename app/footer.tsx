@@ -1,5 +1,6 @@
 // app/footer.tsx
 'use client';
+
 import Link from 'next/link';
 import { Footer, FooterLink, FooterIcon } from 'flowbite-react';
 import { BsGithub, BsDiscord } from 'react-icons/bs';
@@ -36,7 +37,7 @@ const CustomFooter: React.FC = () => {
                 Knowledge
               </FooterLink>
             </li>
-            <li className="flex items-center space-x-3 rtl:space-x-reverse">
+            <li className="flex items-center space-x-3 rtl:space-x-reverse ms-4 md:ms-6">
               <FooterIcon
                 href="https://github.com/builder-love"
                 target="_blank"
