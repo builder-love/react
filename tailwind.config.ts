@@ -1,6 +1,7 @@
 // tailwind.config.ts
 import type { Config } from "tailwindcss";
 import flowbite from "flowbite/plugin";
+import flowbiteReact from "flowbite-react/plugin/tailwindcss";
 
 export default {
   content: [
@@ -8,6 +9,7 @@ export default {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./node_modules/flowbite-react/lib/**/*.{js,ts,jsx,tsx}",
+    ".flowbite-react/class-list.json"
   ],
   theme: {
     extend: {
@@ -17,7 +19,7 @@ export default {
       },
     },
   },
-  plugins: [flowbite],
+  plugins: [flowbite, flowbiteReact],
   safelist: [
     'grid-cols-1',
     'grid-cols-2',
