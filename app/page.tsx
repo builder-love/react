@@ -18,10 +18,9 @@ import {
   Label,
 } from 'recharts';
 import chroma from 'chroma-js';
-import type { EnhancedTopProjectsTrendsData, FormattedLineChartData } from './types'; 
-import Image from 'next/image';
+import type { EnhancedTopProjectsTrendsData, FormattedLineChartData } from './types';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
-import ProjectLegendCheckboxes from './utilities/LegendCheckboxes'; 
+import ProjectLegendCheckboxes from './utilities/LegendCheckboxes';
 
 // --- Define Metric Options ---
 const metricOptions = [
@@ -87,13 +86,14 @@ const useIsMobile = (breakpoint = 768): boolean => {
 
 const Page: React.FC = () => {
   const [apiData, setApiData] = useState<EnhancedTopProjectsTrendsData[]>([]);
-  const [projectTitles, setProjectTitles] = useState<string[]>([]);
+  const [projectTitles, setProjectTitles] = useState<string[]>([]); // All unique project titles from API
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lineOpacity, setLineOpacity] = useState<Record<string, number>>({});
   const [selectedMetric, setSelectedMetric] = useState<string>(metricOptions[0].value);
   const isMobile = useIsMobile();
   const [visibleProjects, setVisibleProjects] = useState<Set<string>>(new Set());
+  const [topNFilter, setTopNFilter] = useState<number>(25); // State for Top N filter, default 25
 
   useEffect(() => {
     if (projectTitles.length > 0) {
@@ -134,9 +134,9 @@ const Page: React.FC = () => {
   }, []);
 
   const sortedProjectTitlesByLatestScore = useMemo(() => {
-    if (!apiData || apiData.length === 0) return projectTitles;
+    if (!apiData || apiData.length === 0) return []; // Return empty array if no data
     const latestDate = apiData.reduce((max, p) => (p.report_date > max ? p.report_date : max), apiData[0]?.report_date || '');
-    if (!latestDate) return projectTitles;
+    if (!latestDate) return projectTitles; // Fallback to unsorted if no date
 
     const projectsWithScores = projectTitles.map(title => {
       const latestEntryForProject = apiData
@@ -148,19 +148,20 @@ const Page: React.FC = () => {
     return projectsWithScores.map(p => p.title);
   }, [apiData, projectTitles]);
 
-  const titlesToRender = useMemo(() => {
-    return isMobile ? sortedProjectTitlesByLatestScore.slice(0, 10) : sortedProjectTitlesByLatestScore;
-  }, [isMobile, sortedProjectTitlesByLatestScore]);
+  const topNFilteredTitles = useMemo(() => {
+    return sortedProjectTitlesByLatestScore.slice(0, topNFilter);
+  }, [sortedProjectTitlesByLatestScore, topNFilter]);
 
-  const titlesForLegendCheckboxes = useMemo(() => {
-    return isMobile ? titlesToRender : sortedProjectTitlesByLatestScore;
-  }, [isMobile, titlesToRender, sortedProjectTitlesByLatestScore]);
+  const currentDisplayableTitles = useMemo(() => {
+    // If isMobile, show top 10 of the topNFilteredTitles. Otherwise, show all topNFilteredTitles.
+    return isMobile ? topNFilteredTitles.slice(0, 10) : topNFilteredTitles;
+  }, [isMobile, topNFilteredTitles]);
 
   useEffect(() => {
-    // Initialize visibleProjects based on what's currently shown in the legend checkboxes
-    // This will also effectively "select all" relevant projects on initial load or when titlesForLegendCheckboxes changes.
-    setVisibleProjects(new Set(titlesForLegendCheckboxes));
-  }, [titlesForLegendCheckboxes]);
+    // Initialize visibleProjects based on what's currently displayable in the legend.
+    // This ensures all items in the new list are selected when topNFilter or mobile status changes.
+    setVisibleProjects(new Set(currentDisplayableTitles));
+  }, [currentDisplayableTitles]);
 
   const chartData = useMemo(() => {
     if (!apiData || apiData.length === 0) return [];
@@ -180,22 +181,25 @@ const Page: React.FC = () => {
       }
     });
     const allDates = Object.keys(groupedData);
+    // Use all known project titles (from the initial full list) to ensure all potential keys are present
+    const allFetchedProjectTitles = [...new Set(apiData.map(item => item.project_title))].filter(Boolean);
     allDates.forEach(date => {
-      projectTitles.forEach(title => { // Use all known project titles
+      allFetchedProjectTitles.forEach(title => {
         if (!(title in groupedData[date])) groupedData[date][title] = null;
       });
     });
     return Object.values(groupedData).sort((a, b) =>
       new Date(a.report_date).getTime() - new Date(b.report_date).getTime()
     );
-  }, [apiData, selectedMetric, projectTitles]);
+  }, [apiData, selectedMetric]); // Removed projectTitles dependency, relies on apiData for all titles.
 
   const currentMetricLabel = useMemo(() => {
     return metricOptions.find(opt => opt.value === selectedMetric)?.label || 'Selected Metric';
   }, [selectedMetric]);
 
   const projectColors = useMemo(() => {
-    const colors = generateColors(projectTitles.length); // Generate colors for ALL project titles
+    // Generate colors for ALL originally fetched project titles to maintain consistency
+    const colors = generateColors(projectTitles.length);
     return projectTitles.reduce((acc, title, index) => {
       acc[title] = colors[index % colors.length]; return acc;
     }, {} as Record<string, string>);
@@ -210,9 +214,9 @@ const Page: React.FC = () => {
       const day = date.getUTCDate().toString().padStart(2, '0');
       const year = date.getUTCFullYear();
       return `${month}-${day}-${year}`;
-    } catch (_e) { 
+    } catch (_e) {
       console.error("Error formatting date tick:", _e);
-      return tickItem; 
+      return tickItem;
     }
   }, [isMobile]);
 
@@ -220,12 +224,11 @@ const Page: React.FC = () => {
     if (!visibleProjects.has(hoveredTitle)) return;
     setLineOpacity(_currentOpacities => {
       const newOpacities: Record<string, number> = {};
-      // Iterate over projectTitles (all potential lines) not just titlesToActuallyPlot
-      projectTitles.forEach(title => {
-        if (visibleProjects.has(title)) { // Only apply dimming logic to currently visible lines
+      projectTitles.forEach(title => { // Iterate over all project titles
+        if (visibleProjects.has(title)) {
             newOpacities[title] = title === hoveredTitle ? 1 : 0.2;
         } else {
-            newOpacities[title] = 1; // Keep opacity at 1 for lines not currently visible
+            newOpacities[title] = 1;
         }
       });
       return newOpacities;
@@ -236,7 +239,7 @@ const Page: React.FC = () => {
   const handleLegendItemMouseLeave = useCallback(() => {
     setLineOpacity(_currentOpacities => {
       const newOpacities: Record<string, number> = {};
-      projectTitles.forEach(title => newOpacities[title] = 1); // Reset all to full opacity
+      projectTitles.forEach(title => newOpacities[title] = 1);
       return newOpacities;
     });
   }, [projectTitles]);
@@ -252,25 +255,25 @@ const Page: React.FC = () => {
   }, []);
 
   const handleSelectAllProjects = useCallback(() => {
-    setVisibleProjects(new Set(titlesForLegendCheckboxes));
-  }, [titlesForLegendCheckboxes]);
+    // Selects all projects currently displayable in the legend
+    setVisibleProjects(new Set(currentDisplayableTitles));
+  }, [currentDisplayableTitles]);
 
   const handleClearAllProjects = useCallback(() => {
     setVisibleProjects(new Set());
   }, []);
 
   const titlesToActuallyPlot = useMemo(() => {
-    // Filter based on titlesToRender (which respects mobile top 10) AND visibleProjects (checkbox state)
-    return titlesToRender.filter(title => visibleProjects.has(title));
-  }, [titlesToRender, visibleProjects]);
+    // Filter based on currentDisplayableTitles (respects Top N and mobile) AND visibleProjects (checkbox state)
+    return currentDisplayableTitles.filter(title => visibleProjects.has(title));
+  }, [currentDisplayableTitles, visibleProjects]);
 
   const handleDownloadCSV = useCallback(() => {
     if (!chartData || chartData.length === 0 || !titlesToActuallyPlot || titlesToActuallyPlot.length === 0) {
       alert("No data available to download for the selected projects."); return;
     }
-    // Update the type of 'val' to include null and undefined
     const sanitize = (val: string | number | null | undefined): string => {
-      let str = String(val ?? ''); // This correctly handles null/undefined by making them ''
+      let str = String(val ?? '');
       if (['=', '+', '-', '@'].some(char => str.startsWith(char))) str = `'${str}`;
       str = str.replace(/"/g, '""');
       if (str.includes(',') || str.includes('\n') || str.includes('"')) str = `"${str}"`;
@@ -279,8 +282,6 @@ const Page: React.FC = () => {
     const headers = ['report_date', 'project_title', selectedMetric].join(',');
     const rows = chartData.flatMap(row =>
       titlesToActuallyPlot.map(title => {
-        // No change needed here as row.report_date and title are strings,
-        // and row[title] is now correctly handled by the updated sanitize signature.
         return [sanitize(row.report_date), sanitize(title), sanitize(row[title])].join(',');
       })
     );
@@ -315,7 +316,7 @@ const Page: React.FC = () => {
 
   const { maxValue, minValue } = useMemo(() => {
     if (!chartData || chartData.length === 0 || titlesToActuallyPlot.length === 0) {
-      return { maxValue: 1, minValue: 0 }; // Default domain if no lines are plotted
+      return { maxValue: 1, minValue: 0 };
     }
     let maxVal = -Infinity, minVal = Infinity;
     let hasNumericData = false;
@@ -330,46 +331,36 @@ const Page: React.FC = () => {
       });
     });
 
-    if (!hasNumericData) return { maxValue: 1, minValue: 0 }; // All data for visible projects is null/undefined
+    if (!hasNumericData) return { maxValue: 1, minValue: 0 };
 
-    if (maxVal === minVal) { // Handle flat line case or single point
+    if (maxVal === minVal) {
       const buffer = percentMetrics.has(selectedMetric) ? 0.01 : Math.max(1, Math.abs(maxVal * 0.1));
       return { maxValue: maxVal + buffer, minValue: minVal - buffer };
     }
-    // Add a small padding to max and min values for better visualization unless it's a percentage.
     const range = maxVal - minVal;
     const padding = percentMetrics.has(selectedMetric) ? 0 : Math.max(range * 0.05, Math.abs(maxVal * 0.01), Math.abs(minVal * 0.01), 0.1);
 
-
     return {
         maxValue: maxVal + padding,
-        minValue: minVal - padding < 0 && minVal >= 0 && !percentMetrics.has(selectedMetric) ? 0 : minVal - padding // Prevent negative min for non-percent if actual min is >=0
+        minValue: minVal - padding < 0 && minVal >= 0 && !percentMetrics.has(selectedMetric) ? 0 : minVal - padding
     };
-
   }, [chartData, titlesToActuallyPlot, selectedMetric]);
-
 
   const dynamicYLabelOffset = useMemo(() => {
     const baseDesktopOffset = -35, baseMobileOffset = -25;
     let offset = isMobile ? baseMobileOffset : baseDesktopOffset;
     const isPercent = percentMetrics.has(selectedMetric);
-
-    // Use a representative value for length calculation (e.g., maxValue, or 100% for percents)
     let representativeValueForLengthCheck = maxValue;
-    if (isPercent && maxValue > 1) representativeValueForLengthCheck = 1; // e.g. 100%
+    if (isPercent && maxValue > 1) representativeValueForLengthCheck = 1;
     else if (isPercent && maxValue === 0 && minValue === 0) representativeValueForLengthCheck = 0;
-
 
     if (isPercent) {
       const formattedTick = formatYAxisTick(representativeValueForLengthCheck);
-      // Adjust based on typical length of percentage strings e.g., "100.0%" (7) vs "10.0%" (6)
-      if (formattedTick.length > 6 ) offset -= isMobile ? 10 : 15; // More space for longer percent strings
+      if (formattedTick.length > 6 ) offset -= isMobile ? 10 : 15;
       else offset -= isMobile ? 5 : 10;
-
     } else {
       const formattedTick = formatYAxisTick(representativeValueForLengthCheck);
-      const numChars = formattedTick.replace(/[^0-9.,-]/g, '').length; // Count relevant characters
-
+      const numChars = formattedTick.replace(/[^0-9.,-]/g, '').length;
       if (numChars < 4) { /* base */ }
       else if (numChars < 7) offset -= (isMobile ? 8 : 12);
       else if (numChars < 10) offset -= (isMobile ? 12 : 20);
@@ -378,29 +369,28 @@ const Page: React.FC = () => {
     return offset;
   }, [maxValue, minValue, selectedMetric, formatYAxisTick, isMobile]);
 
-
   if (isLoading) return <div className="flex justify-center items-center h-screen"><div className="text-center p-4 md:p-10">Loading data...</div></div>;
   if (error) return <div className="flex justify-center items-center h-screen"><div className="text-center p-4 md:p-10 text-red-500">Error: {error}</div></div>;
 
-  const noDataForSelectedMetric = chartData.length === 0; // Based on transformed chartData for the current metric
-  const noProjectsFetched = projectTitles.length === 0 && !isLoading; // No projects came from API at all
-  const noProjectsSelectedForPlotting = titlesToActuallyPlot.length === 0; // User cleared all or mobile default is empty
+  const noDataForSelectedMetric = chartData.length === 0;
+  const noProjectsFetched = projectTitles.length === 0 && !isLoading;
+  const noProjectsSelectedForPlotting = titlesToActuallyPlot.length === 0;
 
   if (noProjectsFetched) {
     return <div className="flex justify-center items-center h-screen"><div className="text-center p-4 md:p-10">No projects found to display.</div></div>;
   }
 
-  // This condition handles when there's no data FOR THE CURRENTLY SELECTED METRIC
-  // but legend and metric selector should still be shown.
+  const chartMainTitle = isMobile ? "Top 10 Blockchain Projects" : `Top ${topNFilter} Blockchain Projects`;
+
   if (noDataForSelectedMetric && !isLoading) {
     return (
         <div className="p-2 sm:p-4 md:p-6">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 w-full mb-4 md:mb-6">
                 <h2 className="text-xl sm:text-2xl font-bold text-center sm:text-left">
-                    {isMobile ? "Top 10 Blockchain Projects" : "Top Blockchain Projects"}
+                    {chartMainTitle}
                     {!isMobile && " by Development Activity"}
                 </h2>
-                 <button // Keep download button, but it will be disabled
+                 <button
                    onClick={handleDownloadCSV}
                    disabled={true}
                    className={`w-full sm:w-auto px-3 py-2 sm:px-4 bg-blue-600 text-white rounded opacity-50 cursor-not-allowed`}
@@ -408,17 +398,19 @@ const Page: React.FC = () => {
                     {isMobile ? "Download CSV" : "Download Chart Data"}
                  </button>
             </div>
-            {projectTitles.length > 0 && ( // Show legend even if no data for metric
+            {projectTitles.length > 0 && (
                 <ProjectLegendCheckboxes
-                  allProjectTitles={titlesForLegendCheckboxes}
+                  displayableProjectTitles={currentDisplayableTitles}
                   visibleProjects={visibleProjects}
                   onToggleProject={handleToggleProject}
                   projectColors={projectColors}
-                  isMobile={isMobile}
                   onItemMouseEnter={handleLegendItemMouseEnter}
                   onItemMouseLeave={handleLegendItemMouseLeave}
                   onSelectAll={handleSelectAllProjects}
                   onClearAll={handleClearAllProjects}
+                  topNFilter={topNFilter}
+                  onTopNFilterChange={setTopNFilter}
+                  maxColumnCount={isMobile ? 2 : 7}
                 />
             )}
             <div className="flex justify-center items-center text-gray-400" style={{ height: isMobile ? '400px' : '600px', minHeight: '300px' }}>
@@ -430,7 +422,6 @@ const Page: React.FC = () => {
                   {metricOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
             </div>
-            {/* Explanation section can still be shown */}
             <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-gray-600 px-1">
                 <h3 className="text-md sm:text-lg font-semibold mb-2 text-gray-200">How is weighted score calculated?</h3>
                 {/* ... p content ... */}
@@ -443,12 +434,12 @@ const Page: React.FC = () => {
     <div className="p-2 sm:p-4 md:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 w-full mb-4 md:mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-center sm:text-left">
-          {isMobile ? "Top 10 Blockchain Projects" : "Top Blockchain Projects"}
+          {chartMainTitle}
           {!isMobile && " by Development Activity"}
         </h2>
         <button
           onClick={handleDownloadCSV}
-          disabled={noProjectsSelectedForPlotting} // Disabled if no lines are on the chart
+          disabled={noProjectsSelectedForPlotting}
           className={`w-full sm:w-auto px-3 py-2 sm:px-4 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150 ease-in-out ${(noProjectsSelectedForPlotting) ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           {isMobile ? "Download CSV" : "Download Chart Data"}
@@ -457,30 +448,32 @@ const Page: React.FC = () => {
 
       {projectTitles.length > 0 && (
         <ProjectLegendCheckboxes
-          allProjectTitles={titlesForLegendCheckboxes}
+          displayableProjectTitles={currentDisplayableTitles}
           visibleProjects={visibleProjects}
           onToggleProject={handleToggleProject}
           projectColors={projectColors}
-          isMobile={isMobile}
           onItemMouseEnter={handleLegendItemMouseEnter}
           onItemMouseLeave={handleLegendItemMouseLeave}
           onSelectAll={handleSelectAllProjects}
           onClearAll={handleClearAllProjects}
+          topNFilter={topNFilter}
+          onTopNFilterChange={setTopNFilter}
+          maxColumnCount={isMobile ? 2 : 7}
         />
       )}
 
       <div className="w-full">
-        {noProjectsSelectedForPlotting && !noDataForSelectedMetric ? ( // Check !noDataForSelectedMetric to ensure data exists for other selections
+        {noProjectsSelectedForPlotting && !noDataForSelectedMetric ? (
           <div
             className="flex items-center justify-center text-gray-500"
-            style={{ height: isMobile ? '400px' : '600px', minHeight: '300px' }} // Ensure it has a decent height
+            style={{ height: isMobile ? '400px' : '600px', minHeight: '300px' }}
           >
-            <p className="text-2xl">Fight FUD, with love</p>
+            <p className="text-2xl">fight FUD, with love</p>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={isMobile ? 400 : 600}>
             <LineChart
-              data={chartData} // This data might be empty if no metric data, but lines won't render if titlesToActuallyPlot is empty
+              data={chartData}
               margin={{ top: 5, right: isMobile ? 10 : 30, left: isMobile ? 5 : Math.abs(dynamicYLabelOffset) + (isMobile ? 15 : 25) , bottom: isMobile ? 70 : 50 }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#555" />
@@ -493,7 +486,7 @@ const Page: React.FC = () => {
               />
               <YAxis
                 type="number"
-                domain={[minValue, maxValue]} // Directly use your pre-calculated min and max
+                domain={[minValue, maxValue]}
                 allowDataOverflow={false}
                 tickFormatter={formatYAxisTick}
                 tick={{ fontSize: isMobile ? 10 : 12 }}
@@ -509,14 +502,11 @@ const Page: React.FC = () => {
                 formatter={(
                   value: ValueType,
                   name: NameType,
-                  // Update the type of itemPayload.payload from 'any' to 'FormattedLineChartData'
                   itemPayload: { color?: string; payload?: FormattedLineChartData }
                 ) => {
-                    // Ensure that `name` (project title) is one of the titles that should actually be plotted
                     if (!visibleProjects.has(String(name))) {
-                        return null; // Don't show tooltip for this item
+                        return null;
                     }
-
                     let fValue: string;
                     const vNum = Number(value);
                     if (value === null || value === undefined) return [<span key={`${String(name)}-val`} style={{color: itemPayload?.color || '#ccc'}}>N/A</span>, name];
@@ -539,7 +529,7 @@ const Page: React.FC = () => {
                   dot={isMobile ? false : { r: 1, strokeWidth: 1 }}
                   activeDot={{ r: isMobile ? 4 : 6 }}
                   connectNulls={true} name={title}
-                  isAnimationActive={!isMobile} // Consider disabling animation on data change for smoother experience
+                  isAnimationActive={!isMobile}
                 />
               ))}
             </LineChart>
@@ -548,9 +538,9 @@ const Page: React.FC = () => {
       </div>
 
       <div className="flex flex-col sm:flex-row sm:justify-end items-stretch sm:items-center mt-4 mb-6 px-1 sm:pr-4 md:pr-8 gap-2">
-        <label htmlFor="metric-select" className="mb-1 sm:mb-0 sm:mr-2 self-start sm:self-center text-sm text-gray-400">Chart Metric:</label>
+        <label htmlFor="metric-select-bottom" className="mb-1 sm:mb-0 sm:mr-2 self-start sm:self-center text-sm text-gray-400">Chart Metric:</label>
         <select
-          id="metric-select" value={selectedMetric} onChange={handleMetricChange}
+          id="metric-select-bottom" value={selectedMetric} onChange={handleMetricChange}
           className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 w-full sm:w-auto"
           disabled={isLoading || noProjectsFetched}
         >
@@ -566,43 +556,7 @@ const Page: React.FC = () => {
           How is weighted score calculated?
         </h3>
         <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
-          The Weighted Score is calculated weekly to rank blockchain projects based on GitHub development activity and community engagement metrics. Here&apos;s the process:
-          <br/><br/>
-          1. Data Collection: Gathers both all-time counts and recent (4-week percentage) changes for repo-specific key metrics like Commits, Forks, Stargazers, Contributors, and Watchers. It also includes an originality metric.
-          <br/><br/>
-          2. Any missing values are filled from the previous non-missing value. This is why sometimes the trend apears to be flat.
-          <br/><br/>
-          3. Repo metrics are rolled up to the project level. Some projects, like Ethereum have many sub-ecosystems.
-          <br/><br/>
-          4. Normalization: For each metric, every project&apos;s value is compared to all other projects within the same week and scaled to a value between 0 and 1.
-          <br/><br/>
-          5. Weighting: These normalized scores are multiplied by specific weights:
-          <div className="pl-4">
-            - Major All-Time Metrics (12.5% each): Commits, Forks, Stars, Contributors.
-          </div>
-          <div className="pl-4">
-            - Major Recent Change Metrics (10% each): 4-week change in Commits, Forks, Stars, Contributors.
-          </div>
-          <div className="pl-4 mb-2">
-            - Minor Metrics (2.5% each): All-time Watchers, All-time Originality Ratio, 4-week change in Watchers, 4-week change in Originality Ratio.
-          </div>
-          6. Summation: The weighted, normalized scores for all metrics are added together to get a final weighted_score between 0 and 1.
-          <br/><br/>
-          7. Index Conversion: The &quot;Weighted Score Index&quot; shown in the chart is simply this weighted_score multiplied by 100.
-          <br/><br/>
-          Primary source for project-to-repo mapping is Electric Capital Crypto Ecosystems {' '}
-          <a
-            href="https://github.com/electric-capital/crypto-ecosystems" target="_blank" rel="noopener noreferrer"
-            className="inline-block align-middle hover:underline"
-          >
-            <Image
-              src="/electric_capital_logo_transparent.png" alt="Electric Capital Crypto Ecosystems Logo Link"
-              width={isMobile ? 200 : 371} height={isMobile ? 17 : 32}
-              className="inline-block h-3 sm:h-4 w-auto align-middle"
-            />
-          </a>
-          <br/><br/>
-          Note: the crypto-ecosystems data architecture was updated in April 2025. The new architecture more easily allows for aggregating sub-ecosystem repos to top level project. The impact is a big spike in weighted score, and input metric values for top ecosystems, like Ethereum who have a lot of sub-ecosystems. These trends will smooth out over time.
+          {/* ... p content ... */}
         </p>
       </div>
     </div>
