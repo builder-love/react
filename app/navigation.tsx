@@ -1,132 +1,114 @@
+// app/navigation.tsx
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useState, useEffect, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
-import { useScreenOrientation } from './hooks/useScreenOrientation';
+import { Sidebar, SidebarItems, SidebarItemGroup, SidebarItem } from 'flowbite-react';
+import {
+  HiChartPie,
+  HiViewBoards,
+  HiUser,
+  HiShoppingBag,
+  HiInbox,
+  HiMenu, // Hamburger icon
+  HiX, // Optional: if you want a close icon inside the sidebar
+} from 'react-icons/hi'; // Using react-icons
 
-const Navigation: React.FC<React.PropsWithChildren> = ({ children }) => {
-  const { isMobile } = useScreenOrientation();
-  const [isNavCollapsed, setIsNavCollapsed] = useState(true); // Start collapsed on mobile
+// Your navigation items data
+const navItems = [
+  { href: "/", label: "Builder Love", icon: HiChartPie },
+  { href: "/languages", label: "Languages", icon: HiViewBoards },
+  { href: "/developers", label: "Top Builders", icon: HiUser },
+  { href: "/economics", label: "Economics", icon: HiShoppingBag },
+  { href: "/research", label: "Research", icon: HiInbox },
+];
+
+const CustomNavigation: React.FC<React.PropsWithChildren> = ({ children }) => {
   const pathname = usePathname();
-  const navRef = useRef<HTMLDivElement>(null);
+  // State to manage sidebar visibility on mobile
+  // The Flowbite example uses data attributes for toggling,
+  // but with React, state is more idiomatic.
+  // We'll use Flowbite's responsive classes to handle visibility on larger screens.
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  // Only allow toggling on mobile
-  const toggleNav = () => {
-    if (isMobile) {
-      setIsNavCollapsed(!isNavCollapsed);
-    }
+  const toggleMobileSidebar = () => {
+    setIsMobileSidebarOpen(!isMobileSidebarOpen);
   };
 
-  // Collapse on route change (only on mobile)
-  const collapseNav = useCallback(() => { // Make sure collapseNav is memoized if it's complex or passed down
-    if (isMobile) {
-      setIsNavCollapsed(true);
-    }
-  }, [isMobile]); // Add isMobile as a dependency here
-
-  // Collapse by default on mobile, always expanded on desktop
+  // Close mobile sidebar on route change
   useEffect(() => {
-    setIsNavCollapsed(isMobile);
-  }, [isMobile]);
-
-  useEffect(() => {
-    collapseNav();
-  }, [pathname, collapseNav]); // ADD collapseNav HERE
-
-  const getNavWidth = () => {
-    if (!isMobile) {
-      return navRef.current?.offsetWidth || 256; // Default width when expanded on desktop
-    }
-    return 0; // No width on mobile when collapsed
-  };
+    setIsMobileSidebarOpen(false);
+  }, [pathname]);
 
   return (
-    <div className="md:block relative z-10">
-      <nav
-        ref={navRef}
-        className={`bg-gray-800 md:h-screen md:w-64 w-full fixed ${
-          isNavCollapsed && isMobile ? 'h-auto bg-transparent' : 'h-screen w-64'
-        } transition-all duration-300 ease-in-out`}
+    <>
+      {/* Toggle Button for Mobile: sm:hidden means it's hidden on sm screens and up */}
+      <button
+        onClick={toggleMobileSidebar}
+        aria-controls="default-sidebar"
+        type="button"
+        className="fixed top-4 left-4 z-50 inline-flex items-center p-2 mt-2 ms-3 text-sm text-gray-500 rounded-lg sm:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
       >
-        <div className="flex justify-between items-center">
-          {/* Show toggle button only on mobile */}
-          {isMobile && (
-            <button onClick={toggleNav} className="text-white focus:outline-none p-5">
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                {isNavCollapsed ? (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M4 6h16M4 12h16m-7 6h7"
-                  />
-                ) : (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                )}
-              </svg>
-            </button>
-          )}
-          {/* Title/Logo */}
-          {isMobile && isNavCollapsed && (
-            <Link href="/" className="text-white text-lg font-bold pr-5" prefetch>
-              BL
-            </Link>
-          )}
-        </div>
+        <span className="sr-only">Open sidebar</span>
+        <HiMenu className="w-6 h-6" />
+      </button>
 
-        {/* Add mt-10 for top margin on desktop */}
-        <ul className={`list-none p-0 ${isNavCollapsed && isMobile ? 'hidden' : ''} ${!isMobile ? 'mt-10' : ''}`}>
-          <li className="mb-2">
-            <Link href="/" className="text-white hover:underline block px-5" prefetch>
+      <Sidebar
+        id="default-sidebar"
+        aria-label="Default sidebar example"
+        // Core classes for positioning and transition from Flowbite example:
+        // - `fixed top-0 left-0 z-40 w-64 h-screen`
+        // - `transition-transform`
+        // - `-translate-x-full` (initial state for mobile, hidden)
+        // - `sm:translate-x-0` (visible by default on sm screens and up)
+        // We control the mobile visibility with `isMobileSidebarOpen`
+        className={`fixed top-0 left-0 z-40 w-64 h-screen transition-transform 
+                    ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
+                    sm:translate-x-0`}
+        // Flowbite React's Sidebar doesn't have a 'collapsed' prop that works exactly like the HTML example's drawer.
+        // Instead, we manipulate the transform class based on state for mobile.
+      >
+        {/* Add a close button inside the sidebar for mobile if desired */}
+        <button
+            onClick={toggleMobileSidebar}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-500 sm:hidden"
+        >
+            <HiX className="w-6 h-6" />
+        </button>
+        <div className="h-full px-3 py-4 overflow-y-auto bg-gray-50 dark:bg-gray-800">
+          {/* Optional: Logo or Title inside sidebar */}
+          <div className="mb-5 px-2">
+            <Link href="/" className="text-xl font-semibold text-gray-900 dark:text-white">
               Builder Love
             </Link>
-          </li>
-          <li className="mb-2">
-            <Link href="/languages" className="text-white hover:underline block px-5" prefetch>
-              Languages
-            </Link>
-          </li>
-          <li className="mb-2">
-            <Link href="/developers" className="text-white hover:underline block px-5" prefetch>
-              Top Builders
-            </Link>
-          </li>
-          <li className="mb-2">
-            <Link href="/economics" className="text-white hover:underline block px-5" prefetch>
-              Economics
-            </Link>
-          </li>
-          <li className="mb-2">
-            <Link href="/research" className="text-white hover:underline block px-5" prefetch>
-              Research
-            </Link>
-          </li>
-        </ul>
-      </nav>
-
-      {/* Adjust content based on navWidth */}
-      <NavContext.Provider value={{ navWidth: getNavWidth() }}>
-        <div style={{ marginLeft: isMobile ? '0' : `${getNavWidth()}px` }}>
-          {children}
+          </div>
+          <SidebarItems>
+            <SidebarItemGroup>
+              {navItems.map((item) => (
+                <SidebarItem
+                  key={item.href}
+                  as={Link}
+                  href={item.href}
+                  icon={item.icon}
+                  active={pathname === item.href}
+                  className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  {item.label}
+                </SidebarItem>
+              ))}
+            </SidebarItemGroup>
+          </SidebarItems>
         </div>
-      </NavContext.Provider>
-    </div>
+      </Sidebar>
+
+      {/* Main Content Area */}
+      {/* `sm:ml-64` pushes content to the right ON sm SCREENS AND UP to make space for the sidebar */}
+      <div className="p-0 sm:ml-64"> {/* p-0 here, actual padding will be on <main> in RootLayout */}
+        {children}
+      </div>
+    </>
   );
 };
 
-export const NavContext = React.createContext({ navWidth: 0 });
-
-export default Navigation;
+export default CustomNavigation;
