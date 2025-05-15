@@ -18,14 +18,12 @@ import {
   Label,
 } from 'recharts';
 import chroma from 'chroma-js';
-import type { EnhancedTopProjectsTrendsData, FormattedLineChartData } from './types';
-// import { Payload as RechartsLegendPayload } from 'recharts/types/component/DefaultLegendContent';
+import type { EnhancedTopProjectsTrendsData, FormattedLineChartData } from './types'; 
 import Image from 'next/image';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
-import LegendCheckboxes from './utilities/LegendCheckboxes';
+import ProjectLegendCheckboxes from './utilities/LegendCheckboxes'; 
 
 // --- Define Metric Options ---
-// Map user-friendly labels to the actual data keys expected from the API
 const metricOptions = [
   { label: 'Weighted Score Index', value: 'weighted_score_index' },
   { label: 'Commit Count', value: 'commit_count' },
@@ -34,7 +32,7 @@ const metricOptions = [
   { label: 'Stargazer Count', value: 'stargaze_count' },
   { label: 'Contributor Count', value: 'contributor_count' },
   { label: 'Watcher Count', value: 'watcher_count' },
-  { label: 'Not-Fork Ratio', value: 'is_not_fork_ratio' }, 
+  { label: 'Not-Fork Ratio', value: 'is_not_fork_ratio' },
   { label: '4wk Change Commit Count', value: 'commit_count_pct_change_over_4_weeks' },
   { label: '4wk Change Fork Count', value: 'fork_count_pct_change_over_4_weeks' },
   { label: '4wk Change Stargazer Count', value: 'stargaze_count_pct_change_over_4_weeks' },
@@ -43,9 +41,8 @@ const metricOptions = [
   { label: '4wk Change Not-Fork Ratio', value: 'is_not_fork_ratio_pct_change_over_4_weeks' },
 ];
 
-// formatting for the y axis labels
 const percentMetrics = new Set([
-  'is_not_fork_ratio', 
+  'is_not_fork_ratio',
   'commit_count_pct_change_over_4_weeks',
   'fork_count_pct_change_over_4_weeks',
   'stargaze_count_pct_change_over_4_weeks',
@@ -63,96 +60,67 @@ const integerMetrics = new Set([
   'watcher_count'
 ]);
 
-// Chroma.js color generation function
 const generateColors = (count: number): string[] => {
-  if (count === 0) return []; // Handle edge case
-
+  if (count === 0) return [];
   const colors: string[] = [];
-  // Adjust saturation and lightness for desired look (0-1 range)
   const saturation = 0.75;
   const lightness = 0.5;
-
   for (let i = 0; i < count; i++) {
-    // Distribute hues evenly around the color wheel (0-360 degrees)
     const hue = (i * (360 / count)) % 360;
-    // Create HSL color with chroma, then convert to hex string
     colors.push(chroma.hsl(hue, saturation, lightness).hex());
   }
   return colors;
-
 };
 
-// --- hook for mobile view - screen size ---
-const useIsMobile = (breakpoint = 768): boolean => { // Tailwind's 'md' breakpoint
+const useIsMobile = (breakpoint = 768): boolean => {
   const [isMobileView, setIsMobileView] = useState(false);
-
   useEffect(() => {
-    const checkScreenSize = () => {
-      setIsMobileView(window.innerWidth < breakpoint);
-    };
-
-    // Ensure window is defined (for SSR/Next.js)
+    const checkScreenSize = () => setIsMobileView(window.innerWidth < breakpoint);
     if (typeof window !== 'undefined') {
-      checkScreenSize(); // Initial check
+      checkScreenSize();
       window.addEventListener('resize', checkScreenSize);
       return () => window.removeEventListener('resize', checkScreenSize);
     }
   }, [breakpoint]);
-
   return isMobileView;
 };
 
-const HomePage: React.FC = () => {
-  // Use the enhanced type for apiData state
+const Page: React.FC = () => {
   const [apiData, setApiData] = useState<EnhancedTopProjectsTrendsData[]>([]);
   const [projectTitles, setProjectTitles] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lineOpacity, setLineOpacity] = useState<Record<string, number>>({});
-  const [selectedMetric, setSelectedMetric] = useState<string>(metricOptions[0].value); // state for selected metric; efault to first option's value
-  const isMobile = useIsMobile(); // Use the mobile hook
-  const [visibleProjects, setVisibleProjects] = useState<Set<string>>(new Set()); // state for toggled projects (using legend)
+  const [selectedMetric, setSelectedMetric] = useState<string>(metricOptions[0].value);
+  const isMobile = useIsMobile();
+  const [visibleProjects, setVisibleProjects] = useState<Set<string>>(new Set());
 
-  // --- Initialize lineOpacity state when all projectTitles are loaded ---
   useEffect(() => {
     if (projectTitles.length > 0) {
       const initialOpacity = projectTitles.reduce((acc, title) => {
-        acc[title] = 1;
-        return acc;
+        acc[title] = 1; return acc;
       }, {} as Record<string, number>);
       setLineOpacity(initialOpacity);
-      // console.log("Initialized line opacity state for all projects:", initialOpacity);
     }
-  }, [projectTitles]); // Dependency on the full list of projectTitles
+  }, [projectTitles]);
 
-  // --- Fetch Data ---
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
-      // setApiData([]); // Clear previous data if re-fetching, but not projectTitles yet
-      // setProjectTitles([]);
       try {
         const response = await fetch('/api/get-top50-project-trends');
         if (!response.ok) {
           let errorDetail = `HTTP error! status: ${response.status}`;
-          try {
-            const errorData = await response.json();
-            errorDetail = errorData.message || errorDetail;
-          } catch (_jsonError) { console.error("Failed to parse API error response:", _jsonError); }
+          try { const errorData = await response.json(); errorDetail = errorData.message || errorDetail; }
+          catch (_jsonError) { console.error("Failed to parse API error response:", _jsonError); }
           throw new Error(errorDetail);
         }
         const fetchedData: EnhancedTopProjectsTrendsData[] = await response.json();
-        if (!Array.isArray(fetchedData)) {
-          throw new Error("Invalid data format received from API.");
-        }
+        if (!Array.isArray(fetchedData)) throw new Error("Invalid data format received from API.");
         setApiData(fetchedData);
-
-        // Set all unique project titles once from the fetched data
-        // This list is used for color generation and opacity state keys.
         const uniqueTitles = [...new Set(fetchedData.map(item => item.project_title))].filter(Boolean);
         setProjectTitles(uniqueTitles);
-
       } catch (err: unknown) {
         let message = 'An unknown error occurred';
         if (err instanceof Error) message = err.message;
@@ -165,484 +133,434 @@ const HomePage: React.FC = () => {
     fetchData();
   }, []);
 
-  // --- Initialize visibleProjects state when projectTitles are loaded ---
-  // Allows for toggling projects in the legend.
-  // useEffect(() => {
-  //   if (projectTitles.length > 0 && visibleProjects.size === 0) { // Initialize only once or if reset
-  //     setVisibleProjects(new Set(projectTitles));
-  //   }
-  // }, [projectTitles, visibleProjects.size]); // Re-run if the master list of projectTitles or visibleProjects changes
-  
-
-  // --- Determine Ranked Project Titles (for Top 10 selection) ---
   const sortedProjectTitlesByLatestScore = useMemo(() => {
-    if (!apiData || apiData.length === 0) {
-      return projectTitles; // Fallback to fetched order if no data for ranking
-    }
+    if (!apiData || apiData.length === 0) return projectTitles;
+    const latestDate = apiData.reduce((max, p) => (p.report_date > max ? p.report_date : max), apiData[0]?.report_date || '');
+    if (!latestDate) return projectTitles;
 
-    // Find the latest report date in the dataset
-    const latestDate = apiData.reduce((max, p) => (p.report_date > max ? p.report_date : max), apiData[0].report_date);
-
-    // Get projects with their latest weighted_score_index
     const projectsWithScores = projectTitles.map(title => {
       const latestEntryForProject = apiData
         .filter(item => item.project_title === title && item.report_date === latestDate)
-        .sort((a, b) => new Date(b.report_date).getTime() - new Date(a.report_date).getTime())[0]; // Should be unique by date
-
-      return {
-        title: title,
-        score: latestEntryForProject?.weighted_score_index ?? -Infinity, // Default score for sorting if not found
-      };
+        .sort((a, b) => new Date(b.report_date).getTime() - new Date(a.report_date).getTime())[0];
+      return { title: title, score: latestEntryForProject?.weighted_score_index ?? -Infinity };
     });
-
-    // Sort by score descending
     projectsWithScores.sort((a, b) => b.score - a.score);
-
     return projectsWithScores.map(p => p.title);
   }, [apiData, projectTitles]);
 
-  // --- Determine Titles to Render based on device and ranking ---
   const titlesToRender = useMemo(() => {
-    if (isMobile) {
-      return sortedProjectTitlesByLatestScore.slice(0, 10);
-    }
-    return sortedProjectTitlesByLatestScore; // Show all (sorted) on desktop
+    return isMobile ? sortedProjectTitlesByLatestScore.slice(0, 10) : sortedProjectTitlesByLatestScore;
   }, [isMobile, sortedProjectTitlesByLatestScore]);
 
-  // Decide which titles to show in the legend's checkbox list
   const titlesForLegendCheckboxes = useMemo(() => {
-    if (isMobile) {
-      return titlesToRender; // On mobile, legend checkboxes should only be for the top 10 plotted projects
-    }
-    return sortedProjectTitlesByLatestScore; // On desktop, show all (or projectTitles if you prefer that original list)
-                                            // Using sortedProjectTitlesByLatestScore keeps the legend sorted by rank
+    return isMobile ? titlesToRender : sortedProjectTitlesByLatestScore;
   }, [isMobile, titlesToRender, sortedProjectTitlesByLatestScore]);
 
-  // Legend Checkboxes initializes based on what the legend will show:
   useEffect(() => {
     // Initialize visibleProjects based on what's currently shown in the legend checkboxes
+    // This will also effectively "select all" relevant projects on initial load or when titlesForLegendCheckboxes changes.
     setVisibleProjects(new Set(titlesForLegendCheckboxes));
-  }, [titlesForLegendCheckboxes]); // Re-initialize if the list of legend items changes
+  }, [titlesForLegendCheckboxes]);
 
-  // --- Data Transformation for Chart (uses ALL fetched apiData, but chart will only render lines for titlesToRender) ---
   const chartData = useMemo(() => {
-    // console.log(`Transforming data for selected metric: ${selectedMetric}`);
-    if (!apiData || apiData.length === 0) {
-      // console.log("Transformation skipped: apiData is empty.");
-      return [];
-    }
+    if (!apiData || apiData.length === 0) return [];
     const groupedData: Record<string, FormattedLineChartData> = {};
     apiData.forEach(item => {
       const { report_date, project_title } = item;
-      let metricValue = item[selectedMetric]; // Dynamic access to selected metric
-
-      // Attempt to convert to number if it's a string that represents a number
-      // and ensure it's not an empty string that would become 0
+      let metricValue = item[selectedMetric];
       if (typeof metricValue === 'string' && metricValue.trim() !== '') {
         const num = parseFloat(metricValue);
-        metricValue = isNaN(num) ? null : num; // If not a valid number, treat as null
+        metricValue = isNaN(num) ? null : num;
       } else if (typeof metricValue !== 'number') {
-        // If it's not a number and not a string we could parse, set to null
-        // (handles undefined, empty strings, other non-numeric types)
         metricValue = null;
       }
-      // If it was already a number, it remains a number.
-      // If it was undefined, it becomes null.
-
-      if (!groupedData[report_date]) {
-           groupedData[report_date] = { report_date };
-       }
-      // Ensure project_title is valid before using as a key
+      if (!groupedData[report_date]) groupedData[report_date] = { report_date };
       if (project_title) {
-        if (metricValue === undefined) {
-             groupedData[report_date][project_title] = null;
-        } else {
-             groupedData[report_date][project_title] = metricValue;
-        }
+        groupedData[report_date][project_title] = metricValue === undefined ? null : metricValue;
       }
     });
-
-    // Ensure all *globally known* project titles have an entry for each date,
-    // so connectNulls can work correctly even if a project temporarily has no data for the selected metric.
-     const allDates = Object.keys(groupedData);
-     allDates.forEach(date => {
-       projectTitles.forEach(title => { // Iterate over the full list of titles
-           if (!(title in groupedData[date])) {
-               groupedData[date][title] = null;
-           }
-       });
-     });
-
-    const sortedData = Object.values(groupedData).sort((a, b) =>
+    const allDates = Object.keys(groupedData);
+    allDates.forEach(date => {
+      projectTitles.forEach(title => { // Use all known project titles
+        if (!(title in groupedData[date])) groupedData[date][title] = null;
+      });
+    });
+    return Object.values(groupedData).sort((a, b) =>
       new Date(a.report_date).getTime() - new Date(b.report_date).getTime()
     );
-    // console.log("Data transformation complete. Transformed Data Sample:", sortedData.slice(0, 2));
-    return sortedData;
-  }, [apiData, selectedMetric, projectTitles]); // projectTitles dependency ensures all projects are processed
+  }, [apiData, selectedMetric, projectTitles]);
 
-   // --- Get Current Metric Label for Y-Axis ---
-   const currentMetricLabel = useMemo(() => {
+  const currentMetricLabel = useMemo(() => {
     return metricOptions.find(opt => opt.value === selectedMetric)?.label || 'Selected Metric';
   }, [selectedMetric]);
 
-  // Generate colors based on ALL unique project titles to maintain consistency
   const projectColors = useMemo(() => {
-    const colors = generateColors(projectTitles.length); // Use full list
-    const colorMap = projectTitles.reduce((acc, title, index) => {
-        acc[title] = colors[index % colors.length];
-        return acc;
+    const colors = generateColors(projectTitles.length); // Generate colors for ALL project titles
+    return projectTitles.reduce((acc, title, index) => {
+      acc[title] = colors[index % colors.length]; return acc;
     }, {} as Record<string, string>);
-    return colorMap;
-}, [projectTitles]); // Use full list
+  }, [projectTitles]);
 
-  // --- Date Formatting that accomodates mobile ---
   const formatDateTick = useCallback((tickItem: string): string => {
     try {
       const date = new Date(tickItem);
       if (isNaN(date.getTime())) return tickItem;
-      if (isMobile) {
-        return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', timeZone: 'UTC' });
-      }
+      if (isMobile) return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', timeZone: 'UTC' });
       const month = date.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
       const day = date.getUTCDate().toString().padStart(2, '0');
       const year = date.getUTCFullYear();
       return `${month}-${day}-${year}`;
-    } catch (_e) { console.error("Error formatting date tick:", tickItem, _e); return tickItem; }
+    } catch (_e) { 
+      console.error("Error formatting date tick:", _e);
+      return tickItem; 
+    }
   }, [isMobile]);
 
-  // --- LEGEND HOVER HANDLERS ---
   const handleLegendItemMouseEnter = useCallback((hoveredTitle: string) => {
-    // Only apply hover effect if the project is currently checked (visible)
-    if (!visibleProjects.has(hoveredTitle)) {
-        return; // Do nothing if hovering over an unchecked item's legend entry
-    }
-
+    if (!visibleProjects.has(hoveredTitle)) return;
     setLineOpacity(_currentOpacities => {
-        const newOpacities: Record<string, number> = {};
-        projectTitles.forEach(title => {
-            if (visibleProjects.has(title)) { // Only consider lines that are currently checked/visible
-                newOpacities[title] = title === hoveredTitle ? 1 : 0.2; // Highlight hovered, dim others
-            } else {
-                // For unchecked lines, set their opacity to 1 in the state.
-                // Their actual line won't be rendered, but if re-checked, they start at full opacity.
-                newOpacities[title] = 1;
-            }
-        });
-        return newOpacities;
+      const newOpacities: Record<string, number> = {};
+      // Iterate over projectTitles (all potential lines) not just titlesToActuallyPlot
+      projectTitles.forEach(title => {
+        if (visibleProjects.has(title)) { // Only apply dimming logic to currently visible lines
+            newOpacities[title] = title === hoveredTitle ? 1 : 0.2;
+        } else {
+            newOpacities[title] = 1; // Keep opacity at 1 for lines not currently visible
+        }
+      });
+      return newOpacities;
     });
   }, [projectTitles, visibleProjects]);
 
-  const handleLegendItemMouseLeave = useCallback(() => {
-      setLineOpacity(_currentOpacities => {
-          const newOpacities: Record<string, number> = {};
-          projectTitles.forEach(title => {
-              if (visibleProjects.has(title)) { // Only consider lines that are currently checked/visible
-                  newOpacities[title] = 1; // Reset all visible lines to full opacity
-              } else {
-                  newOpacities[title] = 1; // Reset unchecked lines' opacity state too
-              }
-          });
-          return newOpacities;
-      });
-  }, [projectTitles, visibleProjects]);
 
-  // --- Toggle Project in Legend ---
+  const handleLegendItemMouseLeave = useCallback(() => {
+    setLineOpacity(_currentOpacities => {
+      const newOpacities: Record<string, number> = {};
+      projectTitles.forEach(title => newOpacities[title] = 1); // Reset all to full opacity
+      return newOpacities;
+    });
+  }, [projectTitles]);
+
+
   const handleToggleProject = useCallback((projectTitle: string) => {
-    setVisibleProjects(prevVisibleProjects => {
-      const newVisibleProjects = new Set(prevVisibleProjects);
-      if (newVisibleProjects.has(projectTitle)) {
-        newVisibleProjects.delete(projectTitle);
-      } else {
-        newVisibleProjects.add(projectTitle);
-      }
-      return newVisibleProjects;
+    setVisibleProjects(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(projectTitle)) newSet.delete(projectTitle);
+      else newSet.add(projectTitle);
+      return newSet;
     });
   }, []);
 
-  // --- Filter Titles to Render based on Visible Projects ---
+  const handleSelectAllProjects = useCallback(() => {
+    setVisibleProjects(new Set(titlesForLegendCheckboxes));
+  }, [titlesForLegendCheckboxes]);
+
+  const handleClearAllProjects = useCallback(() => {
+    setVisibleProjects(new Set());
+  }, []);
+
   const titlesToActuallyPlot = useMemo(() => {
+    // Filter based on titlesToRender (which respects mobile top 10) AND visibleProjects (checkbox state)
     return titlesToRender.filter(title => visibleProjects.has(title));
   }, [titlesToRender, visibleProjects]);
-  
 
-   // --- CSV Download Handler (Updated to use selected metric label) ---
-   const handleDownloadCSV = useCallback(() => {
-    if (!chartData || chartData.length === 0 || !titlesToRender || titlesToRender.length === 0) { // Use titlesToRender for check
-        alert("No data available to download.");
+  const handleDownloadCSV = useCallback(() => {
+    if (!chartData || chartData.length === 0 || !titlesToActuallyPlot || titlesToActuallyPlot.length === 0) {
+      alert("No data available to download for the selected projects."); return;
+    }
+    // Update the type of 'val' to include null and undefined
+    const sanitize = (val: string | number | null | undefined): string => {
+      let str = String(val ?? ''); // This correctly handles null/undefined by making them ''
+      if (['=', '+', '-', '@'].some(char => str.startsWith(char))) str = `'${str}`;
+      str = str.replace(/"/g, '""');
+      if (str.includes(',') || str.includes('\n') || str.includes('"')) str = `"${str}"`;
+      return str;
+    };
+    const headers = ['report_date', 'project_title', selectedMetric].join(',');
+    const rows = chartData.flatMap(row =>
+      titlesToActuallyPlot.map(title => {
+        // No change needed here as row.report_date and title are strings,
+        // and row[title] is now correctly handled by the updated sanitize signature.
+        return [sanitize(row.report_date), sanitize(title), sanitize(row[title])].join(',');
+      })
+    );
+    if (rows.length === 0) {
+        alert("No data points for the selected projects and metric to download.");
         return;
     }
-    const sanitizeForCSV = (value: string | number | null | undefined): string => {
-        let strValue = String(value ?? '');
-        if (['=', '+', '-', '@'].some(char => strValue.startsWith(char))) strValue = `'${strValue}`;
-        strValue = strValue.replace(/"/g, '""');
-        if (strValue.includes(',') || strValue.includes('\n') || strValue.includes('"')) strValue = `"${strValue}"`;
-        return strValue;
-    };
-    const currentMetricHeader = selectedMetric;
-    const headers = ['report_date', 'project_title', currentMetricHeader].join(',');
-    const dataRows: string[] = [];
-    chartData.forEach(row => {
-        const reportDate = row.report_date;
-        titlesToRender.forEach(projectTitle => { // Iterate over titlesToRender for CSV
-            const score = row[projectTitle];
-            const csvRow = [
-                sanitizeForCSV(reportDate),
-                sanitizeForCSV(projectTitle),
-                sanitizeForCSV(score)
-            ].join(',');
-            dataRows.push(csvRow);
-        });
-    });
-    const csvContent = [headers, ...dataRows].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const csv = [headers, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob);
-        const dateStamp = new Date().toISOString().split('T')[0];
-        const filename = `project_trends_${selectedMetric}_${dateStamp}.csv`;
-        link.setAttribute('href', url);
-        link.setAttribute('download', filename);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-    } else {
-        alert("CSV download failed.");
-    }
-}, [chartData, titlesToRender, selectedMetric]); // Use titlesToRender
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `project_trends_${selectedMetric}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [chartData, titlesToActuallyPlot, selectedMetric]);
 
-  // --- Dropdown Change Handler ---
   const handleMetricChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
     setSelectedMetric(event.target.value);
-}, []);
+  }, []);
 
-  // --- Dynamic Y-Axis Tick Formatter ---
   const formatYAxisTick = useCallback((value: unknown): string => {
-    if (typeof value !== 'number' || !isFinite(value)) return value !== undefined && value !== null ? String(value) : '';
+    if (typeof value !== 'number' || !isFinite(value)) return String(value ?? '');
     if (percentMetrics.has(selectedMetric)) return new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
     if (integerMetrics.has(selectedMetric)) return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value);
     if (selectedMetric === 'weighted_score_index') return new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
-    return value.toLocaleString ? value.toLocaleString('en-US') : String(value);
+    return value.toLocaleString('en-US');
   }, [selectedMetric]);
 
   const { maxValue, minValue } = useMemo(() => {
-    if (!chartData || chartData.length === 0 || !titlesToActuallyPlot || titlesToActuallyPlot.length === 0) {
-      return { maxValue: 1, minValue: 0 }; // Default domain if no lines are visible/plotted
+    if (!chartData || chartData.length === 0 || titlesToActuallyPlot.length === 0) {
+      return { maxValue: 1, minValue: 0 }; // Default domain if no lines are plotted
     }
-    let maxVal = -Infinity;
-    let minVal = Infinity;
-  
+    let maxVal = -Infinity, minVal = Infinity;
+    let hasNumericData = false;
     chartData.forEach(row => {
-      titlesToActuallyPlot.forEach(title => { // Use the filtered list
-        const value = row[title];
-        if (typeof value === 'number' && isFinite(value)) {
-          if (value > maxVal) maxVal = value;
-          if (value < minVal) minVal = value;
+      titlesToActuallyPlot.forEach(title => {
+        const val = row[title];
+        if (typeof val === 'number' && isFinite(val)) {
+          if (val > maxVal) maxVal = val;
+          if (val < minVal) minVal = val;
+          hasNumericData = true;
         }
       });
     });
-  
-    if (maxVal === -Infinity && minVal === Infinity) { // All visible series have no data
-      return { maxValue: 1, minValue: 0 };
+
+    if (!hasNumericData) return { maxValue: 1, minValue: 0 }; // All data for visible projects is null/undefined
+
+    if (maxVal === minVal) { // Handle flat line case or single point
+      const buffer = percentMetrics.has(selectedMetric) ? 0.01 : Math.max(1, Math.abs(maxVal * 0.1));
+      return { maxValue: maxVal + buffer, minValue: minVal - buffer };
     }
-    if (maxVal === minVal) { // Handle flat line case for visible series
-       const buffer = percentMetrics.has(selectedMetric) ? 0.01 : Math.max(1, Math.abs(maxVal * 0.1));
-       return { maxValue: maxVal + buffer, minValue: minVal - buffer };
-    }
-  
+    // Add a small padding to max and min values for better visualization unless it's a percentage.
+    const range = maxVal - minVal;
+    const padding = percentMetrics.has(selectedMetric) ? 0 : Math.max(range * 0.05, Math.abs(maxVal * 0.01), Math.abs(minVal * 0.01), 0.1);
+
+
     return {
-      maxValue: maxVal,
-      minValue: minVal,
+        maxValue: maxVal + padding,
+        minValue: minVal - padding < 0 && minVal >= 0 && !percentMetrics.has(selectedMetric) ? 0 : minVal - padding // Prevent negative min for non-percent if actual min is >=0
     };
+
   }, [chartData, titlesToActuallyPlot, selectedMetric]);
 
-  // --- Dynamic Y-Label Offset that accomodates mobile ---
+
   const dynamicYLabelOffset = useMemo(() => {
-    console.log('[dynamicYLabelOffset] Inputs:', { maxValue, minValue, selectedMetric, isMobile });
-  
-    const baseDesktopOffset = -35; const baseMobileOffset = -25;
+    const baseDesktopOffset = -35, baseMobileOffset = -25;
     let offset = isMobile ? baseMobileOffset : baseDesktopOffset;
-    console.log('[dynamicYLabelOffset] Initial offset:', offset);
-  
     const isPercent = percentMetrics.has(selectedMetric);
-    console.log('[dynamicYLabelOffset] isPercent:', isPercent);
-  
+
+    // Use a representative value for length calculation (e.g., maxValue, or 100% for percents)
+    let representativeValueForLengthCheck = maxValue;
+    if (isPercent && maxValue > 1) representativeValueForLengthCheck = 1; // e.g. 100%
+    else if (isPercent && maxValue === 0 && minValue === 0) representativeValueForLengthCheck = 0;
+
+
     if (isPercent) {
-        const maxFormatted = formatYAxisTick(maxValue);
-        const minFormatted = formatYAxisTick(minValue);
-        console.log('[dynamicYLabelOffset] Percent metrics - maxFormatted:', maxFormatted, 'minFormatted:', minFormatted);
-        if (maxFormatted.length > 7 || minFormatted.length > 7) {
-            offset -= isMobile ? 15 : 20;
-        } else {
-            offset -= isMobile ? 10 : 15;
-        }
+      const formattedTick = formatYAxisTick(representativeValueForLengthCheck);
+      // Adjust based on typical length of percentage strings e.g., "100.0%" (7) vs "10.0%" (6)
+      if (formattedTick.length > 6 ) offset -= isMobile ? 10 : 15; // More space for longer percent strings
+      else offset -= isMobile ? 5 : 10;
+
     } else {
-        let formattedMaxMagnitude: string;
-        if (integerMetrics.has(selectedMetric)) {
-            formattedMaxMagnitude = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(maxValue);
-        } else if (selectedMetric === 'weighted_score_index') {
-            formattedMaxMagnitude = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(maxValue);
-        } else {
-            // Ensure maxValue is a number before calling toLocaleString if it could be something else
-            formattedMaxMagnitude = typeof maxValue === 'number' ? maxValue.toLocaleString('en-US') : String(maxValue);
-        }
-        console.log('[dynamicYLabelOffset] Non-percent - formattedMaxMagnitude:', formattedMaxMagnitude);
-  
-        const numDigits = formattedMaxMagnitude.replace(/[^0-9]/g, '').length;
-        console.log('[dynamicYLabelOffset] Non-percent - numDigits:', numDigits);
-  
-        if (numDigits < 4) { /* offset remains base */ }
-        else if (numDigits < 7) offset -= (isMobile ? 10 : 15);
-        else if (numDigits < 10) offset -= (isMobile ? 15 : 25);
-        else offset -= (isMobile ? 20 : 30);
+      const formattedTick = formatYAxisTick(representativeValueForLengthCheck);
+      const numChars = formattedTick.replace(/[^0-9.,-]/g, '').length; // Count relevant characters
+
+      if (numChars < 4) { /* base */ }
+      else if (numChars < 7) offset -= (isMobile ? 8 : 12);
+      else if (numChars < 10) offset -= (isMobile ? 12 : 20);
+      else offset -= (isMobile ? 15 : 25);
     }
-    console.log('[dynamicYLabelOffset] Final offset:', offset);
     return offset;
   }, [maxValue, minValue, selectedMetric, formatYAxisTick, isMobile]);
 
-   // --- Render Logic ---
-   if (isLoading) return <div className="text-center p-4 md:p-10">Loading data...</div>;
-   if (error) return <div className="text-center p-4 md:p-10 text-red-500">Error: {error}</div>;
- 
-   const noDataForChart = !chartData || chartData.length === 0;
-   const noProjectsToDisplay = !titlesToRender || titlesToRender.length === 0;
- 
-   if (noDataForChart && noProjectsToDisplay) return <div className="text-center p-4 md:p-10">No data available to display the chart.</div>;
-   if (noProjectsToDisplay) return <div className="text-center p-4 md:p-10">Data loaded, but no projects found to display.</div>;
-   if (noDataForChart) {
-     if (selectedMetric !== metricOptions[0].value) return <div className="text-center p-4 md:p-10">No data for: {currentMetricLabel}.</div>;
-     return <div className="text-center p-4 md:p-10">No time-series data found for selected projects.</div>;
-   }
 
-  // --- ADJUST NUMBER OF projectTitles LINES FOR MOBILE ---
-  // top 10) on mobile for clarity.
-  // filter projectTitles here based on isMobile.
+  if (isLoading) return <div className="flex justify-center items-center h-screen"><div className="text-center p-4 md:p-10">Loading data...</div></div>;
+  if (error) return <div className="flex justify-center items-center h-screen"><div className="text-center p-4 md:p-10 text-red-500">Error: {error}</div></div>;
+
+  const noDataForSelectedMetric = chartData.length === 0; // Based on transformed chartData for the current metric
+  const noProjectsFetched = projectTitles.length === 0 && !isLoading; // No projects came from API at all
+  const noProjectsSelectedForPlotting = titlesToActuallyPlot.length === 0; // User cleared all or mobile default is empty
+
+  if (noProjectsFetched) {
+    return <div className="flex justify-center items-center h-screen"><div className="text-center p-4 md:p-10">No projects found to display.</div></div>;
+  }
+
+  // This condition handles when there's no data FOR THE CURRENTLY SELECTED METRIC
+  // but legend and metric selector should still be shown.
+  if (noDataForSelectedMetric && !isLoading) {
+    return (
+        <div className="p-2 sm:p-4 md:p-6">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 w-full mb-4 md:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-center sm:text-left">
+                    {isMobile ? "Top 10 Blockchain Projects" : "Top Blockchain Projects"}
+                    {!isMobile && " by Development Activity"}
+                </h2>
+                 <button // Keep download button, but it will be disabled
+                   onClick={handleDownloadCSV}
+                   disabled={true}
+                   className={`w-full sm:w-auto px-3 py-2 sm:px-4 bg-blue-600 text-white rounded opacity-50 cursor-not-allowed`}
+                 >
+                    {isMobile ? "Download CSV" : "Download Chart Data"}
+                 </button>
+            </div>
+            {projectTitles.length > 0 && ( // Show legend even if no data for metric
+                <ProjectLegendCheckboxes
+                  allProjectTitles={titlesForLegendCheckboxes}
+                  visibleProjects={visibleProjects}
+                  onToggleProject={handleToggleProject}
+                  projectColors={projectColors}
+                  isMobile={isMobile}
+                  onItemMouseEnter={handleLegendItemMouseEnter}
+                  onItemMouseLeave={handleLegendItemMouseLeave}
+                  onSelectAll={handleSelectAllProjects}
+                  onClearAll={handleClearAllProjects}
+                />
+            )}
+            <div className="flex justify-center items-center text-gray-400" style={{ height: isMobile ? '400px' : '600px', minHeight: '300px' }}>
+                <p className="text-xl">No data available for: {currentMetricLabel}.</p>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:justify-end items-stretch sm:items-center mt-4 mb-6 px-1 sm:pr-4 md:pr-8 gap-2">
+              <label htmlFor="metric-select" className="mb-1 sm:mb-0 sm:mr-2 self-start sm:self-center text-sm text-gray-400">Chart Metric:</label>
+              <select id="metric-select" value={selectedMetric} onChange={handleMetricChange} className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg p-2.5 w-full sm:w-auto">
+                  {metricOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+            </div>
+            {/* Explanation section can still be shown */}
+            <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-gray-600 px-1">
+                <h3 className="text-md sm:text-lg font-semibold mb-2 text-gray-200">How is weighted score calculated?</h3>
+                {/* ... p content ... */}
+            </div>
+        </div>
+    );
+  }
+
   return (
     <div className="p-2 sm:p-4 md:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 w-full mb-4 md:mb-6">
-         <h2 className="text-xl sm:text-2xl font-bold text-center sm:text-left">
-            {isMobile ? "Top 10 Blockchain Projects" : "Top Blockchain Projects"}
-            { !isMobile && " by Development Activity" }
-          </h2>
-         <button
-           onClick={handleDownloadCSV}
-           disabled={noDataForChart || noProjectsToDisplay}
-           className={`w-full sm:w-auto px-3 py-2 sm:px-4 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150 ease-in-out ${ (noDataForChart || noProjectsToDisplay) ? 'opacity-50 cursor-not-allowed' : '' }`}
-         >
-            {isMobile ? "Download CSV" : "Download Chart Data"}
-         </button>
+        <h2 className="text-xl sm:text-2xl font-bold text-center sm:text-left">
+          {isMobile ? "Top 10 Blockchain Projects" : "Top Blockchain Projects"}
+          {!isMobile && " by Development Activity"}
+        </h2>
+        <button
+          onClick={handleDownloadCSV}
+          disabled={noProjectsSelectedForPlotting} // Disabled if no lines are on the chart
+          className={`w-full sm:w-auto px-3 py-2 sm:px-4 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150 ease-in-out ${(noProjectsSelectedForPlotting) ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          {isMobile ? "Download CSV" : "Download Chart Data"}
+        </button>
       </div>
-      {/* Add the Custom Legend */}
-      {projectTitles.length > 0 && ( // Only show if there are titles
-        <LegendCheckboxes
-          allProjectTitles={titlesForLegendCheckboxes} // pass the ordered titles for the legend checkboxes
+
+      {projectTitles.length > 0 && (
+        <ProjectLegendCheckboxes
+          allProjectTitles={titlesForLegendCheckboxes}
           visibleProjects={visibleProjects}
           onToggleProject={handleToggleProject}
           projectColors={projectColors}
           isMobile={isMobile}
           onItemMouseEnter={handleLegendItemMouseEnter}
           onItemMouseLeave={handleLegendItemMouseLeave}
+          onSelectAll={handleSelectAllProjects}
+          onClearAll={handleClearAllProjects}
         />
       )}
-       <div className="w-full">
-         <ResponsiveContainer width="100%" height={isMobile ? 400 : 600}>
-           <LineChart
-             data={chartData}
-            margin={{ top: 5, right: isMobile ? 10 : 30, left: isMobile ? 5 : dynamicYLabelOffset < -40 ? 70 : 60, bottom: isMobile ? 70 : 50 }}
-           >
-             <CartesianGrid strokeDasharray="3 3" stroke="#555" />
-             <XAxis
-                 dataKey="report_date" type="category" tickFormatter={formatDateTick}
-                 angle={isMobile ? -60 : -45} textAnchor="end"
-                 height={isMobile ? 80 : 60}
-                 interval={isMobile ? Math.max(0, Math.floor(chartData.length / (chartData.length > 10 ? 5: 3) ) -1) : "preserveStartEnd"} // Fewer ticks on mobile, ensure at least a few.
-                 tick={{ fontSize: isMobile ? 9 : 12 }} // smaller font for mobile XAxis ticks
-             />
+
+      <div className="w-full">
+        {noProjectsSelectedForPlotting && !noDataForSelectedMetric ? ( // Check !noDataForSelectedMetric to ensure data exists for other selections
+          <div
+            className="flex items-center justify-center text-gray-500"
+            style={{ height: isMobile ? '400px' : '600px', minHeight: '300px' }} // Ensure it has a decent height
+          >
+            <p className="text-2xl">Fight FUD, with love</p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={isMobile ? 400 : 600}>
+            <LineChart
+              data={chartData} // This data might be empty if no metric data, but lines won't render if titlesToActuallyPlot is empty
+              margin={{ top: 5, right: isMobile ? 10 : 30, left: isMobile ? 5 : Math.abs(dynamicYLabelOffset) + (isMobile ? 15 : 25) , bottom: isMobile ? 70 : 50 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#555" />
+              <XAxis
+                dataKey="report_date" type="category" tickFormatter={formatDateTick}
+                angle={isMobile ? -60 : -45} textAnchor="end"
+                height={isMobile ? 80 : 60}
+                interval={isMobile ? Math.max(0, Math.floor(chartData.length / (isMobile && chartData.length > 10 ? 5 : 3)) -1) : "preserveStartEnd"}
+                tick={{ fontSize: isMobile ? 9 : 12 }}
+              />
               <YAxis
-                type="number" domain={['auto', 'auto']} tickFormatter={formatYAxisTick}
+                type="number"
+                domain={[minValue, maxValue]} // Directly use your pre-calculated min and max
+                allowDataOverflow={false}
+                tickFormatter={formatYAxisTick}
                 tick={{ fontSize: isMobile ? 10 : 12 }}
               >
                 <Label
                   value={currentMetricLabel} angle={-90} position="insideLeft"
-                  style={{ textAnchor: 'middle', fill: '#f5f5f5', fontSize: isMobile ? '11px': '14px' }}
+                  style={{ textAnchor: 'middle', fill: '#f5f5f5', fontSize: isMobile ? '11px' : '14px' }}
                   offset={dynamicYLabelOffset}
                 />
               </YAxis>
-             <Tooltip
-                 contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px', fontSize: isMobile ? '11px': '12px' }}
-                 formatter={(
-                    value: ValueType, // Value of the data point
-                    name: NameType,   // Name of the data series (project_title)
-                    // props is one item from the Tooltip's payload array
-                    // Each item in this array typically has a 'color' property
-                    itemPayload: { color?: string; payload?: unknown /* other properties */ }
-                 ) => {
-                     let formattedValue: string;
-                     const valueNum = Number(value);
+              <Tooltip
+                contentStyle={{ backgroundColor: '#222', color: '#f5f5f5', border: 'none', borderRadius: '4px', fontSize: isMobile ? '11px' : '12px' }}
+                formatter={(
+                  value: ValueType,
+                  name: NameType,
+                  // Update the type of itemPayload.payload from 'any' to 'FormattedLineChartData'
+                  itemPayload: { color?: string; payload?: FormattedLineChartData }
+                ) => {
+                    // Ensure that `name` (project title) is one of the titles that should actually be plotted
+                    if (!visibleProjects.has(String(name))) {
+                        return null; // Don't show tooltip for this item
+                    }
 
-                     if (value === null || value === undefined) { // Handle nulls explicitly first
-                        return [<span key={`${String(name)}-tooltip-value`} style={{ color: itemPayload.color || '#ccc' }}>N/A</span>, name];
-                     }
-
-                     if (typeof valueNum !== 'number' || !isFinite(valueNum)) {
-                         formattedValue = String(value);
-                     } else if (percentMetrics.has(selectedMetric)) {
-                         formattedValue = new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(valueNum);
-                     } else if (integerMetrics.has(selectedMetric)) {
-                         formattedValue = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(valueNum);
-                     } else if (selectedMetric === 'weighted_score_index') {
-                         formattedValue = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(valueNum);
-                     } else {
-                         formattedValue = valueNum.toLocaleString ? valueNum.toLocaleString('en-US') : String(valueNum);
-                     }
-
-                     // Use itemPayload.color directly
-                     const color = itemPayload.color || '#8884d8'; // Fallback color if needed
-
-                     return [
-                        <span key={`${String(name)}-tooltip-value`} style={{ color: color }}>{formattedValue}</span>,
-                        name
-                     ];
-                 }}
-                 labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
-             />
-            {/* Render only the titles that are in the visibleProjects set */}
-            {titlesToActuallyPlot.map((title) => {
-              const currentOpacity = lineOpacity[title] !== undefined ? lineOpacity[title] : 1; 
-              return (
+                    let fValue: string;
+                    const vNum = Number(value);
+                    if (value === null || value === undefined) return [<span key={`${String(name)}-val`} style={{color: itemPayload?.color || '#ccc'}}>N/A</span>, name];
+                    if (typeof vNum !== 'number' || !isFinite(vNum)) fValue = String(value);
+                    else if (percentMetrics.has(selectedMetric)) fValue = new Intl.NumberFormat('en-US', {style:'percent', minimumFractionDigits:1, maximumFractionDigits:1}).format(vNum);
+                    else if (integerMetrics.has(selectedMetric)) fValue = new Intl.NumberFormat('en-US', {maximumFractionDigits:0}).format(vNum);
+                    else if (selectedMetric === 'weighted_score_index') fValue = new Intl.NumberFormat('en-US', {minimumFractionDigits:1, maximumFractionDigits:1}).format(vNum);
+                    else fValue = vNum.toLocaleString ? vNum.toLocaleString('en-US') : String(vNum);
+                    return [<span key={`${String(name)}-val`} style={{color: itemPayload?.color || '#8884d8'}}>{fValue}</span>, name];
+                  }
+                }
+                labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
+              />
+              {titlesToActuallyPlot.map((title) => (
                 <Line
-                  key={title}
-                  type="monotone"
-                  dataKey={title}
+                  key={title} type="monotone" dataKey={title}
                   stroke={projectColors[title] || '#8884d8'}
                   strokeWidth={isMobile ? 1.5 : 2}
-                  strokeOpacity={currentOpacity} // Apply hover opacity
+                  strokeOpacity={lineOpacity[title] ?? 1}
                   dot={isMobile ? false : { r: 1, strokeWidth: 1 }}
                   activeDot={{ r: isMobile ? 4 : 6 }}
-                  connectNulls={true}
-                  name={title}
-                  isAnimationActive={!isMobile}
+                  connectNulls={true} name={title}
+                  isAnimationActive={!isMobile} // Consider disabling animation on data change for smoother experience
                 />
-              );
-            })}
-          </LineChart>
-        </ResponsiveContainer>
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row sm:justify-end items-stretch sm:items-center mt-4 mb-6 px-1 sm:pr-4 md:pr-8 gap-2">
-          <label htmlFor="metric-select" className="mb-1 sm:mb-0 sm:mr-2 self-start sm:self-center text-sm text-gray-400">Chart Metric:</label>
-          <select
-              id="metric-select" value={selectedMetric} onChange={handleMetricChange}
-              className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 w-full sm:w-auto"
-              disabled={isLoading}
-          >
-              {metricOptions.map(option => (
-                  <option key={option.value} value={option.value}> {option.label} </option>
-              ))}
-          </select>
+        <label htmlFor="metric-select" className="mb-1 sm:mb-0 sm:mr-2 self-start sm:self-center text-sm text-gray-400">Chart Metric:</label>
+        <select
+          id="metric-select" value={selectedMetric} onChange={handleMetricChange}
+          className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 w-full sm:w-auto"
+          disabled={isLoading || noProjectsFetched}
+        >
+          {metricOptions.map(option => (
+            <option key={option.value} value={option.value}> {option.label} </option>
+          ))}
+        </select>
       </div>
 
+      {/* Explanation Section */}
       <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-gray-600 px-1">
         <h3 className="text-md sm:text-lg font-semibold mb-2 text-gray-200">
           How is weighted score calculated?
@@ -684,11 +602,11 @@ const HomePage: React.FC = () => {
             />
           </a>
           <br/><br/>
-          Note: the crypto-ecosystems data architecture was up in April 2025. The new architecture more easily allows for aggregating sub-ecosystem repos to top level project. The impact is a big spike in weighted score, and input metric values for top ecosystems, like Ethereum who have a lot of sub-ecosystems. These trends will smooth out over time.
+          Note: the crypto-ecosystems data architecture was updated in April 2025. The new architecture more easily allows for aggregating sub-ecosystem repos to top level project. The impact is a big spike in weighted score, and input metric values for top ecosystems, like Ethereum who have a lot of sub-ecosystems. These trends will smooth out over time.
         </p>
       </div>
     </div>
   );
 };
 
-export default HomePage;
+export default Page;
