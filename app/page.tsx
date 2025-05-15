@@ -382,22 +382,20 @@ const Page: React.FC = () => {
 
   const chartMainTitle = isMobile ? "Top 10 Blockchain Projects" : `Top ${topNFilter} Blockchain Projects`;
 
-  if (noDataForSelectedMetric && !isLoading) {
+  // Condition for when no data is available for the selected metric
+  if (noDataForSelectedMetric && !isLoading && projectTitles.length > 0) { // Added projectTitles.length > 0 to ensure legend controls show if projects exist
     return (
         <div className="p-2 sm:p-4 md:p-6">
+            {/* Header: Title ONLY */}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 w-full mb-4 md:mb-6">
                 <h2 className="text-xl sm:text-2xl font-bold text-center sm:text-left">
                     {chartMainTitle}
                     {!isMobile && " by Development Activity"}
                 </h2>
-                 <button
-                   onClick={handleDownloadCSV}
-                   disabled={true}
-                   className={`w-full sm:w-auto px-3 py-2 sm:px-4 bg-blue-600 text-white rounded opacity-50 cursor-not-allowed`}
-                 >
-                    {isMobile ? "Download CSV" : "Download Chart Data"}
-                 </button>
+                {/* Download button removed from here */}
             </div>
+
+            {/* Legend Checkboxes and Top N Filter */}
             {projectTitles.length > 0 && (
                 <ProjectLegendCheckboxes
                   displayableProjectTitles={currentDisplayableTitles}
@@ -413,15 +411,41 @@ const Page: React.FC = () => {
                   maxColumnCount={isMobile ? 2 : 7}
                 />
             )}
+
+            {/* No Data Message for Chart Area */}
             <div className="flex justify-center items-center text-gray-400" style={{ height: isMobile ? '400px' : '600px', minHeight: '300px' }}>
                 <p className="text-xl">No data available for: {currentMetricLabel}.</p>
             </div>
-            <div className="flex flex-col sm:flex-row sm:justify-end items-stretch sm:items-center mt-4 mb-6 px-1 sm:pr-4 md:pr-8 gap-2">
-              <label htmlFor="metric-select" className="mb-1 sm:mb-0 sm:mr-2 self-start sm:self-center text-sm text-gray-400">Chart Metric:</label>
-              <select id="metric-select" value={selectedMetric} onChange={handleMetricChange} className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg p-2.5 w-full sm:w-auto">
-                  {metricOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-              </select>
+
+            {/* Controls below chart: Download Button (left) & Metric Selector (right) */}
+            <div className="flex flex-col sm:flex-row justify-between items-center mt-4 mb-6 gap-4 sm:gap-2 px-1">
+              {/* Download Button */}
+              <button
+                onClick={handleDownloadCSV}
+                disabled={true} // Always disabled in this specific no-data-for-metric view
+                className={`w-full sm:w-auto px-3 py-2 sm:px-4 bg-blue-600 text-white rounded opacity-50 cursor-not-allowed`}
+              >
+                {isMobile ? "Download CSV" : "Download Chart Data"}
+              </button>
+
+              {/* Metric Selector */}
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
+                <label htmlFor="metric-select-bottom" className="text-sm text-gray-400">Chart Metric:</label>
+                <select
+                  id="metric-select-bottom"
+                  value={selectedMetric}
+                  onChange={handleMetricChange}
+                  className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 sm:min-w-[200px] md:min-w-[250px]"
+                  disabled={isLoading || noProjectsFetched} // Keep this disable logic
+                >
+                  {metricOptions.map(option => (
+                    <option key={option.value} value={option.value}> {option.label} </option>
+                  ))}
+                </select>
+              </div>
             </div>
+
+            {/* Explanation Section */}
             <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-gray-600 px-1">
                 <h3 className="text-md sm:text-lg font-semibold mb-2 text-gray-200">How is weighted score calculated?</h3>
                 {/* ... p content ... */}
@@ -430,20 +454,15 @@ const Page: React.FC = () => {
     );
   }
 
+  // Main return when data is available for plotting (or no projects are selected for plotting)
   return (
     <div className="p-2 sm:p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 w-full mb-4 md:mb-6">
+      {/* Header: Title ONLY */}
+      <div className="flex flex-col sm:flex-row justify-start items-center gap-4 w-full mb-4 md:mb-6"> {/* Changed to justify-start */}
         <h2 className="text-xl sm:text-2xl font-bold text-center sm:text-left">
           {chartMainTitle}
           {!isMobile && " by Development Activity"}
         </h2>
-        <button
-          onClick={handleDownloadCSV}
-          disabled={noProjectsSelectedForPlotting}
-          className={`w-full sm:w-auto px-3 py-2 sm:px-4 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150 ease-in-out ${(noProjectsSelectedForPlotting) ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          {isMobile ? "Download CSV" : "Download Chart Data"}
-        </button>
       </div>
 
       {projectTitles.length > 0 && (
@@ -537,17 +556,34 @@ const Page: React.FC = () => {
         )}
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:justify-end items-stretch sm:items-center mt-4 mb-6 px-1 sm:pr-4 md:pr-8 gap-2">
-        <label htmlFor="metric-select-bottom" className="mb-1 sm:mb-0 sm:mr-2 self-start sm:self-center text-sm text-gray-400">Chart Metric:</label>
-        <select
-          id="metric-select-bottom" value={selectedMetric} onChange={handleMetricChange}
-          className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 w-full sm:w-auto"
-          disabled={isLoading || noProjectsFetched}
+      {/* Controls below chart: Download Button (left) & Metric Selector (right) */}
+      <div className="flex flex-col sm:flex-row justify-between items-center mt-4 mb-6 gap-4 sm:gap-2 px-1">
+        {/* Download Button */}
+        <button
+          onClick={handleDownloadCSV}
+          disabled={noProjectsSelectedForPlotting || chartData.length === 0} // Simplified and robust disabled condition
+          className={`w-full sm:w-auto px-3 py-2 sm:px-4 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150 ease-in-out ${
+            (noProjectsSelectedForPlotting || chartData.length === 0) ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
         >
-          {metricOptions.map(option => (
-            <option key={option.value} value={option.value}> {option.label} </option>
-          ))}
-        </select>
+          {isMobile ? "Download CSV" : "Download Chart Data"}
+        </button>
+
+        {/* Metric Selector */}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
+          <label htmlFor="metric-select-bottom" className="text-sm text-gray-400">Chart Metric:</label>
+          <select
+            id="metric-select-bottom"
+            value={selectedMetric}
+            onChange={handleMetricChange}
+            className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 sm:min-w-[200px] md:min-w-[250px]"
+            disabled={isLoading || noProjectsFetched}
+          >
+            {metricOptions.map(option => (
+              <option key={option.value} value={option.value}> {option.label} </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Explanation Section */}
