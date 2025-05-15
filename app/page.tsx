@@ -94,7 +94,7 @@ const Page: React.FC = () => {
   const [selectedMetric, setSelectedMetric] = useState<string>(metricOptions[0].value);
   const isMobile = useIsMobile();
   const [visibleProjects, setVisibleProjects] = useState<Set<string>>(new Set());
-  const [topNFilter, setTopNFilter] = useState<number>(25); // State for Top N filter, default 25
+  const [topNFilter, setTopNFilter] = useState<number>(10); // State for Top N filter, default 25
 
   useEffect(() => {
     if (projectTitles.length > 0) {
