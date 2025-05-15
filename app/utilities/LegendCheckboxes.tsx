@@ -38,12 +38,12 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
 
   return (
     <div className="mb-3 md:mb-4 text-xs sm:text-sm">
-      {/* Grid for legend items */}
+      {/* Grid for legend items - REMAINS THE SAME */}
       <div className={`grid ${columnClass} gap-x-2 gap-y-1.5`}>
         {sortedTitlesForLegend.map((title) => (
           <div
             key={title}
-            className="flex items-center cursor-pointer group py-0.5 min-w-0" // Added min-w-0
+            className="flex items-center cursor-pointer group py-0.5 min-w-0" // min-w-0 helps with truncate
             onClick={() => onToggleProject(title)}
             onMouseEnter={() => onItemMouseEnter(title)}
             onMouseLeave={onItemMouseLeave}
@@ -78,43 +78,51 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
         ))}
       </div>
 
-      {/* Container for Dropdown, Select All / Clear All - aligned to the right */}
-      <div className="flex justify-end items-center gap-x-3 sm:gap-x-4 mt-2 pt-1 border-t border-gray-700 sm:border-none sm:pt-0">
-        {/* Dropdown - now appears first in this right-aligned group */}
-        <select
-          id="top-n-filter-select"
-          value={topNFilter}
-          onChange={(e) => onTopNFilterChange(Number(e.target.value))}
-          className="bg-gray-700 border border-gray-600 text-white text-xs sm:text-sm rounded p-1 sm:p-1.5 focus:ring-blue-500 focus:border-blue-500 mr-3" // Added margin-right for spacing
-          aria-label="Filter number of projects"
-        >
-          <option value={10}>Top 10</option>
-          <option value={25}>Top 25</option>
-          <option value={50}>Top 50</option>
-        </select>
+      {/* Container for controls below legend items (Select All/Clear All and Top N Filter) */}
+      <div className="flex flex-col sm:flex-row justify-between items-center mt-3 pt-2 border-t border-gray-700">
 
-        {/* Select All / Clear All group */}
-        <span
-          onClick={onSelectAll}
-          className="cursor-pointer hover:text-blue-400 text-gray-300 font-medium"
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelectAll(); }}
-          aria-label="Select all projects"
-        >
-          Select All
-        </span>
-        <span className="text-gray-500">|</span>
-        <span
-          onClick={onClearAll}
-          className="cursor-pointer hover:text-blue-400 text-gray-300 font-medium"
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClearAll(); }}
-          aria-label="Clear all projects"
-        >
-          Clear All
-        </span>
+        {/* "Select All" and "Clear All" links - Left Aligned Group */}
+        {/* On mobile (flex-col), this is the first item. On sm+ (flex-row), this is the left item. */}
+        <div className="flex items-center gap-x-3 sm:gap-x-4 w-full sm:w-auto justify-start mb-2 sm:mb-0">
+          <span
+            onClick={onSelectAll}
+            className="cursor-pointer hover:text-blue-400 text-gray-300 font-medium"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelectAll(); }}
+            aria-label="Select all projects"
+          >
+            Select All
+          </span>
+          <span className="text-gray-500">|</span>
+          <span
+            onClick={onClearAll}
+            className="cursor-pointer hover:text-blue-400 text-gray-300 font-medium"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClearAll(); }}
+            aria-label="Clear all projects"
+          >
+            Clear All
+          </span>
+        </div>
+
+        {/* Top N Dropdown Filter - Right Aligned Group */}
+        {/* On mobile (flex-col), this is the second item. On sm+ (flex-row), this is the right item. */}
+        <div className="w-full sm:w-auto flex justify-end">
+          <select
+            id="top-n-filter-select"
+            value={topNFilter}
+            onChange={(e) => onTopNFilterChange(Number(e.target.value))}
+            className="bg-gray-700 border border-gray-600 text-white text-xs sm:text-sm rounded p-1 sm:p-1.5 focus:ring-blue-500 focus:border-blue-500 sm:mr-[10px]" // 10px right margin on non-mobile (sm and up)
+            aria-label="Filter number of projects"
+          >
+            <option value={10}>Top 10</option>
+            <option value={25}>Top 25</option>
+            <option value={50}>Top 50</option>
+          </select>
+        </div>
+
       </div>
     </div>
   );
