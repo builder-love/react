@@ -18,6 +18,7 @@ import {
   ResponsiveContainer,
   Label,
 } from 'recharts';
+import type { Payload } from 'recharts/types/component/DefaultTooltipContent';
 import chroma from 'chroma-js';
 import type { EnhancedTopProjectsTrendsData, FormattedLineChartData } from './types';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
@@ -133,6 +134,12 @@ const Page: React.FC = () => {
     };
     fetchData();
   }, []);
+
+  // Define the sorter function for tooltip items
+  const tooltipItemSorter = (item: Payload<ValueType, NameType>): number => {
+    const value = Number(item.value);
+    return typeof value === 'number' && isFinite(value) ? -value : 0; // Negative for descending order
+  };
 
   const sortedProjectTitlesByLatestScore = useMemo(() => {
     if (!apiData || apiData.length === 0) return []; // Return empty array if no data
@@ -431,7 +438,7 @@ const Page: React.FC = () => {
 
               {/* Metric Selector */}
               <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
-                <label htmlFor="metric-select-bottom" className="text-sm text-gray-400">Chart Metric:</label>
+                <label htmlFor="metric-select-bottom" className="hidden sm:inline text-sm text-gray-400">Chart Metric:</label>
                 <select
                   id="metric-select-bottom"
                   value={selectedMetric}
@@ -528,10 +535,12 @@ const Page: React.FC = () => {
                         return null;
                     }
                     let fValue: string;
-                    const vNum = Number(value);
-                    if (value === null || value === undefined) return [<span key={`${String(name)}-val`} style={{color: itemPayload?.color || '#ccc'}}>N/A</span>, name];
-                    if (typeof vNum !== 'number' || !isFinite(vNum)) fValue = String(value);
-                    else if (percentMetrics.has(selectedMetric)) fValue = new Intl.NumberFormat('en-US', {style:'percent', minimumFractionDigits:1, maximumFractionDigits:1}).format(vNum);
+                    const vNum = Number(value); // value here is item.value from the tooltip payload
+                    if (value === null || value === undefined || (typeof vNum === 'number' && !isFinite(vNum)) ) { // Check for non-finite numbers too
+                        return [<span key={`${String(name)}-val`} style={{color: itemPayload?.color || '#ccc'}}>N/A</span>, name];
+                    }
+                    // No need to check typeof vNum !== 'number' again if already handled
+                    if (percentMetrics.has(selectedMetric)) fValue = new Intl.NumberFormat('en-US', {style:'percent', minimumFractionDigits:1, maximumFractionDigits:1}).format(vNum);
                     else if (integerMetrics.has(selectedMetric)) fValue = new Intl.NumberFormat('en-US', {maximumFractionDigits:0}).format(vNum);
                     else if (selectedMetric === 'weighted_score_index') fValue = new Intl.NumberFormat('en-US', {minimumFractionDigits:1, maximumFractionDigits:1}).format(vNum);
                     else fValue = vNum.toLocaleString ? vNum.toLocaleString('en-US') : String(vNum);
@@ -539,6 +548,9 @@ const Page: React.FC = () => {
                   }
                 }
                 labelFormatter={(label: string) => `Date: ${formatDateTick(label)}`}
+                // ADD THESE TWO PROPS:
+                itemSorter={tooltipItemSorter}
+                filterNull={false} // Ensures items with null values are passed to sorter and formatter
               />
               {titlesToActuallyPlot.map((title) => (
                 <Line
