@@ -1,6 +1,5 @@
 // make legend items into checkboxes for the user to toggle items on the chart.
 // ./utilities/LegendCheckboxes.tsx
-import React, { useMemo } from 'react';
 
 interface ProjectLegendCheckboxesProps {
   displayableProjectTitles: string[];
@@ -32,15 +31,11 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
   const columnCount = Math.min(displayableProjectTitles.length > 0 ? displayableProjectTitles.length : 1, maxColumnCount);
   const columnClass = `grid-cols-${columnCount}`;
 
-  const sortedTitlesForLegend = useMemo(() => {
-    return [...displayableProjectTitles].sort((a, b) => a.localeCompare(b));
-  }, [displayableProjectTitles]);
-
   return (
     <div className="mb-3 md:mb-4 text-xs sm:text-sm">
       {/* Grid for legend items - REMAINS THE SAME */}
       <div className={`grid ${columnClass} gap-x-2 gap-y-1.5`}>
-        {sortedTitlesForLegend.map((title) => (
+        {displayableProjectTitles.map((title) => (
           <div
             key={title}
             className="flex items-center cursor-pointer group py-0.5 min-w-0" // min-w-0 helps with truncate
@@ -114,7 +109,7 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
             id="top-n-filter-select"
             value={topNFilter}
             onChange={(e) => onTopNFilterChange(Number(e.target.value))}
-            className="bg-gray-700 border border-gray-600 text-white text-xs sm:text-sm rounded p-1 sm:p-1.5 focus:ring-blue-500 focus:border-blue-500 sm:mr-[10px]" // 10px right margin on non-mobile (sm and up)
+            className="bg-gray-700 border border-gray-600 text-white text-xs sm:text-sm rounded p-1 sm:p-1.5 focus:ring-blue-500 focus:border-blue-500 sm:mr-3" 
             aria-label="Filter number of projects"
           >
             <option value={10}>Top 10</option>
