@@ -12,10 +12,11 @@ const GCP_SERVICE_ACCOUNT_EMAIL = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
 const CLOUD_RUN_URL = process.env.CLOUD_RUN_URL; // Your Cloud Run service URL (FastAPI backend)
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { projectTitle: string } }
-) {
-  const projectTitleUrlEncoded = params.projectTitle; // This is already URL-encoded by Next.js routing if it came from a URL segment
+    request: NextRequest,
+    context: { params: { projectTitle: string } } // Correct way to receive context with params
+  ) {
+    const { params } = context; // Destructure params from context
+    const projectTitleUrlEncoded = params.projectTitle;
 
   // --- Environment Variable Check ---
   if (
