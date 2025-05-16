@@ -35,6 +35,34 @@ export interface CustomScatterData {
   repo_count: number | null;
 }
 
+// top_projects data structure 
+export interface TopProjects {
+  project_title: string;
+  latest_data_timestamp: string;
+  contributor_count: number | null;
+  contributor_count_pct_change_over_4_weeks: number | null;
+  repo_count: number | null;
+  fork_count: number | null;
+  fork_count_pct_change_over_4_weeks: number | null;
+  stargaze_count: number | null;
+  stargaze_count_pct_change_over_4_weeks: number | null;
+  commit_count: number | null;
+  commit_count_pct_change_over_4_weeks: number | null;
+  watcher_count: number | null;
+  watcher_count_pct_change_over_4_weeks: number | null;
+  is_not_fork_ratio: number | null;
+  is_not_fork_ratio_pct_change_over_4_weeks: number | null;
+  project_rank: number | null;
+  prior_4_weeks_project_rank: number | null;
+  absolute_project_rank_change_over_4_weeks: number | null;
+  rank_of_project_rank_change_over_4_weeks: number | null;
+  quartile_bucket: number | null;
+  project_rank_category: string | null;
+  weighted_score_index: number | null;
+  weighted_score_sma: number | null;
+  prior_4_weeks_weighted_score: number | null;
+}
+
 // Define the interface for the top projects trends data you expect from the API route
 export interface TopProjectsTrendsData {
   project_title: string;
