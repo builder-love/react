@@ -1,7 +1,7 @@
 // app/api/industry/project/[projectTitle]/route.ts
 import { getVercelOidcToken } from '@vercel/functions/oidc';
 import { ExternalAccountClient } from 'google-auth-library';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 // import { decodeJwt } from 'jose';
 
 // Environment variable checks
@@ -11,19 +11,18 @@ const GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID = process.env.GCP_WORKLOAD_IDENTITY
 const GCP_SERVICE_ACCOUNT_EMAIL = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
 const CLOUD_RUN_URL = process.env.CLOUD_RUN_URL; // Your Cloud Run service URL (FastAPI backend)
 
-// Define an interface for the expected params
-interface RouteContext {
-    params: {
-      projectTitle: string;
-    };
-  }
+// Define an interface for the expected params (still useful for internal typing)
+interface RouteContext { // Renaming ExpectedParams to RouteContext for clarity as the first arg
+  params: {
+    projectTitle: string;
+  };
+}
 
-  export async function GET(
-    request: NextRequest,
-    context: RouteContext // Use the defined interface here
-  ) {
-    const { params } = context; // Destructure params from context
-    const projectTitleUrlEncoded = params.projectTitle;
+export async function GET(
+  context: RouteContext // This is now the first and only argument needed by your code
+) {
+  const { params } = context;
+  const projectTitleUrlEncoded = params.projectTitle;
 
   // --- Environment Variable Check ---
   if (
