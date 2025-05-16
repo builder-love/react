@@ -32,39 +32,15 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
   topNFilter,
   onTopNFilterChange,
   maxColumnCount,
-  isMobile, // Use the isMobile prop
+  isMobile,
 }) => {
   // console.log("LegendCheckboxes - isMobile prop:", isMobile); // For debugging
-
-  const topNOptions = useMemo(() => {
-    // console.log("LegendCheckboxes - Recalculating topNOptions, isMobile:", isMobile); // For debugging
-    return isMobile
-      ? [
-          { value: 10, label: "Top 10" },
-          { value: 20, label: "Top 20" },
-        ]
-      : [
-          { value: 10, label: "Top 10" },
-          { value: 25, label: "Top 25" },
-          { value: 50, label: "Top 50" },
-        ];
-  }, [isMobile]);
-
-  useEffect(() => {
-    const currentValidOptions = topNOptions.map(opt => opt.value);
-    if (!currentValidOptions.includes(topNFilter)) {
-      // If the current topNFilter is not in the valid options for the current view,
-      // reset it to the first valid option (which is 10 for both mobile and desktop).
-      onTopNFilterChange(currentValidOptions[0] || 10);
-    }
-  }, [isMobile, topNFilter, onTopNFilterChange, topNOptions]); // topNOptions is a dependency because it changes with isMobile
 
   const columnCount = Math.min(displayableProjectTitles.length > 0 ? displayableProjectTitles.length : 1, maxColumnCount);
   // Ensure your tailwind.config.ts safelist includes up to the maxColumnCount
   // e.g., if maxColumnCount can be 7, safelist 'grid-cols-1' through 'grid-cols-7'
   const columnClass = `grid-cols-${columnCount}`;
 
-  // Define options based on mobile status
   const topNOptions = useMemo(() => isMobile
     ? [
         { value: 10, label: "Top 10" },
@@ -78,29 +54,18 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
     [isMobile]
   );
 
-  // Effect to adjust topNFilter if it's not valid for the current view (mobile/desktop)
-  // and to set the default for mobile if it's not already 10.
   useEffect(() => {
     if (isMobile) {
-      // If current filter is not 10 or 20, set it to 10 (default for mobile)
       if (topNFilter !== 10 && topNFilter !== 20) {
         onTopNFilterChange(10);
       }
     } else {
-      // If on desktop and current mobile-specific filter (20) was selected,
-      // and it's not a standard desktop option, you might want to reset it.
-      // Or, ensure 20 is also a valid desktop option if desired.
-      // For now, let's assume if it's 20 and we switch to desktop, it's fine if 20 is not an option,
-      // but typically the select would just not show it.
-      // If 50 was selected and we switch to mobile, this effect will set it to 10.
       const validDesktopValues = topNOptions.map(opt => opt.value);
       if (!validDesktopValues.includes(topNFilter)) {
-        // If current filter is not valid for desktop (e.g. was 20 from mobile),
-        // set to a default desktop value, e.g., 25 or the smallest (10).
-        onTopNFilterChange(10); // or 25, depending on desired default for desktop
+        onTopNFilterChange(10);
       }
     }
-  }, [isMobile, topNFilter, onTopNFilterChange, topNOptions]); // Added topNOptions dependency
+  }, [isMobile, topNFilter, onTopNFilterChange, topNOptions]);
 
   return (
     <div className="mb-3 md:mb-4 text-xs sm:text-sm">
