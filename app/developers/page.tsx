@@ -1,5 +1,6 @@
+// app/developers/page.tsx
 'use client';
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   ColumnDef,
   flexRender,
@@ -16,6 +17,23 @@ import {
 import { Top100Contributor } from '../types';
 import { useScreenOrientation } from '../hooks/useScreenOrientation';
 
+// --- Flowbite React Imports ---
+import {
+  Table,
+  TextInput,
+  Button,
+  Dropdown,
+  DropdownItem,
+  Checkbox as FlowbiteCheckbox,
+  Spinner,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableHeadCell,
+  TableCell,
+} from 'flowbite-react';
+import { HiSearch, HiOutlineChevronDown, HiOutlineChevronUp, HiOutlineChevronLeft, HiOutlineChevronRight } from 'react-icons/hi'; // Icons
+
 // Define a custom filter function for multi-select
 const multiSelectFilter: FilterFn<Top100Contributor> = (row, columnId, filterValue: string[]) => {
   const rawValue = row.getValue(columnId);
@@ -23,63 +41,54 @@ const multiSelectFilter: FilterFn<Top100Contributor> = (row, columnId, filterVal
   return filterValue.includes(value);
 };
 
-interface CustomCheckboxProps {
-  checked: boolean;
-  onChange: () => void;
-}
+// interface CustomCheckboxProps {
+//   checked: boolean;
+//   onChange: () => void;
+// }
 
-const CustomCheckbox: React.FC<CustomCheckboxProps> = ({ checked, onChange }) => {
-  return (
-    <div
-      className={`w-4 h-4 border rounded cursor-pointer flex items-center justify-center ${
-        checked ? "bg-blue-600 border-blue-600" : "bg-gray-800 border-gray-300"
-      }`}
-      onClick={onChange}
-    >
-      {checked && (
-        <svg
-          className="w-3 h-3 text-white"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M5 13l4 4L19 7"
-          />
-        </svg>
-      )}
-    </div>
-  );
-};
+// const CustomCheckbox: React.FC<CustomCheckboxProps> = ({ checked, onChange }) => {
+//   return (
+//     <div
+//       className={`w-4 h-4 border rounded cursor-pointer flex items-center justify-center ${
+//         checked ? "bg-blue-600 border-blue-600" : "bg-gray-800 border-gray-300"
+//       }`}
+//       onClick={onChange}
+//     >
+//       {checked && (
+//         <svg
+//           className="w-3 h-3 text-white"
+//           fill="none"
+//           stroke="currentColor"
+//           viewBox="0 0 24 24"
+//           xmlns="http://www.w3.org/2000/svg"
+//         >
+//           <path
+//             strokeLinecap="round"
+//             strokeLinejoin="round"
+//             strokeWidth={2}
+//             d="M5 13l4 4L19 7"
+//           />
+//         </svg>
+//       )}
+//     </div>
+//   );
+// };
 
 const ContributorsPage: React.FC = () => {
   const [data, setData] = useState<Top100Contributor[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([
-    {
-      id: 'contributor_rank',
-      desc: false,
-    },
+    { id: 'contributor_rank', desc: false },
   ]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [globalFilter, setGlobalFilter] = useState<string>('');
 
-  const { isMobile } = useScreenOrientation();
+  const { isMobile } = useScreenOrientation(); // Assuming this hook is still relevant
 
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [selectedDominantLanguages, setSelectedDominantLanguages] = useState<string[]>([]);
-
-  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(false);
-  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState<boolean>(false);
-
-  const locationDropdownRef = useRef<HTMLDivElement>(null);
-  const languageDropdownRef = useRef<HTMLDivElement>(null);
 
   const [activeRowData, setActiveRowData] = useState<Top100Contributor | null>(null);
 
@@ -114,8 +123,8 @@ const ContributorsPage: React.FC = () => {
         header: 'Builder Rank',
         accessorKey: 'contributor_rank',
         id: 'contributor_rank',
-        cell: ({ getValue }) => <div className="text-center text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
-        size: 70, // Explicit size for rank
+        cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? 'N/A', // Text alignment will be handled by Table.Cell className
+        size: 70,
       },
       {
         header: 'Github Login',
@@ -125,13 +134,13 @@ const ContributorsPage: React.FC = () => {
             const login = row.original.contributor_login;
             const url = row.original.contributor_html_url;
             return (
-                <div className="truncate text-sm md:text-base" title={login}> {/* Added truncate and title */}
+                <div className="truncate" title={login}>
                     {url ? (
                         <a
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-400 hover:text-blue-300 hover:underline"
+                          className="font-medium text-blue-600 dark:text-blue-500 hover:underline" // Flowbite-like link style
                         >
                           {login}
                         </a>
@@ -141,7 +150,18 @@ const ContributorsPage: React.FC = () => {
                 </div>
             );
         },
-        size: 150, // Explicit size
+        size: 150,
+      },
+       {
+        header: 'Dominant Language',
+        accessorKey: 'dominant_language',
+        id: 'dominant_language',
+        cell: ({ getValue }) => {
+            const lang = getValue<string>() ?? 'N/A';
+            return <div className="truncate" title={lang}>{lang}</div>;
+        },
+        filterFn: multiSelectFilter,
+        size: 100,
       },
       {
         header: 'Anon?',
@@ -152,20 +172,9 @@ const ContributorsPage: React.FC = () => {
             let displayValue = 'N/A';
             if (value === true) displayValue = 'Yes';
             else if (value === false) displayValue = 'No';
-            return <div className="text-center text-sm md:text-base">{displayValue}</div>;
+            return displayValue;
         },
-        size: 60, // Explicit size
-      },
-      {
-        header: 'Dominant Language',
-        accessorKey: 'dominant_language',
-        id: 'dominant_language',
-        cell: ({ getValue }) => {
-            const lang = getValue<string>() ?? 'N/A';
-            return <div className="truncate text-sm md:text-base" title={lang}>{lang}</div>; // Added truncate and title
-        },
-        filterFn: multiSelectFilter,
-        size: 100, // Explicit size
+        size: 60,
       },
       {
         header: 'Location',
@@ -173,52 +182,52 @@ const ContributorsPage: React.FC = () => {
         id: 'location',
         cell: ({ getValue }) => {
             const loc = getValue<string>() ?? 'N/A';
-            return <div className="truncate text-sm md:text-base" title={loc}>{loc}</div>; // Added truncate and title
+            return <div className="truncate" title={loc}>{loc}</div>;
         },
         filterFn: multiSelectFilter,
-        size: 100, // Explicit size
+        size: 100,
       },
       {
-        header: 'Contributions', 
+        header: 'Contributions',
         accessorKey: 'total_contributions',
         id: 'total_contributions',
-        cell: ({ getValue }) => <div className="text-right text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
-        size: 100, // Explicit size
+        cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? 'N/A',
+        size: 100,
       },
       {
-        header: 'Associated Blockchain Repos',
+        header: 'Repos Contributed To', 
         accessorKey: 'total_repos_contributed_to',
         id: 'total_repos_contributed_to',
-        cell: ({ getValue }) => <div className="text-right text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
-        size: 80, // Explicit size
+        cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? 'N/A',
+        size: 80,
       },
-      {
-        header: 'Associated Repos - Quality Ranking',
+       {
+        header: 'Repo Quality Rank', 
         accessorKey: 'normalized_total_repo_quality_weighted_contribution_score_rank',
         id: 'normalized_total_repo_quality_weighted_contribution_score_rank',
-        cell: ({ getValue }) => <div className="text-right text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
-        size: 80, // Explicit size
+        cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? 'N/A',
+        size: 80,
       },
       {
-        header: 'Contributions to Non-Forked Repos',
+        header: 'Non-Fork Repo Contributions', 
         accessorKey: 'contributions_to_og_repos',
         id: 'contributions_to_og_repos',
-        cell: ({ getValue }) => <div className="text-right text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
-        size: 80, // Explicit size
+        cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? 'N/A',
+        size: 80,
       },
       {
         header: 'Followers',
         accessorKey: 'followers_total_count',
         id: 'followers_total_count',
-        cell: ({ getValue }) => <div className="text-right text-sm md:text-base">{getValue<number>()?.toLocaleString() ?? 'N/A'}</div>,
-        size: 90, // Explicit size
+        cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? 'N/A',
+        size: 90,
       },
       {
         header: 'Builder Score',
         accessorKey: 'weighted_score_index',
         id: 'weighted_score_index',
-        cell: ({ getValue }) => <div className="text-right text-sm md:text-base">{getValue<number>()?.toFixed(2) ?? 'N/A'}</div>,
-        size: 80, // Explicit size
+        cell: ({ getValue }) => getValue<number>()?.toFixed(2) ?? 'N/A',
+        size: 80,
       },
     ],
     []
@@ -264,17 +273,17 @@ const ContributorsPage: React.FC = () => {
     });
   };
 
-  const toggleLocationDropdown = () => setIsLocationDropdownOpen(!isLocationDropdownOpen);
-  const toggleLanguageDropdown = () => setIsLanguageDropdownOpen(!isLanguageDropdownOpen);
+  // const toggleLocationDropdown = () => setIsLocationDropdownOpen(!isLocationDropdownOpen);
+  // const toggleLanguageDropdown = () => setIsLanguageDropdownOpen(!isLanguageDropdownOpen);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (locationDropdownRef.current && !locationDropdownRef.current.contains(event.target as Node)) setIsLocationDropdownOpen(false);
-      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target as Node)) setIsLanguageDropdownOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  // useEffect(() => {
+  //   const handleClickOutside = (event: MouseEvent) => {
+  //     if (locationDropdownRef.current && !locationDropdownRef.current.contains(event.target as Node)) setIsLocationDropdownOpen(false);
+  //     if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target as Node)) setIsLanguageDropdownOpen(false);
+  //   };
+  //   document.addEventListener('mousedown', handleClickOutside);
+  //   return () => document.removeEventListener('mousedown', handleClickOutside);
+  // }, []);
 
   useEffect(() => {
     // Current mobile visibility - adjust if Location/Language should be visible on mobile
@@ -312,166 +321,253 @@ const ContributorsPage: React.FC = () => {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     filterFns: { multiSelect: multiSelectFilter },
-    defaultColumn: { // Can set default min/max size for columns if not specified
+    defaultColumn: {
       minSize: 50,
     }
   });
 
-  useEffect(() => {
+  // Tooltip logic for mobile
+  const [showMobileTooltip, setShowMobileTooltip] = useState(false); // For clarity
+  const handleRowHover = (rowData: Top100Contributor) => {
+    if (isMobile) {
+      setActiveRowData(rowData);
+      setShowMobileTooltip(true);
+    }
+  };
+  const closeMobileTooltip = useCallback(() => {
+    if (isMobile) {
+      setShowMobileTooltip(false);
+      setTimeout(() => setActiveRowData(null), 300);
+    }
+  }, [isMobile]);
+   useEffect(() => {
     const handleClickOutsideTooltip = (event: MouseEvent) => {
-      if (!(event.target instanceof Element) || !event.target.closest('.tooltip-trigger')) closeTooltip();
+      if (showMobileTooltip && (!event.target || !(event.target instanceof Element) || !event.target.closest('.mobile-tooltip-content'))) {
+        closeMobileTooltip();
+      }
     };
-    document.addEventListener('mousedown', handleClickOutsideTooltip);
+    if (showMobileTooltip) {
+      document.addEventListener('mousedown', handleClickOutsideTooltip);
+    }
     return () => document.removeEventListener('mousedown', handleClickOutsideTooltip);
-  }, []);
+  }, [showMobileTooltip, closeMobileTooltip]);
 
-  const handleRowHover = (rowData: Top100Contributor) => setActiveRowData(rowData);
-  const closeTooltip = () => setActiveRowData(null);
 
-  if (isLoading) return <div className="p-4 text-center text-white">Loading contributors...</div>;
+  if (isLoading) return (
+    <div className="flex justify-center items-center h-screen bg-black">
+      <Spinner aria-label="Loading contributors..." size="xl" color="pink" />
+      <span className="pl-3 text-white">Loading contributors...</span>
+    </div>
+  );
   if (error) return <div className="p-4 text-center text-red-500">Error loading data: {error}</div>;
+  if (!data.length) return <div className="p-4 text-center text-white">No contributors data available.</div>;
 
+
+  // --- JSX Structure with Flowbite ---
   return (
-    <div className="p-2 md:p-4 bg-black text-white min-h-screen relative z-0"> {/* Reduced overall padding */}
-      <h1 className="text-2xl font-bold text-center mt-8 mb-8">Top 100 Builders</h1>
+    <div className="p-2 md:p-4 bg-black text-gray-300 min-h-screen"> {/* Adjusted text color */}
+      <h1 className="text-2xl md:text-3xl font-bold text-center text-white mt-8 mb-8">Top 100 Builders</h1>
 
-      <div className={`mb-4 flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0`}>
-        <div className="md:w-1/3 lg:w-1/4">
-          <input
+      {/* Filters and Search Section */}
+      <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        {/* Global Search - Using Flowbite TextInput */}
+        <div className="md:w-auto lg:w-1/3"> {/* Adjusted width */}
+          <TextInput
+            id="table-search"
             type="text"
+            icon={HiSearch} // Search icon
+            placeholder="Search table..."
             value={globalFilter ?? ''}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            placeholder="Search table..."
-            className="px-3 py-2 border border-gray-600 rounded bg-gray-800 text-white focus:ring-blue-500 focus:border-blue-500 text-sm w-full"
+            className="w-full text-sm dark:[&_input]:bg-gray-800 dark:[&_input]:text-white dark:[&_input]:border-gray-600"
           />
         </div>
-        <div className={`flex space-x-2 sm:space-x-4 ${isMobile ? 'justify-center mt-2 md:mt-0' : 'justify-end'}`}>
-          <div className="relative" ref={locationDropdownRef}>
-            <button onClick={toggleLocationDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
-              Location <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </button>
-            {isLocationDropdownOpen && (
-              <div className="absolute z-30 mt-1 right-0 md:left-0 w-56 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" onClick={(e) => e.stopPropagation()}>
-                {uniqueLocations.map((location) => (
-                  <div key={location} className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm" onClick={() => handleLocationFilterChange(location)}>
-                    <CustomCheckbox checked={selectedLocations.includes(location)} onChange={() => handleLocationFilterChange(location)} />
-                    <span className="ml-2">{location}</span>
-                  </div>
-                ))}
-              </div>
+
+        {/* Filter Dropdowns - Using Flowbite Dropdown */}
+        <div className={`flex items-center gap-2 sm:gap-4 ${isMobile ? 'justify-center' : 'justify-end'}`}>
+          <Dropdown
+            label="Location"
+            dismissOnClick={false} // Keep open for multi-select
+            renderTrigger={() => ( // Custom trigger to match your previous style
+                <Button
+                    color="dark"
+                    size="sm"
+                    className="border border-gray-600 hover:bg-gray-700 text-xs md:text-sm"
+                >
+                    Location <HiOutlineChevronDown className="ml-2 h-4 w-4" />
+                </Button>
             )}
-          </div>
-          <div className="relative" ref={languageDropdownRef}>
-            <button onClick={toggleLanguageDropdown} className="px-2 py-1 border border-gray-300 rounded bg-black text-white flex items-center text-xs md:text-sm">
-              Language <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </button>
-            {isLanguageDropdownOpen && (
-              <div className="absolute z-30 mt-1 right-0 w-48 bg-gray-800 border border-gray-300 rounded shadow-lg overflow-y-auto max-h-72" onClick={(e) => e.stopPropagation()}>
-                {uniqueDominantLanguages.map((language) => (
-                  <div key={language} className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-700 text-white text-xs md:text-sm" onClick={() => handleDominantLanguageFilterChange(language)}>
-                    <CustomCheckbox checked={selectedDominantLanguages.includes(language)} onChange={() => handleDominantLanguageFilterChange(language)} />
-                    <span className="ml-2">{language}</span>
-                  </div>
-                ))}
-              </div>
+            className="w-56 max-h-72 overflow-y-auto dark:bg-gray-800 [&_ul]:bg-transparent [&_ul]:p-0" // Customizations for dropdown panel
+          >
+            {uniqueLocations.map((location) => (
+              <DropdownItem key={location} onClick={() => {}} className="hover:bg-gray-700 focus:bg-gray-700 dark:focus:bg-gray-600">
+                <label className="flex items-center w-full cursor-pointer text-xs md:text-sm" onClick={(e) => e.stopPropagation()}>
+                  <FlowbiteCheckbox
+                    id={`location-${location.replace(/\s+/g, '-')}`}
+                    checked={selectedLocations.includes(location)}
+                    onChange={() => handleLocationFilterChange(location)}
+                    className="mr-2 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  {location}
+                </label>
+              </DropdownItem>
+            ))}
+          </Dropdown>
+
+          <Dropdown
+            label="Language"
+            dismissOnClick={false}
+            renderTrigger={() => (
+                <Button
+                    color="dark"
+                    size="sm"
+                    className="border border-gray-600 hover:bg-gray-700 text-xs md:text-sm"
+                >
+                    Language <HiOutlineChevronDown className="ml-2 h-4 w-4" />
+                </Button>
             )}
-          </div>
+            className="w-48 max-h-72 overflow-y-auto dark:bg-gray-800 [&_ul]:bg-transparent [&_ul]:p-0"
+          >
+            {uniqueDominantLanguages.map((language) => (
+              <DropdownItem key={language} onClick={() => {}} className="hover:bg-gray-700 focus:bg-gray-700 dark:focus:bg-gray-600">
+                 <label className="flex items-center w-full cursor-pointer text-xs md:text-sm" onClick={(e) => e.stopPropagation()}>
+                  <FlowbiteCheckbox
+                    id={`lang-${language.replace(/\s+/g, '-')}`}
+                    checked={selectedDominantLanguages.includes(language)}
+                    onChange={() => handleDominantLanguageFilterChange(language)}
+                    className="mr-2 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  {language}
+                </label>
+              </DropdownItem>
+            ))}
+          </Dropdown>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        {/* For column sizing to work effectively, table-layout:fixed can be useful,
-            but TanStack Table often applies widths directly to th/td styles.
-            Ensure the sum of your column sizes is reasonable.
-        */}
-        <table className="min-w-full divide-y divide-gray-200 table-auto"> {/* table-auto is fine, sizes will influence initial layout */}
-          <thead className="bg-gray-800">
+      {/* Table Section with Flowbite styling */}
+      <div className="relative overflow-x-auto shadow-md sm:rounded-lg border border-gray-700">
+        <Table hoverable striped>
+          <TableHead className="text-xs text-gray-400 uppercase bg-gray-700">
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="border-b-0">
                 {headerGroup.headers.map((header) => (
-                  <th
+                  <TableHeadCell
                     key={header.id}
                     onClick={header.column.getToggleSortingHandler()}
-                    // Applying width from column definition style
-                    style={{ width: header.getSize() !== 0 ? header.getSize() : undefined }}
-                    className="px-2 py-2 text-left text-xs md:text-sm font-medium text-gray-300 tracking-wider cursor-pointer whitespace-normal group" // Reduced header padding
+                    style={{ width: header.getSize() !== 0 ? header.getSize() : undefined, minWidth: header.column.columnDef.minSize }}
+                    className="px-3 py-2 text-left text-xs md:text-sm font-medium tracking-wider cursor-pointer group whitespace-normal"
                   >
-                    <div className="flex items-center justify-between"> {/* For sort icon alignment */}
+                    <div className="flex items-center justify-start">
                       {flexRender(header.column.columnDef.header, header.getContext())}
-                      <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {{ asc: "↑", desc: "↓" }[header.column.getIsSorted() as string] ?? <span className="text-gray-500">↕</span>}
+                      <span className="ml-1.5">
+                        {header.column.getCanSort() && (header.column.getIsSorted() === 'asc' ? <HiOutlineChevronUp className="w-3 h-3" /> : header.column.getIsSorted() === 'desc' ? <HiOutlineChevronDown className="w-3 h-3" /> : <HiOutlineChevronUp className="w-3 h-3 text-gray-500 opacity-30 group-hover:opacity-100" />)}
                       </span>
                     </div>
-                  </th>
+                  </TableHeadCell>
                 ))}
-              </tr>
+              </TableRow>
             ))}
-          </thead>
-          <tbody className="bg-black text-white divide-y divide-gray-200">
+          </TableHead>
+
+          <TableBody className="divide-y divide-gray-700 bg-gray-800">
             {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="hover:bg-gray-800 cursor-pointer tooltip-trigger" onMouseEnter={() => isMobile && handleRowHover(row.original)} onMouseLeave={() => isMobile && closeTooltip()}>
+              <TableRow
+                key={row.id}
+                className="hover:bg-gray-700 dark:hover:bg-gray-700 cursor-pointer"
+                onMouseEnter={() => handleRowHover(row.original)}
+              >
                 {row.getVisibleCells().map((cell) => (
-                  <td
+                  <TableCell
                     key={cell.id}
-                    // Applying width from column definition style
-                    style={{ width: cell.column.getSize() !== 0 ? cell.column.getSize() : undefined }}
-                    className="px-2 py-1 md:px-3 md:py-2 text-xs md:text-sm whitespace-nowrap text-gray-300" // Reduced cell padding
+                    style={{ width: cell.column.getSize() !== 0 ? cell.column.getSize() : undefined, minWidth: cell.column.columnDef.minSize }}
+                    className="px-3 py-2 text-xs md:text-sm whitespace-nowrap text-gray-300"
                   >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
+                    {['contributor_rank', 'is_anon'].includes(cell.column.id) ? <div className="text-center">{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
+                    : ['total_contributions', 'total_repos_contributed_to', 'normalized_total_repo_quality_weighted_contribution_score_rank', 'contributions_to_og_repos', 'followers_total_count', 'weighted_score_index'].includes(cell.column.id) ? <div className="text-right">{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
+                    : flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
                 ))}
-              </tr>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
-      {activeRowData && isMobile && (
-        <div className="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-4 rounded-t-lg shadow-lg z-50" onClick={closeTooltip}>
+      {/* Mobile Tooltip Section */}
+      {showMobileTooltip && activeRowData && (
+        <div className="mobile-tooltip-content fixed inset-x-0 bottom-0 bg-gray-900 text-white p-4 rounded-t-lg shadow-2xl z-50 max-h-[70vh] overflow-y-auto" onClick={closeMobileTooltip}>
+          <button onClick={closeMobileTooltip} className="absolute top-2 right-2 text-gray-400 hover:text-white">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
           <h3 className="text-lg font-bold mb-2">
+            {/* ... (your activeRowData display, ensure links are styled) ... */}
             {activeRowData.contributor_html_url ?
                 <a href={activeRowData.contributor_html_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
                     {activeRowData.contributor_login}
                 </a> : activeRowData.contributor_login
             }
           </h3>
-          <p className="text-xs md:text-sm"><strong>Builder Rank:</strong> {activeRowData.contributor_rank?.toLocaleString() ?? 'N/A'}</p>
-          <p className="text-xs md:text-sm"><strong>Anon?:</strong> {activeRowData.is_anon === true ? 'Yes' : activeRowData.is_anon === false ? 'No' : 'N/A'}</p>
-          <p className="text-xs md:text-sm"><strong>Language:</strong> {activeRowData.dominant_language ?? 'N/A'}</p>
-          <p className="text-xs md:text-sm"><strong>Location:</strong> {activeRowData.location ?? 'N/A'}</p>
-          <p className="text-xs md:text-sm"><strong>Contributions:</strong> {activeRowData.total_contributions?.toLocaleString() ?? 'N/A'}</p>
-          <p className="text-xs md:text-sm"><strong>Associated Blockchain Repos:</strong> {activeRowData.total_repos_contributed_to?.toLocaleString() ?? 'N/A'}</p>
-          <p className="text-xs md:text-sm"><strong>Contributions to Non-Forked Repos:</strong> {activeRowData.contributions_to_og_repos?.toLocaleString() ?? 'N/A'}</p>
-          <p className="text-xs md:text-sm"><strong>Associated Repos - Relative Strength:</strong> {activeRowData.normalized_total_repo_quality_weighted_contribution_score_rank?.toLocaleString() ?? 'N/A'}</p>
-          <p className="text-xs md:text-sm"><strong>Followers:</strong> {activeRowData.followers_total_count?.toLocaleString() ?? 'N/A'}</p>
-          <p className="text-xs md:text-sm"><strong>Builder Score:</strong> {activeRowData.weighted_score_index?.toFixed(2) ?? 'N/A'}</p>
+          {/* ... other details ... */}
+          <p className="text-xs"><strong>Builder Rank:</strong> {activeRowData.contributor_rank?.toLocaleString() ?? 'N/A'}</p>
+          {/* Add all other fields as in your original tooltip */}
+           <p className="text-xs"><strong>Anon?:</strong> {activeRowData.is_anon === true ? 'Yes' : activeRowData.is_anon === false ? 'No' : 'N/A'}</p>
+          <p className="text-xs"><strong>Language:</strong> {activeRowData.dominant_language ?? 'N/A'}</p>
+          <p className="text-xs"><strong>Location:</strong> {activeRowData.location ?? 'N/A'}</p>
+          <p className="text-xs"><strong>Contributions:</strong> {activeRowData.total_contributions?.toLocaleString() ?? 'N/A'}</p>
+          <p className="text-xs"><strong>Repos Contributed To:</strong> {activeRowData.total_repos_contributed_to?.toLocaleString() ?? 'N/A'}</p>
+          <p className="text-xs"><strong>OG Repo Contributions:</strong> {activeRowData.contributions_to_og_repos?.toLocaleString() ?? 'N/A'}</p>
+          <p className="text-xs"><strong>Repo Quality Rank:</strong> {activeRowData.normalized_total_repo_quality_weighted_contribution_score_rank?.toLocaleString() ?? 'N/A'}</p>
+          <p className="text-xs"><strong>Followers:</strong> {activeRowData.followers_total_count?.toLocaleString() ?? 'N/A'}</p>
+          <p className="text-xs"><strong>Builder Score:</strong> {activeRowData.weighted_score_index?.toFixed(2) ?? 'N/A'}</p>
         </div>
       )}
 
-      <div className="mt-4 flex justify-between items-center space-y-2 md:space-y-0 md:space-x-2 w-full">
-        <div className="flex space-x-2">
-          <button className="px-2 py-1 md:px-3 md:py-1 border border-gray-300 rounded bg-black text-white text-xs md:text-sm" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}>{"<<"}</button>
-          <button className="px-2 py-1 md:px-3 md:py-1 border border-gray-300 rounded bg-black text-white text-xs md:text-sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>{"<"}</button>
-          <button className="px-2 py-1 md:px-3 md:py-1 border border-gray-300 rounded bg-black text-white text-xs md:text-sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>{">"}</button>
-          <button className="px-2 py-1 md:px-3 md:py-1 border border-gray-300 rounded bg-black text-white text-xs md:text-sm" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()}>{">>"}</button>
+      {/* Pagination Section - Using Flowbite Buttons */}
+      <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 w-full">
+        <div className="flex items-center gap-2">
+          <Button color="dark" size="xs" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()} className="border-gray-600"> <HiOutlineChevronLeft className="h-4 w-4"/> </Button>
+          <Button color="dark" size="xs" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="border-gray-600"> <HiOutlineChevronLeft className="h-4 w-4"/> Prev </Button>
+          <Button color="dark" size="xs" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="border-gray-600"> Next <HiOutlineChevronRight className="h-4 w-4"/> </Button>
+          <Button color="dark" size="xs" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()} className="border-gray-600"> <HiOutlineChevronRight className="h-4 w-4"/> </Button>
         </div>
-        <div className="flex-grow flex justify-center">
-          <span className="text-xs md:text-sm text-white">Page <strong>{table.getState().pagination.pageIndex + 1} of {table.getPageCount()}</strong></span>
+        <div className="flex items-center gap-2 text-xs md:text-sm text-gray-400">
+          <span>Page</span>
+          <strong>
+            {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+          </strong>
         </div>
-        <div className="hidden md:block">
-          <select className="px-2 py-1 border border-gray-300 rounded bg-black text-white text-xs md:text-sm" value={table.getState().pagination.pageSize} onChange={(e) => table.setPageSize(Number(e.target.value))}>
-            {[10, 20, 30, 40, 50, 100].map((pageSize) => (<option key={pageSize} value={pageSize}>Show {pageSize}</option>))}
+        <div className="flex items-center gap-2">
+          <span className="text-xs md:text-sm text-gray-400 hidden md:inline">Go to page:</span>
+          <TextInput
+            type="number"
+            defaultValue={table.getState().pagination.pageIndex + 1}
+            onChange={e => {
+              const page = e.target.value ? Number(e.target.value) - 1 : 0;
+              table.setPageIndex(page);
+            }}
+            className="w-16 text-xs dark:[&_input]:bg-gray-800 dark:[&_input]:text-white dark:[&_input]:border-gray-600 dark:[&_input]:p-1.5"
+          />
+           <select
+            value={table.getState().pagination.pageSize}
+            onChange={e => table.setPageSize(Number(e.target.value))}
+            className="text-xs p-1.5 border border-gray-600 rounded bg-gray-800 text-white focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500"
+          >
+            {[10, 20, 30, 50, 100].map(pageSize => (
+              <option key={pageSize} value={pageSize}>
+                Show {pageSize}
+              </option>
+            ))}
           </select>
         </div>
       </div>
 
-      {/* Link to methodology */}
-      <div className="mt-8 text-center"> {/* Using mt-6 for spacing from pagination */}
+      <div className="mt-8 text-center">
         <a
           href="https://docs.builder.love/docs/methodology/developer-categories"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-400 hover:text-blue-300 hover:underline text-sm md:text-base"
+          className="text-sm text-blue-500 hover:text-blue-400 hover:underline"
         >
           How do we identify strong builders?
         </a>
