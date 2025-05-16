@@ -7,14 +7,7 @@ import { TextInput, Button, Card, ListGroup, ListGroupItem, Spinner, Alert } fro
 import { HiSearch, HiInformationCircle } from 'react-icons/hi';
 import _debounce from 'lodash/debounce';
 import { TopProjects } from '@/app/types';
-
-// Helper function to format numbers with commas
-const formatNumberWithCommas = (number: number | null | undefined): string => {
-  if (number === null || number === undefined) {
-    return 'N/A'; // Or '0' or an empty string, depending on preference
-  }
-  return number.toLocaleString();
-};
+import { formatNumberWithCommas } from '@/app/utilities/formatters';
 
 const IndustrySearchPage = () => {
   const router = useRouter();
