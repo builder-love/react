@@ -11,11 +11,13 @@ const GCP_SERVICE_ACCOUNT_EMAIL = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
 const CLOUD_RUN_URL = process.env.CLOUD_RUN_URL;
 
 export async function GET(
-    _request: NextRequest, // First argument
-    context: { params: { projectTitle: string } } // Second argument, typed inline
+    _request: NextRequest, // First argument is NextRequest (prefix with _ if unused)
+    // For Next.js 15, params is a Promise
+    context: { params: Promise<{ projectTitle: string }> }
   ) {
-    const { params } = context;
-    const projectTitleUrlEncoded = params.projectTitle;
+    // Await the resolution of params
+    const resolvedParams = await context.params;
+    const projectTitleUrlEncoded = resolvedParams.projectTitle;
 
   // --- Environment Variable Check ---
   if (
