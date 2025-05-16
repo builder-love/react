@@ -11,9 +11,8 @@ const GCP_SERVICE_ACCOUNT_EMAIL = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
 const CLOUD_RUN_URL = process.env.CLOUD_RUN_URL;
 
 export async function GET(
-    _request: NextRequest, // First argument MUST be Request or NextRequest (prefix with _ if unused)
-    // Directly inline the expected type for the context object
-    context: { params: { projectTitle: string } }
+    _request: NextRequest, // First argument
+    context: { params: { projectTitle: string } } // Second argument, typed inline
   ) {
     const { params } = context;
     const projectTitleUrlEncoded = params.projectTitle;
