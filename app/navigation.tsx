@@ -14,15 +14,17 @@ import {
   HiInbox,
   HiMenu, // Hamburger icon
   HiX,
+  HiSearch,
 } from 'react-icons/hi'; // Using react-icons
 
-// Updated navigation items data
+// navigation items data
 const navItems = [
   { href: "/", label: "Top Projects", icon: HiTrendingUp },
-  { href: "/languages", label: "Languages", icon: HiViewBoards },
   { href: "/developers", label: "Top Builders", icon: HiUser },
+  { href: "/industry", label: "Find a Project", icon: HiSearch }, // New "Find a Project" item
+  { href: "/languages", label: "Languages", icon: HiViewBoards },
   { href: "/economics", label: "Economics", icon: HiShoppingBag },
-  { href: "/research", label: "Research", icon: HiInbox },
+  { href: "/research", label: "Research", icon: HiInbox }, // Consider changing HiInbox if it's not fitting for "Research"
 ];
 
 const CustomNavigation: React.FC<React.PropsWithChildren> = ({ children }) => {
