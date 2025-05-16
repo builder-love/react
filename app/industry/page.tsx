@@ -6,20 +6,13 @@ import { useRouter } from 'next/navigation';
 import { TextInput, Button, Card, ListGroup, ListGroupItem, Spinner, Alert } from 'flowbite-react';
 import { HiSearch, HiInformationCircle } from 'react-icons/hi';
 import _debounce from 'lodash/debounce';
-
-interface Project {
-  project_title: string;
-  latest_data_timestamp: string;
-  contributor_count?: number | null;
-  stargaze_count?: number | null;
-  project_rank_category?: string | null;
-}
+import { TopProjects } from '@/app/types';
 
 const IndustrySearchPage = () => {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
-  const [suggestions, setSuggestions] = useState<Project[]>([]);
-  const [fullResults, setFullResults] = useState<Project[]>([]);
+  const [suggestions, setSuggestions] = useState<TopProjects[]>([]);
+  const [fullResults, setFullResults] = useState<TopProjects[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [isLoadingFullResults, setIsLoadingFullResults] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +36,7 @@ const IndustrySearchPage = () => {
         const errData = await response.json();
         throw new Error(errData.message || 'Failed to fetch suggestions');
       }
-      const data: Project[] = await response.json();
+      const data: TopProjects[] = await response.json();
       setSuggestions(data);
       setShowSuggestions(data.length > 0);
     } catch (err: Error | unknown) {
@@ -81,7 +74,7 @@ const IndustrySearchPage = () => {
     // Suggestions will be shown by the useEffect if newSearchTerm is valid
   };
 
-  const handleSuggestionClick = (project: Project) => {
+  const handleSuggestionClick = (project: TopProjects) => {
     setSearchTerm(project.project_title);
     setSuggestions([]);
     setShowSuggestions(false); // Explicitly hide suggestions
@@ -109,7 +102,7 @@ const IndustrySearchPage = () => {
         const errData = await response.json();
         throw new Error(errData.message || 'Failed to fetch search results');
       }
-      const data: Project[] = await response.json();
+      const data: TopProjects[] = await response.json();
       setFullResults(data);
       if (data.length === 0) {
         setError("No projects found matching your query.");
@@ -202,26 +195,54 @@ const IndustrySearchPage = () => {
       {/* Full Search Results */}
       {isLoadingFullResults && <div className="text-center my-6"><Spinner size="lg" /> Searching...</div>}
       {!isLoadingFullResults && fullResults.length > 0 && (
-        <div className="w-full max-w-3xl mt-6">
-          <h2 className="text-xl font-semibold mb-3">Search Results for &quot;{searchTerm}&quot;</h2>
-          <ListGroup>
-            {fullResults.map((project) => (
-              <ListGroupItem
-                key={project.project_title}
-                onClick={() => {
-                    setShowSuggestions(false);
-                    router.push(`/industry/${encodeURIComponent(project.project_title)}`);
-                }}
-                className="p-3 mb-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer dark:border-gray-600"
-              >
-                <div className="font-medium text-blue-600 dark:text-blue-400">{project.project_title}</div>
-                {project.stargaze_count !== undefined && <div className="text-sm text-gray-600 dark:text-gray-300">Stars: {project.stargaze_count}</div>}
-                {project.project_rank_category && <div className="text-sm text-gray-600 dark:text-gray-300">Category: {project.project_rank_category}</div>}
-              </ListGroupItem>
-            ))}
-          </ListGroup>
-        </div>
-      )}
+            <div className="w-full max-w-4xl mt-6"> {/* Increased max-width for more content */}
+              <h2 className="text-xl font-semibold mb-3">Search Results for &quot;{searchTerm}&quot;</h2>
+              {/* Using a List component, but customizing the item rendering */}
+              <div className="space-y-3"> {/* Add spacing between items */}
+                {fullResults.map((project) => (
+                  <Card
+                    key={project.project_title}
+                    onClick={() => {
+                        setShowSuggestions(false);
+                        router.push(`/industry/${encodeURIComponent(project.project_title)}`);
+                    }}
+                    className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer dark:border-gray-600"
+                    // Added horizontal for better layout with more info
+                    // You might need to adjust Flowbite Card props or use custom divs for precise layout
+                  >
+                    <h5 className="text-lg font-bold tracking-tight text-blue-600 dark:text-blue-400 mb-1">
+                      {project.project_title}
+                    </h5>
+                    <div className="font-normal text-sm text-gray-700 dark:text-gray-400 space-y-1">
+                      {/* Using flex for inline-ish display with wrapping */}
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 items-center">
+                        {project.repo_count !== undefined && (
+                          <span className="whitespace-nowrap">
+                            <strong>Repo Count:</strong> {project.repo_count}
+                          </span>
+                        )}
+                        {project.stargaze_count !== undefined && (
+                          <span className="whitespace-nowrap">
+                            <strong>Stargaze Count:</strong> {project.stargaze_count}
+                          </span>
+                        )}
+                        {project.fork_count !== undefined && (
+                          <span className="whitespace-nowrap">
+                            <strong>Fork Count:</strong> {project.fork_count}
+                          </span>
+                        )}
+                      </div>
+                      {project.project_rank_category && (
+                        <div> {/* Kept description on its own line for readability */}
+                          <strong>Description:</strong> {project.project_rank_category}
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
     </div>
   );
 };
