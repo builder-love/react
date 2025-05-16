@@ -11,9 +11,16 @@ const GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID = process.env.GCP_WORKLOAD_IDENTITY
 const GCP_SERVICE_ACCOUNT_EMAIL = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
 const CLOUD_RUN_URL = process.env.CLOUD_RUN_URL; // Your Cloud Run service URL (FastAPI backend)
 
-export async function GET(
+// Define an interface for the expected params
+interface RouteContext {
+    params: {
+      projectTitle: string;
+    };
+  }
+
+  export async function GET(
     request: NextRequest,
-    context: { params: { projectTitle: string } } // Correct way to receive context with params
+    context: RouteContext // Use the defined interface here
   ) {
     const { params } = context; // Destructure params from context
     const projectTitleUrlEncoded = params.projectTitle;
