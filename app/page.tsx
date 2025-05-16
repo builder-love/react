@@ -587,7 +587,7 @@ const Page: React.FC = () => {
 
         {/* Metric Selector */}
         <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
-          <label htmlFor="metric-select-bottom" className="text-sm text-gray-400">Chart Metric:</label>
+          <label htmlFor="metric-select-bottom" className="hidden sm:inline text-sm text-gray-400">Chart Metric:</label>
           <select
             id="metric-select-bottom"
             value={selectedMetric}
