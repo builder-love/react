@@ -8,6 +8,14 @@ import { HiSearch, HiInformationCircle } from 'react-icons/hi';
 import _debounce from 'lodash/debounce';
 import { TopProjects } from '@/app/types';
 
+// Helper function to format numbers with commas
+const formatNumberWithCommas = (number: number | null | undefined): string => {
+  if (number === null || number === undefined) {
+    return 'N/A'; // Or '0' or an empty string, depending on preference
+  }
+  return number.toLocaleString();
+};
+
 const IndustrySearchPage = () => {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
@@ -218,22 +226,22 @@ const IndustrySearchPage = () => {
                       <div className="flex flex-wrap gap-x-3 gap-y-1 items-center">
                         {project.repo_count !== undefined && (
                           <span className="whitespace-nowrap">
-                            <strong>Repo Count:</strong> {project.repo_count}
+                            <strong>Repo Count:</strong> {formatNumberWithCommas(project.repo_count)}
                           </span>
                         )}
                         {project.stargaze_count !== undefined && (
                           <span className="whitespace-nowrap">
-                            <strong>Stargaze Count:</strong> {project.stargaze_count}
+                            <strong>Stargaze Count:</strong> {formatNumberWithCommas(project.stargaze_count)}
                           </span>
                         )}
                         {project.fork_count !== undefined && (
                           <span className="whitespace-nowrap">
-                            <strong>Fork Count:</strong> {project.fork_count}
+                            <strong>Fork Count:</strong> {formatNumberWithCommas(project.fork_count)}
                           </span>
                         )}
                       </div>
                       {project.project_rank_category && (
-                        <div> {/* Kept description on its own line for readability */}
+                        <div> 
                           <strong>Description:</strong> {project.project_rank_category}
                         </div>
                       )}
