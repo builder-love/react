@@ -38,7 +38,7 @@ export async function GET(
     return NextResponse.json({ message: 'Project title parameter is required.' }, { status: 400 });
   }
 
-  const fastApiTargetEndpoint = `${CLOUD_RUN_URL}/api/v1/projects/details_from_top_projects/${projectTitleUrlEncoded}`;
+  const fastApiTargetEndpoint = `${CLOUD_RUN_URL}/api/projects/details_from_top_projects/${projectTitleUrlEncoded}`;
 
   try {
     // --- Authentication and Fetch Logic (same as before) ---
