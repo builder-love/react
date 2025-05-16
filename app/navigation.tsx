@@ -76,7 +76,8 @@ const CustomNavigation: React.FC<React.PropsWithChildren> = ({ children }) => {
         >
             <HiX className="w-6 h-6" />
         </button>
-        <div className="h-full px-3 py-4 overflow-y-auto bg-gray-50 dark:bg-gray-800">
+        <div className={`h-full px-3 overflow-y-auto bg-gray-50 dark:bg-gray-800 
+                      pb-4 ${isMobileSidebarOpen ? 'pt-16' : 'pt-4'} sm:pt-4`}>
           <SidebarItems>
             <SidebarItemGroup>
               {navItems.map((item) => (

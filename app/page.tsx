@@ -161,9 +161,10 @@ const Page: React.FC = () => {
   }, [sortedProjectTitlesByLatestScore, topNFilter]);
 
   const currentDisplayableTitles = useMemo(() => {
-    // If isMobile, show top 10 of the topNFilteredTitles. Otherwise, show all topNFilteredTitles.
-    return isMobile ? topNFilteredTitles.slice(0, 10) : topNFilteredTitles;
-  }, [isMobile, topNFilteredTitles]);
+    // Show all topNFilteredTitles.
+    // this used to limit mobile to 10 items
+    return topNFilteredTitles;;
+  }, [topNFilteredTitles]);
 
   useEffect(() => {
     // Initialize visibleProjects based on what's currently displayable in the legend.
@@ -388,7 +389,7 @@ const Page: React.FC = () => {
     return <div className="flex justify-center items-center h-screen"><div className="text-center p-4 md:p-10">No projects found to display.</div></div>;
   }
 
-  const chartMainTitle = isMobile ? "Top 10 Blockchain Projects" : `Top ${topNFilter} Blockchain Projects`;
+  const chartMainTitle = `Top ${topNFilter} Blockchain Projects`;
 
   // Condition for when no data is available for the selected metric
   if (noDataForSelectedMetric && !isLoading && projectTitles.length > 0) { // Added projectTitles.length > 0 to ensure legend controls show if projects exist
@@ -586,7 +587,7 @@ const Page: React.FC = () => {
 
         {/* Metric Selector */}
         <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
-          <label htmlFor="metric-select-bottom" className="text-sm text-gray-400">Chart Metric:</label>
+          <label htmlFor="metric-select-bottom" className="hidden sm:inline text-sm text-gray-400">Chart Metric:</label>
           <select
             id="metric-select-bottom"
             value={selectedMetric}
