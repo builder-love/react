@@ -6,18 +6,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Sidebar, SidebarItems, SidebarItemGroup, SidebarItem } from 'flowbite-react';
 import {
-  HiChartPie,
+  HiTrendingUp,
   HiViewBoards,
   HiUser,
   HiShoppingBag,
   HiInbox,
   HiMenu, // Hamburger icon
-  HiX, // Optional: if you want a close icon inside the sidebar
+  HiX,
 } from 'react-icons/hi'; // Using react-icons
 
 // Your navigation items data
 const navItems = [
-  { href: "/", label: "Builder Love", icon: HiChartPie },
+  { href: "/", label: "Top Projects", icon: HiTrendingUp },
   { href: "/languages", label: "Languages", icon: HiViewBoards },
   { href: "/developers", label: "Top Builders", icon: HiUser },
   { href: "/economics", label: "Economics", icon: HiShoppingBag },
@@ -77,12 +77,6 @@ const CustomNavigation: React.FC<React.PropsWithChildren> = ({ children }) => {
             <HiX className="w-6 h-6" />
         </button>
         <div className="h-full px-3 py-4 overflow-y-auto bg-gray-50 dark:bg-gray-800">
-          {/* Optional: Logo or Title inside sidebar */}
-          <div className="mb-5 px-2">
-            <Link href="/" className="text-xl font-semibold text-gray-900 dark:text-white">
-              Builder Love
-            </Link>
-          </div>
           <SidebarItems>
             <SidebarItemGroup>
               {navItems.map((item) => (
@@ -92,6 +86,8 @@ const CustomNavigation: React.FC<React.PropsWithChildren> = ({ children }) => {
                   href={item.href}
                   icon={item.icon}
                   active={pathname === item.href}
+                  // Close sidebar on mobile item click
+                  onClick={() => { if (isMobileSidebarOpen) setIsMobileSidebarOpen(false); }}
                   className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   {item.label}

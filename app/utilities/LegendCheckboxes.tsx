@@ -1,5 +1,5 @@
-// make legend items into checkboxes for the user to toggle items on the chart.
-// ./utilities/LegendCheckboxes.tsx
+// app/utilities/LegendCheckboxes.tsx
+import React, { useEffect, useMemo } from 'react'; // Added useEffect and useMemo
 
 interface ProjectLegendCheckboxesProps {
   displayableProjectTitles: string[];
@@ -13,6 +13,7 @@ interface ProjectLegendCheckboxesProps {
   topNFilter: number;
   onTopNFilterChange: (newFilter: number) => void;
   maxColumnCount: number;
+  isMobile: boolean; // Assuming this prop is passed from page.tsx
 }
 
 const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
@@ -27,18 +28,56 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
   topNFilter,
   onTopNFilterChange,
   maxColumnCount,
+  isMobile, // Use the isMobile prop
 }) => {
   const columnCount = Math.min(displayableProjectTitles.length > 0 ? displayableProjectTitles.length : 1, maxColumnCount);
   const columnClass = `grid-cols-${columnCount}`;
 
+  // Define options based on mobile status
+  const topNOptions = useMemo(() => isMobile
+    ? [
+        { value: 10, label: "Top 10" },
+        { value: 20, label: "Top 20" },
+      ]
+    : [
+        { value: 10, label: "Top 10" },
+        { value: 25, label: "Top 25" },
+        { value: 50, label: "Top 50" },
+      ],
+    [isMobile]
+  );
+
+  // Effect to adjust topNFilter if it's not valid for the current view (mobile/desktop)
+  // and to set the default for mobile if it's not already 10.
+  useEffect(() => {
+    if (isMobile) {
+      // If current filter is not 10 or 20, set it to 10 (default for mobile)
+      if (topNFilter !== 10 && topNFilter !== 20) {
+        onTopNFilterChange(10);
+      }
+    } else {
+      // If on desktop and current mobile-specific filter (20) was selected,
+      // and it's not a standard desktop option, you might want to reset it.
+      // Or, ensure 20 is also a valid desktop option if desired.
+      // For now, let's assume if it's 20 and we switch to desktop, it's fine if 20 is not an option,
+      // but typically the select would just not show it.
+      // If 50 was selected and we switch to mobile, this effect will set it to 10.
+      const validDesktopValues = topNOptions.map(opt => opt.value);
+      if (!validDesktopValues.includes(topNFilter)) {
+        // If current filter is not valid for desktop (e.g. was 20 from mobile),
+        // set to a default desktop value, e.g., 25 or the smallest (10).
+        onTopNFilterChange(10); // or 25, depending on desired default for desktop
+      }
+    }
+  }, [isMobile, topNFilter, onTopNFilterChange, topNOptions]); // Added topNOptions dependency
+
   return (
     <div className="mb-3 md:mb-4 text-xs sm:text-sm">
-      {/* Grid for legend items - REMAINS THE SAME */}
       <div className={`grid ${columnClass} gap-x-2 gap-y-1.5`}>
         {displayableProjectTitles.map((title) => (
           <div
             key={title}
-            className="flex items-center cursor-pointer group py-0.5 min-w-0" // min-w-0 helps with truncate
+            className="flex items-center cursor-pointer group py-0.5 min-w-0"
             onClick={() => onToggleProject(title)}
             onMouseEnter={() => onItemMouseEnter(title)}
             onMouseLeave={onItemMouseLeave}
@@ -73,11 +112,7 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
         ))}
       </div>
 
-      {/* Container for controls below legend items (Select All/Clear All and Top N Filter) */}
       <div className="flex flex-col sm:flex-row justify-between items-center mt-3 pt-2 border-t border-gray-700">
-
-        {/* "Select All" and "Clear All" links - Left Aligned Group */}
-        {/* On mobile (flex-col), this is the first item. On sm+ (flex-row), this is the left item. */}
         <div className="flex items-center gap-x-3 sm:gap-x-4 w-full sm:w-auto justify-start mb-2 sm:mb-0">
           <span
             onClick={onSelectAll}
@@ -102,22 +137,21 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
           </span>
         </div>
 
-        {/* Top N Dropdown Filter - Right Aligned Group */}
-        {/* On mobile (flex-col), this is the second item. On sm+ (flex-row), this is the right item. */}
         <div className="w-full sm:w-auto flex justify-end">
           <select
             id="top-n-filter-select"
             value={topNFilter}
             onChange={(e) => onTopNFilterChange(Number(e.target.value))}
-            className="bg-gray-700 border border-gray-600 text-white text-xs sm:text-sm rounded p-1 sm:p-1.5 focus:ring-blue-500 focus:border-blue-500 sm:mr-3" 
+            className="bg-gray-700 border border-gray-600 text-white text-xs sm:text-sm rounded p-1 sm:p-1.5 focus:ring-blue-500 focus:border-blue-500 sm:mr-3"
             aria-label="Filter number of projects"
           >
-            <option value={10}>Top 10</option>
-            <option value={25}>Top 25</option>
-            <option value={50}>Top 50</option>
+            {topNOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
-
       </div>
     </div>
   );
