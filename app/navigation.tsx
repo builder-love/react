@@ -77,12 +77,6 @@ const CustomNavigation: React.FC<React.PropsWithChildren> = ({ children }) => {
             <HiX className="w-6 h-6" />
         </button>
         <div className="h-full px-3 py-4 overflow-y-auto bg-gray-50 dark:bg-gray-800">
-          {/* Optional: Logo or Title inside sidebar */}
-          <div className="mb-5 px-2">
-            <Link href="/" className="text-xl font-semibold text-gray-900 dark:text-white">
-              Builder Love
-            </Link>
-          </div>
           <SidebarItems>
             <SidebarItemGroup>
               {navItems.map((item) => (
