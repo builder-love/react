@@ -3,22 +3,22 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import Image from 'next/image'; // You are using Image component
 import { usePathname } from 'next/navigation';
-import { Sidebar, SidebarItems, SidebarItemGroup, SidebarItem } from 'flowbite-react';
+import { Sidebar, SidebarItem, SidebarItemGroup, SidebarItems } from 'flowbite-react'; // Corrected imports
 import {
-  HiChartPie,
+  HiTrendingUp, // Changed for Top Projects
   HiViewBoards,
   HiUser,
   HiShoppingBag,
   HiInbox,
-  HiMenu, // Hamburger icon
-  HiX, // Optional: if you want a close icon inside the sidebar
-} from 'react-icons/hi'; // Using react-icons
+  HiMenu,
+  HiX,
+} from 'react-icons/hi';
 
-// Your navigation items data
+// Updated navigation items data
 const navItems = [
-  { href: "/", label: "Builder Love", icon: HiChartPie },
+  { href: "/", label: "Top Projects", icon: HiTrendingUp }, // Changed label
   { href: "/languages", label: "Languages", icon: HiViewBoards },
   { href: "/developers", label: "Top Builders", icon: HiUser },
   { href: "/economics", label: "Economics", icon: HiShoppingBag },
@@ -27,10 +27,6 @@ const navItems = [
 
 const CustomNavigation: React.FC<React.PropsWithChildren> = ({ children }) => {
   const pathname = usePathname();
-  // State to manage sidebar visibility on mobile
-  // The Flowbite example uses data attributes for toggling,
-  // but with React, state is more idiomatic.
-  // We'll use Flowbite's responsive classes to handle visibility on larger screens.
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const toggleMobileSidebar = () => {
@@ -42,9 +38,21 @@ const CustomNavigation: React.FC<React.PropsWithChildren> = ({ children }) => {
     setIsMobileSidebarOpen(false);
   }, [pathname]);
 
+  // Optional: Close mobile sidebar if window is resized to desktop width
+  useEffect(() => {
+    if (isMobileSidebarOpen) {
+        const handleResize = () => {
+            if (window.innerWidth >= 640) { // sm breakpoint
+                setIsMobileSidebarOpen(false);
+            }
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }
+  }, [isMobileSidebarOpen]);
+
   return (
     <>
-      {/* Toggle Button for Mobile: sm:hidden means it's hidden on sm screens and up */}
       <button
         onClick={toggleMobileSidebar}
         aria-controls="default-sidebar"
@@ -58,27 +66,27 @@ const CustomNavigation: React.FC<React.PropsWithChildren> = ({ children }) => {
       <Sidebar
         id="default-sidebar"
         aria-label="Default sidebar example"
-        // Core classes for positioning and transition from Flowbite example:
-        // - `fixed top-0 left-0 z-40 w-64 h-screen`
-        // - `transition-transform`
-        // - `-translate-x-full` (initial state for mobile, hidden)
-        // - `sm:translate-x-0` (visible by default on sm screens and up)
-        // We control the mobile visibility with `isMobileSidebarOpen`
-        className={`fixed top-0 left-0 z-40 w-64 h-screen transition-transform 
-                    ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
+        className={`fixed top-0 left-0 z-40 w-64 h-screen transition-transform
+                    ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
                     sm:translate-x-0`}
-        // Flowbite React's Sidebar doesn't have a 'collapsed' prop that works exactly like the HTML example's drawer.
-        // Instead, we manipulate the transform class based on state for mobile.
       >
-        {/* Add a close button inside the sidebar for mobile if desired */}
-        <button
-            onClick={toggleMobileSidebar}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-500 sm:hidden"
+        {/* This div is the direct child of Sidebar, make it flex-col and h-full */}
+        <div
+          className={`flex flex-col h-full px-3 overflow-y-auto bg-gray-50 dark:bg-gray-800
+                      pb-4 ${isMobileSidebarOpen ? 'pt-16' : 'pt-4'} sm:pt-4`}
         >
-            <HiX className="w-6 h-6" />
-        </button>
-        <div className={`h-full px-3 overflow-y-auto bg-gray-50 dark:bg-gray-800 
-                      pb-4 ${isMobileSidebarOpen ? 'pt-16' : 'pt-4'} sm:pt-4`}>
+          {/* Optional: Close button inside mobile sidebar */}
+          {isMobileSidebarOpen && ( // Only show X button when mobile sidebar is open
+            <button
+                onClick={toggleMobileSidebar}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-500 sm:hidden" // sm:hidden to hide on desktop
+            >
+                <HiX className="w-6 h-6" />
+            </button>
+          )}
+
+          {/* Navigation Items Section */}
+          {/* No need for an extra flex-grow div here if mt-auto is on the last item of a flex-col parent */}
           <SidebarItems>
             <SidebarItemGroup>
               {navItems.map((item) => (
@@ -88,6 +96,7 @@ const CustomNavigation: React.FC<React.PropsWithChildren> = ({ children }) => {
                   href={item.href}
                   icon={item.icon}
                   active={pathname === item.href}
+                  onClick={() => { if (isMobileSidebarOpen) setIsMobileSidebarOpen(false); }} // Close on click for mobile
                   className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   {item.label}
@@ -95,19 +104,21 @@ const CustomNavigation: React.FC<React.PropsWithChildren> = ({ children }) => {
               ))}
             </SidebarItemGroup>
           </SidebarItems>
+
           {/* Builder Love Logo/Brand at the bottom - DESKTOP ONLY */}
-          {/* `hidden sm:block` makes it hidden by default, then display: block on sm screens and up */}
           <div className="mt-auto hidden sm:block pt-4 border-t border-gray-200 dark:border-gray-700">
-            <Link href="/" className="flex items-center justify-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-              {/* Link to BL logo */}
+            <Link
+              href="/"
+              className="flex items-center justify-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group"
+            >
               <Image
-                src="/favicon-32x32.png"
+                src="/favicon-32x32.png" // Ensure this path is correct in your public folder
                 alt="Builder Love Logo"
-                width={24}
-                height={24}
-                className="h-6 mr-3"
+                width={24} // Set explicit width
+                height={24} // Set explicit height
+                className="h-6 w-auto me-2" // Use me-2 for margin-end, adjust if needed
               />
-              <span className="self-center text-xl font-semibold whitespace-nowrap">
+              <span className="self-center text-lg font-semibold whitespace-nowrap"> {/* Adjusted to text-lg */}
                 Builder Love
               </span>
             </Link>
@@ -115,9 +126,7 @@ const CustomNavigation: React.FC<React.PropsWithChildren> = ({ children }) => {
         </div>
       </Sidebar>
 
-      {/* Main Content Area */}
-      {/* `sm:ml-64` pushes content to the right ON sm SCREENS AND UP to make space for the sidebar */}
-      <div className="p-0 sm:ml-64"> {/* p-0 here, actual padding will be on <main> in RootLayout */}
+      <div className="p-0 sm:ml-64">
         {children}
       </div>
     </>
