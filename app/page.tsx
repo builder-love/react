@@ -418,6 +418,7 @@ const Page: React.FC = () => {
                   topNFilter={topNFilter}
                   onTopNFilterChange={setTopNFilter}
                   maxColumnCount={isMobile ? 2 : 7}
+                  isMobile={isMobile}
                 />
             )}
 
@@ -487,6 +488,7 @@ const Page: React.FC = () => {
           topNFilter={topNFilter}
           onTopNFilterChange={setTopNFilter}
           maxColumnCount={isMobile ? 2 : 7}
+          isMobile={isMobile}
         />
       )}
 

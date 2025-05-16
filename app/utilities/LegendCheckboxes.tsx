@@ -1,5 +1,7 @@
-// make legend items into checkboxes for the user to toggle items on the chart.
-// ./utilities/LegendCheckboxes.tsx
+// app/utilities/LegendCheckboxes.tsx
+'use client'; // Good practice if it might contain client-side logic or be used in varied contexts
+
+import React, { useEffect, useMemo } from 'react';
 
 interface ProjectLegendCheckboxesProps {
   displayableProjectTitles: string[];
@@ -13,6 +15,7 @@ interface ProjectLegendCheckboxesProps {
   topNFilter: number;
   onTopNFilterChange: (newFilter: number) => void;
   maxColumnCount: number;
+  isMobile: boolean; // Added this prop to control dropdown options
 }
 
 const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
@@ -27,13 +30,41 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
   topNFilter,
   onTopNFilterChange,
   maxColumnCount,
+  isMobile, // Destructure and use the isMobile prop
 }) => {
+  // console.log("LegendCheckboxes - isMobile prop:", isMobile); // For debugging
+
+  const topNOptions = useMemo(() => {
+    // console.log("LegendCheckboxes - Recalculating topNOptions, isMobile:", isMobile); // For debugging
+    return isMobile
+      ? [
+          { value: 10, label: "Top 10" },
+          { value: 20, label: "Top 20" },
+        ]
+      : [
+          { value: 10, label: "Top 10" },
+          { value: 25, label: "Top 25" },
+          { value: 50, label: "Top 50" },
+        ];
+  }, [isMobile]);
+
+  useEffect(() => {
+    const currentValidOptions = topNOptions.map(opt => opt.value);
+    if (!currentValidOptions.includes(topNFilter)) {
+      // If the current topNFilter is not in the valid options for the current view,
+      // reset it to the first valid option (which is 10 for both mobile and desktop).
+      onTopNFilterChange(currentValidOptions[0] || 10);
+    }
+  }, [isMobile, topNFilter, onTopNFilterChange, topNOptions]); // topNOptions is a dependency because it changes with isMobile
+
   const columnCount = Math.min(displayableProjectTitles.length > 0 ? displayableProjectTitles.length : 1, maxColumnCount);
+  // Ensure your tailwind.config.ts safelist includes up to the maxColumnCount
+  // e.g., if maxColumnCount can be 7, safelist 'grid-cols-1' through 'grid-cols-7'
   const columnClass = `grid-cols-${columnCount}`;
 
   return (
     <div className="mb-3 md:mb-4 text-xs sm:text-sm">
-      {/* Grid for legend items - REMAINS THE SAME */}
+      {/* Grid for legend items */}
       <div className={`grid ${columnClass} gap-x-2 gap-y-1.5`}>
         {displayableProjectTitles.map((title) => (
           <div
@@ -50,9 +81,9 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
           >
             <input
               type="checkbox"
-              id={`legend-checkbox-${title.replace(/\W/g, '-')}`}
+              id={`legend-checkbox-${title.replace(/\W/g, '-')}`} // Sanitize title for ID
               checked={visibleProjects.has(title)}
-              onChange={() => onToggleProject(title)}
+              onChange={() => onToggleProject(title)} // Direct toggle, input is sr-only
               className="sr-only"
             />
             <span
@@ -63,7 +94,7 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
               aria-hidden="true"
             ></span>
             <label
-              htmlFor={`legend-checkbox-${title.replace(/\W/g, '-')}`}
+              htmlFor={`legend-checkbox-${title.replace(/\W/g, '-')}`} // Sanitize title for htmlFor
               className="cursor-pointer group-hover:text-blue-300 truncate select-none"
               style={{ color: projectColors[title] || '#f5f5f5' }}
             >
@@ -75,9 +106,7 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
 
       {/* Container for controls below legend items (Select All/Clear All and Top N Filter) */}
       <div className="flex flex-col sm:flex-row justify-between items-center mt-3 pt-2 border-t border-gray-700">
-
         {/* "Select All" and "Clear All" links - Left Aligned Group */}
-        {/* On mobile (flex-col), this is the first item. On sm+ (flex-row), this is the left item. */}
         <div className="flex items-center gap-x-3 sm:gap-x-4 w-full sm:w-auto justify-start mb-2 sm:mb-0">
           <span
             onClick={onSelectAll}
@@ -103,21 +132,21 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
         </div>
 
         {/* Top N Dropdown Filter - Right Aligned Group */}
-        {/* On mobile (flex-col), this is the second item. On sm+ (flex-row), this is the right item. */}
         <div className="w-full sm:w-auto flex justify-end">
           <select
             id="top-n-filter-select"
-            value={topNFilter}
+            value={topNFilter} // Controlled component
             onChange={(e) => onTopNFilterChange(Number(e.target.value))}
-            className="bg-gray-700 border border-gray-600 text-white text-xs sm:text-sm rounded p-1 sm:p-1.5 focus:ring-blue-500 focus:border-blue-500 sm:mr-3" 
+            className="bg-gray-700 border border-gray-600 text-white text-xs sm:text-sm rounded p-1 sm:p-1.5 focus:ring-blue-500 focus:border-blue-500 sm:mr-3"
             aria-label="Filter number of projects"
           >
-            <option value={10}>Top 10</option>
-            <option value={25}>Top 25</option>
-            <option value={50}>Top 50</option>
+            {topNOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
-
       </div>
     </div>
   );
