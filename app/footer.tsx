@@ -19,12 +19,7 @@ const CustomFooter: React.FC = () => {
       className="bg-white rounded-lg shadow dark:bg-gray-900 m-4"
     >
       <div className="w-full max-w-screen-xl mx-auto md:py-8">
-        <div className="sm:flex sm:items-center sm:justify-between">
-          <Link href="/" className="flex items-center mb-4 sm:mb-0 space-x-3 rtl:space-x-reverse">
-            <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">
-              Builder Love
-            </span>
-          </Link>
+        <div className="sm:flex sm:items-center sm:justify-end">
           <ul className="flex flex-wrap items-center mb-6 text-sm font-medium text-gray-500 sm:mb-0 dark:text-gray-400">
             <li>
               <FooterLink
