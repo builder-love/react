@@ -104,7 +104,7 @@ const IndustrySearchPage = () => {
     setFullResults([]);
     setError(null);
     try {
-      const response = await fetch(`/api/industry/search?q=${encodeURIComponent(searchTerm)}&limit=20`);
+      const response = await fetch(`/api/industry/search?q=${encodeURIComponent(searchTerm)}&limit=50`);
       if (!response.ok) {
         const errData = await response.json();
         throw new Error(errData.message || 'Failed to fetch search results');
