@@ -10,22 +10,13 @@ const GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID = process.env.GCP_WORKLOAD_IDENTITY
 const GCP_SERVICE_ACCOUNT_EMAIL = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
 const CLOUD_RUN_URL = process.env.CLOUD_RUN_URL;
 
-// This interface defines the shape of the 'params' object within the context
-interface ProjectRouteParams {
-  projectTitle: string;
-}
-
-// This interface defines the shape of the second argument (context) Next.js expects
-interface RouteHandlerContext {
-  params: ProjectRouteParams;
-}
-
 export async function GET(
-  _request: NextRequest, // First argument MUST be Request or NextRequest
-  context: RouteHandlerContext // Second argument for context with params
-) {
-  const { params } = context; // Destructure params from context
-  const projectTitleUrlEncoded = params.projectTitle;
+    _request: NextRequest, // First argument MUST be Request or NextRequest (prefix with _ if unused)
+    // Directly inline the expected type for the context object
+    context: { params: { projectTitle: string } }
+  ) {
+    const { params } = context;
+    const projectTitleUrlEncoded = params.projectTitle;
 
   // --- Environment Variable Check ---
   if (
