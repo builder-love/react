@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Sidebar, SidebarItems, SidebarItemGroup, SidebarItem } from 'flowbite-react';
 import {
@@ -94,6 +95,23 @@ const CustomNavigation: React.FC<React.PropsWithChildren> = ({ children }) => {
               ))}
             </SidebarItemGroup>
           </SidebarItems>
+          {/* Builder Love Logo/Brand at the bottom - DESKTOP ONLY */}
+          {/* `hidden sm:block` makes it hidden by default, then display: block on sm screens and up */}
+          <div className="mt-auto hidden sm:block pt-4 border-t border-gray-200 dark:border-gray-700">
+            <Link href="/" className="flex items-center justify-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
+              {/* Link to BL logo */}
+              <Image
+                src="/favicon-32x32.png"
+                alt="Builder Love Logo"
+                width={24}
+                height={24}
+                className="h-6 mr-3"
+              />
+              <span className="self-center text-xl font-semibold whitespace-nowrap">
+                Builder Love
+              </span>
+            </Link>
+          </div>
         </div>
       </Sidebar>
 
