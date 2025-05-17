@@ -4,14 +4,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation'; // For Client Components
 import { Card, Spinner, Alert, Button, Table, TableBody, TableCell, TableHead, TableHeadCell, TableRow } from 'flowbite-react';
-import { HiInformationCircle } from 'react-icons/hi';
+import { HiInformationCircle, HiLink } from 'react-icons/hi'; // Added HiLink for icon
 import { TopProjects } from '@/app/types';
 import { formatNumberWithCommas } from '@/app/utilities/formatters';
 
 const ProjectDetailPage = () => {
   const router = useRouter();
   const params = useParams();
-  const projectTitleUrlEncoded = params.projectTitle as string; // projectTitle comes from the folder name [projectTitle]
+  const projectTitleUrlEncoded = params.projectTitle as string;
 
   const [project, setProject] = useState<TopProjects | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,7 +23,6 @@ const ProjectDetailPage = () => {
         setIsLoading(true);
         setError(null);
         try {
-          // The projectTitleUrlEncoded is already encoded from the URL
           const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}`);
           if (!response.ok) {
             const errData = await response.json();
@@ -71,7 +70,6 @@ const ProjectDetailPage = () => {
     );
   }
 
-  // Helper to format labels and values
   const renderDetailRow = (label: string, value: string | number | null | undefined, isNumber: boolean = true) => {
     let displayValue = 'N/A';
     if (value !== null && value !== undefined) {
@@ -92,14 +90,40 @@ const ProjectDetailPage = () => {
 
   return (
     <div className="container mx-auto p-4 md:p-8">
-      <Button onClick={() => router.push('/industry')} className="mb-6 print:hidden"> {/* Hide button when printing */}
+      <Button onClick={() => router.push('/industry')} className="mb-6 print:hidden">
         &larr; Back to Search
       </Button>
       <Card>
-        <h1 className="text-3xl font-bold mb-2">{project.project_title}</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-          Latest Data: {new Date(project.latest_data_timestamp).toLocaleString()}
-        </p>
+        {/* Header section with Title, Org Link, and Latest Data */}
+        <div className="flex justify-between items-start mb-6">
+          {/* Left side: Title and Org Link */}
+          <div>
+            <h1 className="text-3xl font-bold mb-1">{project.project_title}</h1>
+            {project.project_organization_url ? (
+              <a
+                href={project.project_organization_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center"
+              >
+                <HiLink className="mr-1 h-4 w-4" /> View Github Org
+              </a>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No Github Org Found
+              </p>
+            )}
+          </div>
+          {/* Right side: Latest Data Timestamp */}
+          <div className="text-right">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Latest Data:
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              {new Date(project.latest_data_timestamp).toLocaleString()}
+            </p>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <Card>
