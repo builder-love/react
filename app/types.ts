@@ -61,6 +61,7 @@ export interface TopProjects {
   weighted_score_index: number | null;
   weighted_score_sma: number | null;
   prior_4_weeks_weighted_score: number | null;
+  project_organization_url: string | null;
 }
 
 // Define the interface for the top projects trends data you expect from the API route
