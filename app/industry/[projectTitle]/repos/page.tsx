@@ -77,7 +77,6 @@ const ProjectReposPage = () => {
     return () => debouncedSetSearchForAPI.cancel();
   }, [globalFilter, debouncedSetSearchForAPI]);
 
-  // This effect resets pagination when the actual debouncedSearchTerm changes.
   useEffect(() => {
     setPagination(prev => ({ ...prev, pageIndex: 0 }));
   }, [debouncedSearchTerm]);
@@ -87,7 +86,6 @@ const ProjectReposPage = () => {
 
     const fetchRepos = async () => {
       setIsLoading(true);
-      // setError(null); // Keep previous error visible during intermediate loading if desired
 
       const sortBy = sorting[0]?.id || 'repo_rank';
       const sortOrder = sorting[0]?.desc ? 'desc' : 'asc';
@@ -103,13 +101,10 @@ const ProjectReposPage = () => {
       }
       const queryString = queryParams.toString();
 
-      // Only update URL if it has changed to prevent unnecessary history entries
-      // or re-triggering if router itself is a dependency (though it's stable)
       const currentSearchParams = searchParamsHook.toString();
       if (queryString !== currentSearchParams) {
         router.replace(`/industry/${projectTitleUrlEncoded}/repos?${queryString}`, { scroll: false });
       }
-
 
       try {
         const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/repos?${queryString}`);
@@ -120,13 +115,10 @@ const ProjectReposPage = () => {
         const result: PaginatedRepos = await response.json();
         setData(result.items);
         setPageCount(result.total_pages);
-        setError(null); // Clear error on successful fetch
+        setError(null);
       } catch (err) {
         console.error("Fetch repositories error:", err);
         setError(err instanceof Error ? err.message : 'An unknown error occurred.');
-        // Optionally clear data or keep stale data
-        // setData([]);
-        // setPageCount(0);
       } finally {
         setIsLoading(false);
       }
@@ -139,8 +131,8 @@ const ProjectReposPage = () => {
     pagination.pageSize,
     sorting,
     debouncedSearchTerm,
-    router, // router is stable, but good to include if used
-    searchParamsHook // To compare current URL params
+    router,
+    searchParamsHook
   ]);
 
   const columns = useMemo<ColumnDef<RepoData>[]>(() => [
@@ -173,7 +165,7 @@ const ProjectReposPage = () => {
             );
         },
         size: 250,
-        enableSorting: true, // Typically you'd sort by name
+        enableSorting: true,
     },
     {
         header: 'Stars',
@@ -215,12 +207,11 @@ const ProjectReposPage = () => {
     state: {
       sorting,
       pagination,
-      // globalFilter is managed separately for debouncing to API
     },
     pageCount,
     manualPagination: true,
     manualSorting: true,
-    manualFiltering: true, // Set to true because global filter is server-side
+    manualFiltering: true,
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
@@ -256,79 +247,93 @@ const ProjectReposPage = () => {
           value={globalFilter ?? ''}
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="max-w-md dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600"
+          disabled={isLoading && data.length > 0} // Optionally disable search while table is updating
         />
       </div>
 
-      {isLoading && data.length === 0 && (
-        <div className="flex justify-center items-center py-10">
-          <Spinner size="xl" color="pink"/> <span className="ml-3 text-white">Loading repositories...</span>
-        </div>
-      )}
-      {error && (
-        <Alert color="failure" icon={HiInformationCircle} className="my-4">
-          <span>Error loading repositories: {error}</span>
-        </Alert>
-      )}
-      {!isLoading && !error && data.length === 0 && debouncedSearchTerm && (
-         <Alert color="info">No repositories found matching your search for &quot;{debouncedSearchTerm}&quot;.</Alert>
-      )}
-       {!isLoading && !error && data.length === 0 && !debouncedSearchTerm && (
-         <Alert color="info">No repositories found for this project.</Alert>
-      )}
-
-      {data.length > 0 && (
-        <div className="relative overflow-x-auto shadow-md sm:rounded-lg border border-gray-700">
-          {/* Using Flowbite Table directly */}
-          <Table hoverable striped>
-            <TableHead className="text-xs text-gray-400 uppercase bg-gray-700">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="border-b-gray-600">
-                  {headerGroup.headers.map((header) => (
-                    <TableHeadCell
-                      key={header.id}
-                      onClick={header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
-                      style={{ width: header.getSize() !== 0 ? header.getSize() : undefined }}
-                      className={`px-3 py-3 text-left text-xs md:text-sm font-medium tracking-wider group whitespace-nowrap ${header.column.getCanSort() ? 'cursor-pointer' : ''}`}
-                    >
-                      <div className="flex items-center">
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {header.column.getCanSort() && renderSortIcon(header.column.id)}
-                      </div>
-                    </TableHeadCell>
+      {(() => {
+        if (isLoading && data.length === 0 && !error) {
+          return (
+            <div className="flex justify-center items-center py-10">
+              <Spinner size="xl" color="pink"/> <span className="ml-3 text-white">Loading repositories...</span>
+            </div>
+          );
+        }
+        if (error) {
+          return (
+            <Alert color="failure" icon={HiInformationCircle} className="my-4">
+              <span>Error loading repositories: {error}</span>
+            </Alert>
+          );
+        }
+        if (!isLoading && data.length === 0) {
+          if (debouncedSearchTerm) {
+            return <Alert color="info" className="my-4">No repositories found matching your search for &quot;{debouncedSearchTerm}&quot;.</Alert>;
+          }
+          return <Alert color="info" className="my-4">No repositories found for this project.</Alert>;
+        }
+        if (data.length > 0) {
+          return (
+            <div className="relative overflow-x-auto shadow-md sm:rounded-lg border border-gray-700">
+              {isLoading && data.length > 0 && (
+                <div className="absolute inset-0 bg-gray-800 bg-opacity-75 flex flex-col items-center justify-center z-10 rounded-lg">
+                  <Spinner size="lg" color="pink" />
+                  <span className="mt-2 text-white">Updating results...</span>
+                </div>
+              )}
+              <Table hoverable striped className={isLoading && data.length > 0 ? 'opacity-60' : ''}>
+                <TableHead className="text-xs text-gray-400 uppercase bg-gray-700">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id} className="border-b-gray-600">
+                      {headerGroup.headers.map((header) => (
+                        <TableHeadCell
+                          key={header.id}
+                          onClick={header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
+                          style={{ width: header.getSize() !== 0 ? header.getSize() : undefined }}
+                          className={`px-3 py-3 text-left text-xs md:text-sm font-medium tracking-wider group whitespace-nowrap ${header.column.getCanSort() ? 'cursor-pointer' : ''}`}
+                        >
+                          <div className="flex items-center">
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {header.column.getCanSort() && renderSortIcon(header.column.id)}
+                          </div>
+                        </TableHeadCell>
+                      ))}
+                    </TableRow>
                   ))}
-                </TableRow>
-              ))}
-            </TableHead>
-            <TableBody className="divide-y divide-gray-700 bg-gray-800">
-              {table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className="hover:bg-gray-700 dark:hover:bg-gray-600"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      style={{ width: cell.column.getSize() !== 0 ? cell.column.getSize() : undefined}}
-                      className={`px-3 py-2 text-xs md:text-sm whitespace-nowrap 
-                                  ${['repo_rank', 'stargaze_count', 'fork_count', 'watcher_count'].includes(cell.column.id) ? 'text-right' : 'text-left'}`}
+                </TableHead>
+                <TableBody className="divide-y divide-gray-700 bg-gray-800">
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      className="hover:bg-gray-700 dark:hover:bg-gray-600"
                     >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          style={{ width: cell.column.getSize() !== 0 ? cell.column.getSize() : undefined}}
+                          className={`px-3 py-2 text-xs md:text-sm whitespace-nowrap 
+                                    ${['repo_rank', 'stargaze_count', 'fork_count', 'watcher_count'].includes(cell.column.id) ? 'text-right' : 'text-left'}`}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
                   ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+                </TableBody>
+              </Table>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {pageCount > 0 && data.length > 0 && (
         <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 w-full">
           <div className="flex items-center gap-2">
-            <Button color="gray" size="xs" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()} className="border-gray-600">{'<<'}</Button>
-            <Button color="gray" size="xs" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="border-gray-600">{'<'}</Button>
-            <Button color="gray" size="xs" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="border-gray-600">{'>'}</Button>
-            <Button color="gray" size="xs" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()} className="border-gray-600">{'>>'}</Button>
+            <Button color="gray" size="xs" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage() || isLoading} className="border-gray-600">{'<<'}</Button>
+            <Button color="gray" size="xs" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage() || isLoading} className="border-gray-600">{'<'}</Button>
+            <Button color="gray" size="xs" onClick={() => table.nextPage()} disabled={!table.getCanNextPage() || isLoading} className="border-gray-600">{'>'}</Button>
+            <Button color="gray" size="xs" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage() || isLoading} className="border-gray-600">{'>>'}</Button>
           </div>
           <div className="flex items-center gap-2 text-xs md:text-sm text-gray-400">
             <span>Page</span>
@@ -341,10 +346,10 @@ const ProjectReposPage = () => {
             <TextInput
               type="number"
               defaultValue={table.getState().pagination.pageIndex + 1}
-              key={`go-to-page-${table.getState().pagination.pageIndex}`} // Force re-render on page change
+              key={`go-to-page-${table.getState().pagination.pageIndex}`}
               onChange={e => {
                 const pageVal = e.target.value;
-                if (pageVal === "") return; // Allow clearing
+                if (pageVal === "") return;
                 const page = Number(pageVal) - 1;
                 if (!isNaN(page) && page >= 0 && page < table.getPageCount()) {
                     table.setPageIndex(page);
@@ -352,7 +357,7 @@ const ProjectReposPage = () => {
               }}
               onBlur={(e) => {
                 const pageVal = e.target.value;
-                if (pageVal === "") { // If empty on blur, reset to current page
+                if (pageVal === "") {
                     e.target.value = (table.getState().pagination.pageIndex + 1).toString();
                     return;
                 }
@@ -362,11 +367,13 @@ const ProjectReposPage = () => {
                  }
               }}
               className="w-16 text-xs dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600 dark:[&_input]:p-1.5 text-center"
+              disabled={isLoading}
             />
             <select
               value={table.getState().pagination.pageSize}
               onChange={e => table.setPageSize(Number(e.target.value))}
               className="text-xs p-1.5 border border-gray-600 rounded bg-gray-700 text-white focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500"
+              disabled={isLoading}
             >
               {[10, 20, 30, 50, 100].map(pageSize => (
                 <option key={pageSize} value={pageSize}>
