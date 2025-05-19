@@ -43,7 +43,7 @@ export async function GET(
   // console.log(`Constructed FastAPI endpoint for organizations: ${fastApiTargetEndpoint}`);
 
   try {
-    // --- Authentication Logic (copied and adapted from your existing route) ---
+    // --- Authentication Logic ---
     // console.log("Initializing ExternalAccountClient for impersonation (organizations).");
     const impersonationClient = ExternalAccountClient.fromJSON({
         type: 'external_account',

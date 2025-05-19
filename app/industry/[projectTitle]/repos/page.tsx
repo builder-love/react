@@ -46,25 +46,33 @@ const ProjectReposPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState(0);
 
-  const initialPage = parseInt(searchParamsHook.get('page') || '1', 10);
-  const initialLimit = parseInt(searchParamsHook.get('limit') || '10', 10);
-  const initialSearch = searchParamsHook.get('search') || '';
-  const initialSortBy = (searchParamsHook.get('sort_by') as SortableRepoKeys) || 'repo_rank';
-  const initialSortOrder = (searchParamsHook.get('sort_order') as 'asc' | 'desc') || 'asc';
+  const initialValues = useMemo(() => {
+    const page = parseInt(searchParamsHook.get('page') || '1', 10);
+    const limit = parseInt(searchParamsHook.get('limit') || '10', 10);
+    const search = searchParamsHook.get('search') || '';
+    const sortBy = (searchParamsHook.get('sort_by') as SortableRepoKeys) || 'repo_rank';
+    const sortOrder = (searchParamsHook.get('sort_order') as 'asc' | 'desc') || 'asc';
+    return { page, limit, search, sortBy, sortOrder };
+  }, [searchParamsHook]);
 
   const [sorting, setSorting] = useState<SortingState>([
-    { id: initialSortBy, desc: initialSortOrder === 'desc' },
+    { id: initialValues.sortBy, desc: initialValues.sortOrder === 'desc' },
   ]);
   const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: initialPage - 1,
-    pageSize: initialLimit,
+    pageIndex: initialValues.page - 1,
+    pageSize: initialValues.limit,
   });
-  const [globalFilter, setGlobalFilter] = useState(initialSearch);
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(globalFilter);
+  const [globalFilter, setGlobalFilter] = useState(initialValues.search);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(initialValues.search);
 
-  const debouncedSetSearchForAPI = _debounce((value: string) => {
-    setDebouncedSearchTerm(value);
-  }, 500);
+  const debouncedSetSearchForAPI = useMemo(
+    () =>
+      _debounce((value: string) => {
+        setDebouncedSearchTerm(value);
+        setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+      }, 500),
+    [] // setDebouncedSearchTerm and setPagination are stable
+  );
 
   useEffect(() => {
     if (projectTitleUrlEncoded) {
@@ -78,36 +86,83 @@ const ProjectReposPage = () => {
   }, [globalFilter, debouncedSetSearchForAPI]);
 
   useEffect(() => {
-    setPagination(prev => ({ ...prev, pageIndex: 0 }));
-  }, [debouncedSearchTerm]);
+    if (!projectTitleUrlEncoded) return;
+
+    const desiredParams = new URLSearchParams();
+    desiredParams.set('page', (pagination.pageIndex + 1).toString());
+    desiredParams.set('limit', pagination.pageSize.toString());
+    desiredParams.set('sort_by', sorting[0]?.id || 'repo_rank');
+    desiredParams.set('sort_order', sorting[0]?.desc ? 'desc' : 'asc');
+
+    if (debouncedSearchTerm.trim()) {
+      desiredParams.set('search', debouncedSearchTerm.trim());
+    }
+    const desiredQueryString = desiredParams.toString();
+    const currentQueryString = searchParamsHook.toString();
+
+    if (desiredQueryString !== currentQueryString) {
+      router.replace(`/industry/${projectTitleUrlEncoded}/repos?${desiredQueryString}`, { scroll: false });
+    }
+  }, [
+    projectTitleUrlEncoded,
+    pagination,
+    sorting,
+    debouncedSearchTerm,
+    router,
+    searchParamsHook
+  ]);
 
   useEffect(() => {
-    if (!projectTitleUrlEncoded) return;
+    if (!projectTitleUrlEncoded) {
+      setIsLoading(false);
+      return;
+    }
+
+    const pageFromUrl = parseInt(searchParamsHook.get('page') || '1', 10);
+    const limitFromUrl = parseInt(searchParamsHook.get('limit') || '10', 10);
+    const searchFromUrl = searchParamsHook.get('search') || '';
+    const sortByFromUrl = (searchParamsHook.get('sort_by') as SortableRepoKeys) || 'repo_rank';
+    const sortOrderFromUrl = (searchParamsHook.get('sort_order') as 'asc' | 'desc') || 'asc';
+
+    setPagination(prev => {
+        const newPageIndex = pageFromUrl - 1;
+        if (prev.pageIndex !== newPageIndex || prev.pageSize !== limitFromUrl) {
+            return { pageIndex: newPageIndex, pageSize: limitFromUrl };
+        }
+        return prev;
+    });
+    setSorting(prev => {
+        if (prev[0]?.id !== sortByFromUrl || (prev[0]?.desc ? 'desc' : 'asc') !== sortOrderFromUrl) {
+            return [{ id: sortByFromUrl, desc: sortOrderFromUrl === 'desc' }];
+        }
+        return prev;
+    });
+
+    // Functional update for setGlobalFilter
+    setGlobalFilter(currentGlobalFilter => {
+      if (currentGlobalFilter !== searchFromUrl) {
+        return searchFromUrl;
+      }
+      return currentGlobalFilter;
+    });
 
     const fetchRepos = async () => {
       setIsLoading(true);
+      setError(null);
 
-      const sortBy = sorting[0]?.id || 'repo_rank';
-      const sortOrder = sorting[0]?.desc ? 'desc' : 'asc';
-
-      const queryParams = new URLSearchParams({
-        page: (pagination.pageIndex + 1).toString(),
-        limit: pagination.pageSize.toString(),
-        sort_by: sortBy,
-        sort_order: sortOrder,
+      const queryParamsForFetch = new URLSearchParams({
+        page: pageFromUrl.toString(),
+        limit: limitFromUrl.toString(),
+        sort_by: sortByFromUrl,
+        sort_order: sortOrderFromUrl,
       });
-      if (debouncedSearchTerm.trim()) {
-        queryParams.set('search', debouncedSearchTerm.trim());
+      if (searchFromUrl.trim()) {
+        queryParamsForFetch.set('search', searchFromUrl.trim());
       }
-      const queryString = queryParams.toString();
-
-      const currentSearchParams = searchParamsHook.toString();
-      if (queryString !== currentSearchParams) {
-        router.replace(`/industry/${projectTitleUrlEncoded}/repos?${queryString}`, { scroll: false });
-      }
+      const queryStringForFetch = queryParamsForFetch.toString();
 
       try {
-        const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/repos?${queryString}`);
+        const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/repos?${queryStringForFetch}`);
         if (!response.ok) {
           const errData = await response.json();
           throw new Error(errData.message || `Failed to fetch repositories (status: ${response.status})`);
@@ -115,25 +170,16 @@ const ProjectReposPage = () => {
         const result: PaginatedRepos = await response.json();
         setData(result.items);
         setPageCount(result.total_pages);
-        setError(null);
-      } catch (err) {
-        console.error("Fetch repositories error:", err);
-        setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+      } catch (errCatch) {
+        console.error("Fetch repositories error:", errCatch);
+        setError(errCatch instanceof Error ? errCatch.message : 'An unknown error occurred.');
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchRepos();
-  }, [
-    projectTitleUrlEncoded,
-    pagination.pageIndex,
-    pagination.pageSize,
-    sorting,
-    debouncedSearchTerm,
-    router,
-    searchParamsHook
-  ]);
+  }, [projectTitleUrlEncoded, searchParamsHook]); // Explicitly only these dependencies for this effect
 
   const columns = useMemo<ColumnDef<RepoData>[]>(() => [
     {
@@ -226,7 +272,7 @@ const ProjectReposPage = () => {
     return sort.desc ? <HiArrowDown className="inline ml-1 w-4 h-4" /> : <HiArrowUp className="inline ml-1 w-4 h-4" />;
   };
 
-  if (!projectTitleUrlEncoded) {
+  if (!projectTitleUrlEncoded && !isLoading) {
     return <div className="container mx-auto p-4"><Alert color="failure">Project title not provided in URL.</Alert></div>;
   }
 
@@ -240,7 +286,7 @@ const ProjectReposPage = () => {
 
       <h1 className="text-2xl font-bold mb-4 text-white">Repositories for {projectTitle}</h1>
 
-      {!showInitialLoader && ( // Check this flag
+      {!showInitialLoader && (
         <div className="mb-4">
             <TextInput
             id="repoSearch"
@@ -256,7 +302,7 @@ const ProjectReposPage = () => {
         )}
 
       {(() => {
-        if (isLoading && data.length === 0 && !error) {
+        if (showInitialLoader) {
           return (
             <div className="flex justify-center items-center py-10">
               <Spinner size="xl" color="pink"/> <span className="ml-3 text-white">Loading repositories...</span>
@@ -271,8 +317,8 @@ const ProjectReposPage = () => {
           );
         }
         if (!isLoading && data.length === 0) {
-          if (debouncedSearchTerm) {
-            return <Alert color="info" className="my-4">No repositories found matching your search for &quot;{debouncedSearchTerm}&quot;.</Alert>;
+          if (debouncedSearchTerm || globalFilter) {
+            return <Alert color="info" className="my-4">No repositories found matching your search for &quot;{debouncedSearchTerm || globalFilter}&quot;.</Alert>;
           }
           return <Alert color="info" className="my-4">No repositories found for this project.</Alert>;
         }
@@ -285,7 +331,7 @@ const ProjectReposPage = () => {
                   <span className="mt-2 text-white">Updating results...</span>
                 </div>
               )}
-              <Table hoverable striped className={isLoading && data.length > 0 ? 'opacity-60' : ''}>
+              <Table hoverable striped className={(isLoading && data.length > 0) ? 'opacity-60' : ''}>
                 <TableHead className="text-xs text-gray-400 uppercase bg-gray-700">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id} className="border-b-gray-600">
@@ -350,7 +396,7 @@ const ProjectReposPage = () => {
             <TextInput
               type="number"
               defaultValue={table.getState().pagination.pageIndex + 1}
-              key={`go-to-page-${table.getState().pagination.pageIndex}`}
+              key={`go-to-page-${table.getState().pagination.pageIndex}-${table.getState().pagination.pageSize}`}
               onChange={e => {
                 const pageVal = e.target.value;
                 if (pageVal === "") return;
@@ -361,13 +407,14 @@ const ProjectReposPage = () => {
               }}
               onBlur={(e) => {
                 const pageVal = e.target.value;
+                const currentPagePlusOne = (table.getState().pagination.pageIndex + 1).toString();
                 if (pageVal === "") {
-                    e.target.value = (table.getState().pagination.pageIndex + 1).toString();
+                    e.target.value = currentPagePlusOne;
                     return;
                 }
                 const page = Number(pageVal) - 1;
                  if (isNaN(page) || page < 0 || page >= table.getPageCount()) {
-                    e.target.value = (table.getState().pagination.pageIndex + 1).toString();
+                    e.target.value = currentPagePlusOne;
                  }
               }}
               className="w-16 text-xs dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600 dark:[&_input]:p-1.5 text-center"
