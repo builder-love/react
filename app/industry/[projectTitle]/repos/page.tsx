@@ -1,7 +1,7 @@
 // app/industry/[projectTitle]/repos/page.tsx
 "use client";
 
-import React, { useState, useEffect, useMemo, FormEvent } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -16,19 +16,20 @@ import {
 } from '@tanstack/react-table';
 import {
   Table,
-  Spinner,
-  Alert,
-  Button,
-  TextInput,
   TableHead,
   TableBody,
   TableRow,
   TableHeadCell,
   TableCell,
+  Spinner,
+  Alert,
+  Button,
+  TextInput,
 } from 'flowbite-react';
 import { HiSearch, HiInformationCircle, HiArrowUp, HiArrowDown } from 'react-icons/hi';
 import { PaginatedRepos, RepoData } from '@/app/types';
 import { formatNumberWithCommas } from '@/app/utilities/formatters';
+import _debounce from 'lodash/debounce';
 
 type SortableRepoKeys = 'repo' | 'fork_count' | 'stargaze_count' | 'watcher_count' | 'weighted_score_index' | 'repo_rank' | 'latest_data_timestamp' | 'quartile_bucket' | 'repo_rank_category';
 
@@ -58,9 +59,12 @@ const ProjectReposPage = () => {
     pageIndex: initialPage - 1,
     pageSize: initialLimit,
   });
+  const [globalFilter, setGlobalFilter] = useState(initialSearch);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(globalFilter);
 
-  const [searchInput, setSearchInput] = useState(initialSearch);
-  const [activeSearchTerm, setActiveSearchTerm] = useState(initialSearch);
+  const debouncedSetSearchForAPI = _debounce((value: string) => {
+    setDebouncedSearchTerm(value);
+  }, 500);
 
   useEffect(() => {
     if (projectTitleUrlEncoded) {
@@ -69,27 +73,13 @@ const ProjectReposPage = () => {
   }, [projectTitleUrlEncoded]);
 
   useEffect(() => {
-    // Reset to page 0 if activeSearchTerm changes,
-    // but try to avoid doing it if it's the same as initialSearch AND on the initial page.
-    // This logic ensures that if a user lands on page > 1 with a search term, it doesn't reset.
-    // But if they then change the search term, it resets.
-    if (activeSearchTerm !== initialSearch) {
-        setPagination(prev => ({ ...prev, pageIndex: 0 }));
-    } else if (activeSearchTerm === initialSearch && pagination.pageIndex !== (initialPage - 1) && initialPage !== 1) {
-        // This case is tricky: if initialSearch is present and initialPage is not 1,
-        // changing activeSearchTerm back to initialSearch SHOULDN'T reset if already on initialPage.
-        // For simplicity now, if activeSearchTerm matches initialSearch, we don't auto-reset here.
-        // The main fetch effect will use the current pagination.pageIndex.
-    } else if (activeSearchTerm === initialSearch && initialPage === 1 && pagination.pageIndex !== 0) {
-        // If initial search is active and initial page was 1, but somehow pageIndex isn't 0, reset.
-        setPagination(prev => ({ ...prev, pageIndex: 0 }));
-    } else if (activeSearchTerm !== initialSearch && pagination.pageIndex !== 0) {
-         setPagination(prev => ({ ...prev, pageIndex: 0 }));
-    }
+    debouncedSetSearchForAPI(globalFilter);
+    return () => debouncedSetSearchForAPI.cancel();
+  }, [globalFilter, debouncedSetSearchForAPI]);
 
-
-  }, [activeSearchTerm, initialSearch, initialPage, pagination.pageIndex]);
-
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+  }, [debouncedSearchTerm]);
 
   useEffect(() => {
     if (!projectTitleUrlEncoded) return;
@@ -106,16 +96,13 @@ const ProjectReposPage = () => {
         sort_by: sortBy,
         sort_order: sortOrder,
       });
-      if (activeSearchTerm.trim()) {
-        queryParams.set('search', activeSearchTerm.trim());
+      if (debouncedSearchTerm.trim()) {
+        queryParams.set('search', debouncedSearchTerm.trim());
       }
       const queryString = queryParams.toString();
 
       const currentSearchParams = searchParamsHook.toString();
-      const sortedQueryString = queryString.split('&').sort().join('&');
-      const sortedCurrentSearchParams = currentSearchParams.split('&').sort().join('&');
-
-      if (sortedQueryString !== sortedCurrentSearchParams) {
+      if (queryString !== currentSearchParams) {
         router.replace(`/industry/${projectTitleUrlEncoded}/repos?${queryString}`, { scroll: false });
       }
 
@@ -123,17 +110,15 @@ const ProjectReposPage = () => {
         const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/repos?${queryString}`);
         if (!response.ok) {
           const errData = await response.json();
-          setData([]);
-          setPageCount(0);
           throw new Error(errData.message || `Failed to fetch repositories (status: ${response.status})`);
         }
         const result: PaginatedRepos = await response.json();
         setData(result.items);
         setPageCount(result.total_pages);
         setError(null);
-      } catch (errCatch: unknown) {
-        console.error("Fetch repositories error:", errCatch);
-        setError(errCatch instanceof Error ? errCatch.message : 'An unknown error occurred.');
+      } catch (err) {
+        console.error("Fetch repositories error:", err);
+        setError(err instanceof Error ? err.message : 'An unknown error occurred.');
       } finally {
         setIsLoading(false);
       }
@@ -145,15 +130,10 @@ const ProjectReposPage = () => {
     pagination.pageIndex,
     pagination.pageSize,
     sorting,
-    activeSearchTerm,
+    debouncedSearchTerm,
     router,
-    searchParamsHook // Re-added as it's used for comparison
+    searchParamsHook
   ]);
-
-  const handleSearchSubmit = (event?: FormEvent<HTMLFormElement>) => {
-    if (event) event.preventDefault();
-    setActiveSearchTerm(searchInput);
-  };
 
   const columns = useMemo<ColumnDef<RepoData>[]>(() => [
     {
@@ -259,31 +239,27 @@ const ProjectReposPage = () => {
       </Button>
 
       <h1 className="text-2xl font-bold mb-4 text-white">Repositories for {projectTitle}</h1>
-      
-      {!showInitialLoader && ( // Hide search form during the very initial full page load
-        <form onSubmit={handleSearchSubmit} className="mb-4 flex items-center gap-2">
-          <TextInput
+
+      {!showInitialLoader && ( // Check this flag
+        <div className="mb-4">
+            <TextInput
             id="repoSearch"
             type="search"
             icon={HiSearch}
             placeholder="Search repositories by name..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="max-w-md flex-grow dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600"
+            value={globalFilter ?? ''}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            className="max-w-md dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600"
             disabled={isLoading && data.length > 0}
-          />
-          <Button type="submit" color="blue" disabled={isLoading && data.length > 0}>
-            Search
-          </Button>
-        </form>
-      )}
+            />
+        </div>
+        )}
 
       {(() => {
-        if (showInitialLoader) {
+        if (isLoading && data.length === 0 && !error) {
           return (
-            <div className="flex flex-col justify-center items-center py-20 text-center">
-              <Spinner size="xl" color="pink"/>
-              <span className="ml-3 mt-3 text-white text-lg">Loading repositories...</span>
+            <div className="flex justify-center items-center py-10">
+              <Spinner size="xl" color="pink"/> <span className="ml-3 text-white">Loading repositories...</span>
             </div>
           );
         }
@@ -295,21 +271,21 @@ const ProjectReposPage = () => {
           );
         }
         if (!isLoading && data.length === 0) {
-          if (activeSearchTerm) {
-            return <Alert color="info" className="my-4">No repositories found matching your search for &quot;{activeSearchTerm}&quot;.</Alert>;
+          if (debouncedSearchTerm) {
+            return <Alert color="info" className="my-4">No repositories found matching your search for &quot;{debouncedSearchTerm}&quot;.</Alert>;
           }
           return <Alert color="info" className="my-4">No repositories found for this project.</Alert>;
         }
-        if (data.length > 0 || (isLoading && !error)) { // Ensure table container renders if loading, even if data might become empty
+        if (data.length > 0) {
           return (
             <div className="relative overflow-x-auto shadow-md sm:rounded-lg border border-gray-700">
-              {isLoading && ( // Show overlay if loading, regardless of data.length here as the outer condition handles initial load
+              {isLoading && data.length > 0 && (
                 <div className="absolute inset-0 bg-gray-800 bg-opacity-75 flex flex-col items-center justify-center z-10 rounded-lg">
                   <Spinner size="lg" color="pink" />
                   <span className="mt-2 text-white">Updating results...</span>
                 </div>
               )}
-              <Table hoverable striped className={(isLoading && data.length > 0) ? 'opacity-60' : ''}>
+              <Table hoverable striped className={isLoading && data.length > 0 ? 'opacity-60' : ''}>
                 <TableHead className="text-xs text-gray-400 uppercase bg-gray-700">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id} className="border-b-gray-600">
@@ -355,7 +331,7 @@ const ProjectReposPage = () => {
         return null;
       })()}
 
-      {pageCount > 0 && (
+      {pageCount > 0 && data.length > 0 && (
         <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 w-full">
           <div className="flex items-center gap-2">
             <Button color="gray" size="xs" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage() || isLoading} className="border-gray-600">{'<<'}</Button>
@@ -399,11 +375,7 @@ const ProjectReposPage = () => {
             />
             <select
               value={table.getState().pagination.pageSize}
-              onChange={e => {
-                table.setPageSize(Number(e.target.value));
-                // When page size changes, it's good practice to go back to page 0
-                table.setPageIndex(0);
-              }}
+              onChange={e => table.setPageSize(Number(e.target.value))}
               className="text-xs p-1.5 border border-gray-600 rounded bg-gray-700 text-white focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500"
               disabled={isLoading}
             >
