@@ -1,7 +1,7 @@
 // app/industry/[projectTitle]/repos/page.tsx
 "use client";
 
-import React, { useState, useEffect, useMemo, FormEvent, useRef } from 'react';
+import React, { useState, useEffect, useMemo, FormEvent } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -47,7 +47,7 @@ const ProjectReposPage = () => {
 
   const initialPage = parseInt(searchParamsHook.get('page') || '1', 10);
   const initialLimit = parseInt(searchParamsHook.get('limit') || '10', 10);
-  const initialSearchFromUrl = searchParamsHook.get('search') || '';
+  const initialSearch = searchParamsHook.get('search') || '';
   const initialSortBy = (searchParamsHook.get('sort_by') as SortableRepoKeys) || 'repo_rank';
   const initialSortOrder = (searchParamsHook.get('sort_order') as 'asc' | 'desc') || 'asc';
 
@@ -59,10 +59,8 @@ const ProjectReposPage = () => {
     pageSize: initialLimit,
   });
 
-  const [searchInput, setSearchInput] = useState(initialSearchFromUrl);
-  const [activeSearchTerm, setActiveSearchTerm] = useState(initialSearchFromUrl);
-
-  const isInitialSearchLoadLogic = useRef(true);
+  const [searchInput, setSearchInput] = useState(initialSearch);
+  const [activeSearchTerm, setActiveSearchTerm] = useState(initialSearch);
 
   useEffect(() => {
     if (projectTitleUrlEncoded) {
@@ -71,19 +69,26 @@ const ProjectReposPage = () => {
   }, [projectTitleUrlEncoded]);
 
   useEffect(() => {
-    if (isInitialSearchLoadLogic.current && activeSearchTerm === initialSearchFromUrl) {
-      isInitialSearchLoadLogic.current = false;
-      return;
+    // Reset to page 0 if activeSearchTerm changes,
+    // but try to avoid doing it if it's the same as initialSearch AND on the initial page.
+    // This logic ensures that if a user lands on page > 1 with a search term, it doesn't reset.
+    // But if they then change the search term, it resets.
+    if (activeSearchTerm !== initialSearch) {
+        setPagination(prev => ({ ...prev, pageIndex: 0 }));
+    } else if (activeSearchTerm === initialSearch && pagination.pageIndex !== (initialPage - 1) && initialPage !== 1) {
+        // This case is tricky: if initialSearch is present and initialPage is not 1,
+        // changing activeSearchTerm back to initialSearch SHOULDN'T reset if already on initialPage.
+        // For simplicity now, if activeSearchTerm matches initialSearch, we don't auto-reset here.
+        // The main fetch effect will use the current pagination.pageIndex.
+    } else if (activeSearchTerm === initialSearch && initialPage === 1 && pagination.pageIndex !== 0) {
+        // If initial search is active and initial page was 1, but somehow pageIndex isn't 0, reset.
+        setPagination(prev => ({ ...prev, pageIndex: 0 }));
+    } else if (activeSearchTerm !== initialSearch && pagination.pageIndex !== 0) {
+         setPagination(prev => ({ ...prev, pageIndex: 0 }));
     }
 
-    if (!isInitialSearchLoadLogic.current || activeSearchTerm !== initialSearchFromUrl) {
-      setPagination(prev => ({ ...prev, pageIndex: 0 }));
-    }
-    
-    if (isInitialSearchLoadLogic.current && activeSearchTerm !== initialSearchFromUrl) {
-        isInitialSearchLoadLogic.current = false;
-    }
-  }, [activeSearchTerm, initialSearchFromUrl]);
+
+  }, [activeSearchTerm, initialSearch, initialPage, pagination.pageIndex]);
 
 
   useEffect(() => {
@@ -105,6 +110,7 @@ const ProjectReposPage = () => {
         queryParams.set('search', activeSearchTerm.trim());
       }
       const queryString = queryParams.toString();
+
       const currentSearchParams = searchParamsHook.toString();
       const sortedQueryString = queryString.split('&').sort().join('&');
       const sortedCurrentSearchParams = currentSearchParams.split('&').sort().join('&');
@@ -141,16 +147,12 @@ const ProjectReposPage = () => {
     sorting,
     activeSearchTerm,
     router,
-    searchParamsHook
+    searchParamsHook // Re-added as it's used for comparison
   ]);
 
   const handleSearchSubmit = (event?: FormEvent<HTMLFormElement>) => {
     if (event) event.preventDefault();
-    if (searchInput !== activeSearchTerm) {
-        setActiveSearchTerm(searchInput);
-    } else if (searchInput === activeSearchTerm && pagination.pageIndex !== 0) {
-        setPagination(prev => ({ ...prev, pageIndex: 0}));
-    }
+    setActiveSearchTerm(searchInput);
   };
 
   const columns = useMemo<ColumnDef<RepoData>[]>(() => [
@@ -258,7 +260,7 @@ const ProjectReposPage = () => {
 
       <h1 className="text-2xl font-bold mb-4 text-white">Repositories for {projectTitle}</h1>
       
-      {!showInitialLoader && (
+      {!showInitialLoader && ( // Hide search form during the very initial full page load
         <form onSubmit={handleSearchSubmit} className="mb-4 flex items-center gap-2">
           <TextInput
             id="repoSearch"
@@ -298,10 +300,10 @@ const ProjectReposPage = () => {
           }
           return <Alert color="info" className="my-4">No repositories found for this project.</Alert>;
         }
-        if (data.length > 0 || (isLoading && !error)) {
+        if (data.length > 0 || (isLoading && !error)) { // Ensure table container renders if loading, even if data might become empty
           return (
             <div className="relative overflow-x-auto shadow-md sm:rounded-lg border border-gray-700">
-              {isLoading && (
+              {isLoading && ( // Show overlay if loading, regardless of data.length here as the outer condition handles initial load
                 <div className="absolute inset-0 bg-gray-800 bg-opacity-75 flex flex-col items-center justify-center z-10 rounded-lg">
                   <Spinner size="lg" color="pink" />
                   <span className="mt-2 text-white">Updating results...</span>
@@ -399,7 +401,8 @@ const ProjectReposPage = () => {
               value={table.getState().pagination.pageSize}
               onChange={e => {
                 table.setPageSize(Number(e.target.value));
-                table.setPageIndex(0); // Reset to first page when page size changes
+                // When page size changes, it's good practice to go back to page 0
+                table.setPageIndex(0);
               }}
               className="text-xs p-1.5 border border-gray-600 rounded bg-gray-700 text-white focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500"
               disabled={isLoading}
