@@ -63,6 +63,17 @@ export interface TopProjects {
   prior_4_weeks_weighted_score: number | null;
 }
 
+// type for Project Organization Data
+// make all types nullable since we may not find any orgs for a given project
+export interface ProjectOrganizationData {
+  project_title: string | null; 
+  project_organization_url: string | null;
+  latest_data_timestamp: string | null; 
+  org_rank: number | null;
+  org_rank_category: string | null;
+  weighted_score_index: number | null; 
+}
+
 // Define the interface for the top projects trends data you expect from the API route
 export interface TopProjectsTrendsData {
   project_title: string;

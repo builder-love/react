@@ -1,29 +1,31 @@
 // app/industry/[projectTitle]/page.tsx
-"use client"; // If using useEffect for fetching, otherwise can be Server Component
+"use client";
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation'; // For Client Components
-import { Card, Spinner, Alert, Button, Table, TableBody, TableCell, TableHead, TableHeadCell, TableRow } from 'flowbite-react';
-import { HiInformationCircle } from 'react-icons/hi';
-import { TopProjects } from '@/app/types';
+import { useParams, useRouter } from 'next/navigation';
+import { Card, Spinner, Alert, Button, Table, TableBody, TableCell, TableHead, TableHeadCell, TableRow, ListGroup, ListGroupItem } from 'flowbite-react'; 
+import { HiInformationCircle, HiLink } from 'react-icons/hi'; 
+import { TopProjects, ProjectOrganizationData } from '@/app/types';
 import { formatNumberWithCommas } from '@/app/utilities/formatters';
 
 const ProjectDetailPage = () => {
   const router = useRouter();
   const params = useParams();
-  const projectTitleUrlEncoded = params.projectTitle as string; // projectTitle comes from the folder name [projectTitle]
+  const projectTitleUrlEncoded = params.projectTitle as string;
 
   const [project, setProject] = useState<TopProjects | null>(null);
+  const [organizations, setOrganizations] = useState<ProjectOrganizationData[]>([]); 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isLoadingOrgs, setIsLoadingOrgs] = useState(true); // Separate loading state for orgs
+  const [orgError, setOrgError] = useState<string | null>(null); // Separate error state for orgs
 
   useEffect(() => {
     if (projectTitleUrlEncoded) {
-      const fetchProjectDetails = async () => {
+      const fetchProjectData = async () => {
         setIsLoading(true);
         setError(null);
         try {
-          // The projectTitleUrlEncoded is already encoded from the URL
           const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}`);
           if (!response.ok) {
             const errData = await response.json();
@@ -33,23 +35,49 @@ const ProjectDetailPage = () => {
           setProject(data);
         } catch (err: Error | unknown) {
           console.error("Fetch project detail error:", err);
-          setError(err instanceof Error ? err.message : 'An unknown error occurred');
+          setError(err instanceof Error ? err.message : 'An unknown error occurred fetching project details.');
         } finally {
           setIsLoading(false);
         }
       };
-      fetchProjectDetails();
+
+      const fetchOrganizationData = async () => {
+        setIsLoadingOrgs(true);
+        setOrgError(null);
+        try {
+          const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/organizations`);
+          if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.message || `Failed to fetch project organizations (status: ${response.status})`);
+          }
+          const data: ProjectOrganizationData[] = await response.json();
+          setOrganizations(data);
+        } catch (err: Error | unknown) {
+          console.error("Fetch project organizations error:", err);
+          setOrgError(err instanceof Error ? err.message : 'An unknown error occurred fetching organizations.');
+          setOrganizations([]); // Clear organizations on error
+        } finally {
+          setIsLoadingOrgs(false);
+        }
+      };
+
+      fetchProjectData();
+      fetchOrganizationData(); // Fetch organizations data
+
     } else {
       setIsLoading(false);
+      setIsLoadingOrgs(false);
       setError("Project title not found in URL.");
     }
   }, [projectTitleUrlEncoded]);
 
+  // Main content loading spinner
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen"><Spinner size="xl" /> Loading project details...</div>;
   }
 
-  if (error) {
+  // Main content error
+  if (error && !project) { // Only show main error if project data itself failed
     return (
       <div className="container mx-auto p-4">
         <Alert color="failure" icon={HiInformationCircle}>
@@ -60,18 +88,18 @@ const ProjectDetailPage = () => {
     );
   }
 
+  // Project not found or main data issue
   if (!project) {
     return (
        <div className="container mx-auto p-4">
         <Alert color="warning" icon={HiInformationCircle}>
-            <span>Project data could not be loaded.</span>
+            <span>Project data could not be loaded or project not found.</span>
         </Alert>
         <Button onClick={() => router.back()} className="mt-4">Go Back</Button>
       </div>
     );
   }
 
-  // Helper to format labels and values
   const renderDetailRow = (label: string, value: string | number | null | undefined, isNumber: boolean = true) => {
     let displayValue = 'N/A';
     if (value !== null && value !== undefined) {
@@ -92,15 +120,16 @@ const ProjectDetailPage = () => {
 
   return (
     <div className="container mx-auto p-4 md:p-8">
-      <Button onClick={() => router.push('/industry')} className="mb-6 print:hidden"> {/* Hide button when printing */}
+      <Button onClick={() => router.push('/industry')} className="mb-6 print:hidden">
         &larr; Back to Search
       </Button>
-      <Card>
+      <Card className="mb-6"> {/* Main project details card */}
         <h1 className="text-3xl font-bold mb-2">{project.project_title}</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
           Latest Data: {new Date(project.latest_data_timestamp).toLocaleString()}
         </p>
 
+        {/* ... existing grid for Key Ranks & Activity Metrics ... */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <Card>
             <h2 className="text-xl font-semibold mb-3">Key Ranks & Scores</h2>
@@ -140,7 +169,7 @@ const ProjectDetailPage = () => {
                 </TableBody>
             </Table>
         </Card>
-         <Card>
+         <Card className="mb-6"> {/* Ensure this card closes before the new one */}
             <h2 className="text-xl font-semibold mb-3">4-Week Percentage Changes</h2>
             <Table striped>
                 <TableHead>
@@ -157,6 +186,57 @@ const ProjectDetailPage = () => {
                 </TableBody>
             </Table>
         </Card>
+      </Card> {/* End of main project details card */}
+
+
+      {/* Top Organizations Section */}
+      <Card className="mt-6">
+        <h2 className="text-2xl font-semibold mb-4">Top Associated Organizations</h2>
+        {isLoadingOrgs && (
+          <div className="flex justify-center items-center py-4">
+            <Spinner size="md" />
+            <span className="ml-2">Loading organizations...</span>
+          </div>
+        )}
+        {orgError && !isLoadingOrgs && (
+          <Alert color="failure" icon={HiInformationCircle}>
+            <span>Error loading organizations: {orgError}</span>
+          </Alert>
+        )}
+        {!isLoadingOrgs && !orgError && organizations.length === 0 && (
+          <Alert color="info" icon={HiInformationCircle}>
+            <span>No associated organizations found for this project.</span>
+          </Alert>
+        )}
+        {!isLoadingOrgs && !orgError && organizations.length > 0 && (
+          <ListGroup className="space-y-3">
+            {organizations.map((org, index) => (
+              <ListGroupItem key={org.project_organization_url || index} className="p-3 border rounded-lg dark:border-gray-700">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="mb-2 sm:mb-0">
+                    {org.project_organization_url ? (
+                      <a
+                        href={org.project_organization_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium flex items-center"
+                      >
+                        {org.project_organization_url}
+                        <HiLink className="ml-1 w-4 h-4" />
+                      </a>
+                    ) : (
+                      <span className="text-gray-500">URL not available</span>
+                    )}
+                  </div>
+                  <div className="flex space-x-4 text-sm text-gray-600 dark:text-gray-400">
+                    <span><strong>Rank:</strong> {org.org_rank ?? 'N/A'}</span>
+                    <span><strong>Category:</strong> {org.org_rank_category ?? 'N/A'}</span>
+                  </div>
+                </div>
+              </ListGroupItem>
+            ))}
+          </ListGroup>
+        )}
       </Card>
     </div>
   );
