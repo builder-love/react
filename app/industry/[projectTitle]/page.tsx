@@ -7,6 +7,7 @@ import { Card, Spinner, Alert, Button, Table, TableBody, TableCell, TableHead, T
 import { HiInformationCircle, HiLink } from 'react-icons/hi'; 
 import { TopProjects, ProjectOrganizationData } from '@/app/types';
 import { formatNumberWithCommas } from '@/app/utilities/formatters';
+import Link from 'next/link';
 
 const ProjectDetailPage = () => {
   const router = useRouter();
@@ -128,6 +129,23 @@ const ProjectDetailPage = () => {
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
           Latest Data: {new Date(project.latest_data_timestamp).toLocaleString()}
         </p>
+
+        {/* Link to Repositories Page */}
+        {project && ( // Only show if project data is loaded
+          <Card className="mt-6">
+            <h2 className="text-xl font-semibold mb-3">Explore Repositories</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              View detailed information about repositories associated with {project.project_title}.
+            </p>
+            <Button
+              as={Link}
+              href={`/industry/${projectTitleUrlEncoded}/repos`}
+              color="alternative"
+            >
+              View Repositories &rarr;
+            </Button>
+          </Card>
+        )}
 
         {/* ... existing grid for Key Ranks & Activity Metrics ... */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">

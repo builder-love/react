@@ -95,6 +95,27 @@ export interface TopProjectsTrendsData {
   project_rank_category: string;
 }
 
+export interface RepoData {
+  project_title: string; 
+  latest_data_timestamp: string;
+  repo: string | null; 
+  fork_count: number | null;
+  stargaze_count: number | null;
+  watcher_count: number | null;
+  weighted_score_index: number | null;
+  repo_rank: number | null;
+  quartile_bucket: number | null;
+  repo_rank_category: string | null;
+}
+
+export interface PaginatedRepos {
+  items: RepoData[];
+  total_items: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
 // Define the type for the enhanced top projects trends data you expect from the API route
 export type EnhancedTopProjectsTrendsData = TopProjectsTrendsData & {
   [key: string]: string | number | null | undefined; // Index signature to allow dynamic access like item[selectedMetric]
