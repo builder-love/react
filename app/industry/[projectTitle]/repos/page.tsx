@@ -142,7 +142,7 @@ const ProjectReposPage = () => {
 
   const columns = useMemo<ColumnDef<RepoData>[]>(() => [
     {
-        header: 'Rank',
+        header: 'Global Rank',
         accessorKey: 'repo_rank',
         id: 'repo_rank',
         cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? 'N/A',
@@ -192,21 +192,7 @@ const ProjectReposPage = () => {
         size: 100,
     },
     {
-        header: 'Score Idx',
-        accessorKey: 'weighted_score_index',
-        id: 'weighted_score_index',
-        cell: ({ getValue }) => getValue<number>()?.toFixed(3) ?? 'N/A',
-        size: 100,
-    },
-    {
-        header: 'Quartile',
-        accessorKey: 'quartile_bucket',
-        id: 'quartile_bucket',
-        cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? 'N/A',
-        size: 80,
-    },
-    {
-        header: 'Rank Cat.',
+        header: 'Rank Category',
         accessorKey: 'repo_rank_category',
         id: 'repo_rank_category',
         cell: ({ getValue }) => getValue<string>() ?? 'N/A',
