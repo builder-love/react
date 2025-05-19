@@ -31,14 +31,12 @@ import { PaginatedRepos, RepoData } from '@/app/types';
 import { formatNumberWithCommas } from '@/app/utilities/formatters';
 import _debounce from 'lodash/debounce';
 
-// Define which columns are sortable by their key in RepoData (matching FastAPI validation)
 type SortableRepoKeys = 'repo' | 'fork_count' | 'stargaze_count' | 'watcher_count' | 'weighted_score_index' | 'repo_rank' | 'latest_data_timestamp' | 'quartile_bucket' | 'repo_rank_category';
-
 
 const ProjectReposPage = () => {
   const router = useRouter();
   const params = useParams();
-  const searchParamsHook = useSearchParams(); // For reading initial query params
+  const searchParamsHook = useSearchParams();
 
   const projectTitleUrlEncoded = params.projectTitle as string;
   const [projectTitle, setProjectTitle] = useState('');
@@ -46,27 +44,27 @@ const ProjectReposPage = () => {
   const [data, setData] = useState<RepoData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pageCount, setPageCount] = useState(0); // Total pages from server
+  const [pageCount, setPageCount] = useState(0);
 
-  // Initial state from URL or defaults
   const initialPage = parseInt(searchParamsHook.get('page') || '1', 10);
   const initialLimit = parseInt(searchParamsHook.get('limit') || '10', 10);
   const initialSearch = searchParamsHook.get('search') || '';
   const initialSortBy = (searchParamsHook.get('sort_by') as SortableRepoKeys) || 'repo_rank';
   const initialSortOrder = (searchParamsHook.get('sort_order') as 'asc' | 'desc') || 'asc';
 
-  // TanStack Table State
   const [sorting, setSorting] = useState<SortingState>([
     { id: initialSortBy, desc: initialSortOrder === 'desc' },
   ]);
   const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: initialPage - 1, // 0-indexed
+    pageIndex: initialPage - 1,
     pageSize: initialLimit,
   });
-  const [globalFilter, setGlobalFilter] = useState(initialSearch); // For search input
-
-  // Debounced search term for API calls
+  const [globalFilter, setGlobalFilter] = useState(initialSearch);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(globalFilter);
+
+  const debouncedSetSearchForAPI = _debounce((value: string) => {
+    setDebouncedSearchTerm(value);
+  }, 500);
 
   useEffect(() => {
     if (projectTitleUrlEncoded) {
@@ -74,57 +72,61 @@ const ProjectReposPage = () => {
     }
   }, [projectTitleUrlEncoded]);
 
-  const debouncedSetSearchForAPI = _debounce((value: string) => {
-    setDebouncedSearchTerm(value);
-    // When search term changes, go to first page
-    setPagination(prev => ({ ...prev, pageIndex: 0 }));
-  }, 500);
-
   useEffect(() => {
     debouncedSetSearchForAPI(globalFilter);
     return () => debouncedSetSearchForAPI.cancel();
   }, [globalFilter, debouncedSetSearchForAPI]);
 
+  // This effect resets pagination when the actual debouncedSearchTerm changes.
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+  }, [debouncedSearchTerm]);
 
-  // Data Fetching Effect
   useEffect(() => {
     if (!projectTitleUrlEncoded) return;
 
     const fetchRepos = async () => {
       setIsLoading(true);
-      setError(null);
+      // setError(null); // Keep previous error visible during intermediate loading if desired
 
       const sortBy = sorting[0]?.id || 'repo_rank';
       const sortOrder = sorting[0]?.desc ? 'desc' : 'asc';
 
-      const query = new URLSearchParams({
+      const queryParams = new URLSearchParams({
         page: (pagination.pageIndex + 1).toString(),
         limit: pagination.pageSize.toString(),
         sort_by: sortBy,
         sort_order: sortOrder,
       });
       if (debouncedSearchTerm.trim()) {
-        query.set('search', debouncedSearchTerm.trim());
+        queryParams.set('search', debouncedSearchTerm.trim());
+      }
+      const queryString = queryParams.toString();
+
+      // Only update URL if it has changed to prevent unnecessary history entries
+      // or re-triggering if router itself is a dependency (though it's stable)
+      const currentSearchParams = searchParamsHook.toString();
+      if (queryString !== currentSearchParams) {
+        router.replace(`/industry/${projectTitleUrlEncoded}/repos?${queryString}`, { scroll: false });
       }
 
-      // Update URL query parameters
-      router.replace(`/industry/${projectTitleUrlEncoded}/repos?${query.toString()}`, { scroll: false });
 
       try {
-        const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/repos?${query.toString()}`);
+        const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/repos?${queryString}`);
         if (!response.ok) {
           const errData = await response.json();
           throw new Error(errData.message || `Failed to fetch repositories (status: ${response.status})`);
         }
         const result: PaginatedRepos = await response.json();
         setData(result.items);
-        setPageCount(result.total_pages); // Set total pages for TanStack Table
-        // pagination.pageSize is already set, TanStack will use it
+        setPageCount(result.total_pages);
+        setError(null); // Clear error on successful fetch
       } catch (err) {
         console.error("Fetch repositories error:", err);
         setError(err instanceof Error ? err.message : 'An unknown error occurred.');
-        setData([]);
-        setPageCount(0);
+        // Optionally clear data or keep stale data
+        // setData([]);
+        // setPageCount(0);
       } finally {
         setIsLoading(false);
       }
@@ -136,8 +138,9 @@ const ProjectReposPage = () => {
     pagination.pageIndex,
     pagination.pageSize,
     sorting,
-    debouncedSearchTerm, // Use debounced term for API call
-    router, // Added router to dependency array
+    debouncedSearchTerm,
+    router, // router is stable, but good to include if used
+    searchParamsHook // To compare current URL params
   ]);
 
   const columns = useMemo<ColumnDef<RepoData>[]>(() => [
@@ -147,6 +150,7 @@ const ProjectReposPage = () => {
         id: 'repo_rank',
         cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? 'N/A',
         size: 70,
+        enableSorting: true,
     },
     {
         header: 'Repository',
@@ -155,7 +159,7 @@ const ProjectReposPage = () => {
         cell: ({ getValue }) => {
             const repoUrl = getValue<string>();
             if (!repoUrl) return 'N/A';
-            const displayUrl = repoUrl.replace(/^https?:\/\//, ''); // Remove http(s):// for display
+            const displayUrl = repoUrl.replace(/^https?:\/\//, '');
             return (
                 <a
                     href={repoUrl.startsWith('http') ? repoUrl : `https://${repoUrl}`}
@@ -169,6 +173,7 @@ const ProjectReposPage = () => {
             );
         },
         size: 250,
+        enableSorting: true, // Typically you'd sort by name
     },
     {
         header: 'Stars',
@@ -176,6 +181,7 @@ const ProjectReposPage = () => {
         id: 'stargaze_count',
         cell: ({ getValue }) => formatNumberWithCommas(getValue<number>() ?? 0),
         size: 100,
+        enableSorting: true,
     },
     {
         header: 'Forks',
@@ -183,6 +189,7 @@ const ProjectReposPage = () => {
         id: 'fork_count',
         cell: ({ getValue }) => formatNumberWithCommas(getValue<number>() ?? 0),
         size: 100,
+        enableSorting: true,
     },
     {
         header: 'Watchers',
@@ -190,6 +197,7 @@ const ProjectReposPage = () => {
         id: 'watcher_count',
         cell: ({ getValue }) => formatNumberWithCommas(getValue<number>() ?? 0),
         size: 100,
+        enableSorting: true,
     },
     {
         header: 'Rank Category',
@@ -197,6 +205,7 @@ const ProjectReposPage = () => {
         id: 'repo_rank_category',
         cell: ({ getValue }) => getValue<string>() ?? 'N/A',
         size: 120,
+        enableSorting: true,
     }
   ], []);
 
@@ -206,31 +215,25 @@ const ProjectReposPage = () => {
     state: {
       sorting,
       pagination,
-      globalFilter, // Managed by our own state for debouncing to API
+      // globalFilter is managed separately for debouncing to API
     },
-    pageCount, // Total pages from server
-    manualPagination: true, // Crucial for server-side pagination
-    manualSorting: true,    // Crucial for server-side sorting
-    manualFiltering: true,  // Crucial for server-side global filtering
+    pageCount,
+    manualPagination: true,
+    manualSorting: true,
+    manualFiltering: true, // Set to true because global filter is server-side
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
-    onGlobalFilterChange: setGlobalFilter, // Updates local globalFilter, triggers debounced API call
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(), // Still useful for header sort indicators
-    getPaginationRowModel: getPaginationRowModel(), // For client-side pagination structure if needed
-    // getFilteredRowModel: getFilteredRowModel(), // Not strictly needed if all filtering is server-side
-    debugTable: process.env.NODE_ENV === 'development', // Optional: for debugging
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    debugTable: process.env.NODE_ENV === 'development',
   });
-  
+
   const renderSortIcon = (columnId: string) => {
     const sort = sorting.find(s => s.id === columnId);
-    if (!sort) {
-        // return <HiOutlineChevronUp className="w-3 h-3 text-gray-500 opacity-30 group-hover:opacity-100 inline ml-1.5" />; // Neutral
-        return null; // Or a more subtle default icon
-    }
+    if (!sort) return null;
     return sort.desc ? <HiArrowDown className="inline ml-1 w-4 h-4" /> : <HiArrowUp className="inline ml-1 w-4 h-4" />;
   };
-
 
   if (!projectTitleUrlEncoded) {
     return <div className="container mx-auto p-4"><Alert color="failure">Project title not provided in URL.</Alert></div>;
@@ -251,12 +254,12 @@ const ProjectReposPage = () => {
           icon={HiSearch}
           placeholder="Search repositories by name..."
           value={globalFilter ?? ''}
-          onChange={(e) => setGlobalFilter(e.target.value)} // Update globalFilter state
+          onChange={(e) => setGlobalFilter(e.target.value)}
           className="max-w-md dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600"
         />
       </div>
 
-      {isLoading && data.length === 0 && ( // Show spinner only if no data is yet displayed
+      {isLoading && data.length === 0 && (
         <div className="flex justify-center items-center py-10">
           <Spinner size="xl" color="pink"/> <span className="ml-3 text-white">Loading repositories...</span>
         </div>
@@ -266,16 +269,16 @@ const ProjectReposPage = () => {
           <span>Error loading repositories: {error}</span>
         </Alert>
       )}
-      {!error && !isLoading && data.length === 0 && debouncedSearchTerm && (
+      {!isLoading && !error && data.length === 0 && debouncedSearchTerm && (
          <Alert color="info">No repositories found matching your search for &quot;{debouncedSearchTerm}&quot;.</Alert>
       )}
-       {!error && !isLoading && data.length === 0 && !debouncedSearchTerm && (
+       {!isLoading && !error && data.length === 0 && !debouncedSearchTerm && (
          <Alert color="info">No repositories found for this project.</Alert>
       )}
 
-      {/* Table Section with Flowbite styling */}
       {data.length > 0 && (
         <div className="relative overflow-x-auto shadow-md sm:rounded-lg border border-gray-700">
+          {/* Using Flowbite Table directly */}
           <Table hoverable striped>
             <TableHead className="text-xs text-gray-400 uppercase bg-gray-700">
               {table.getHeaderGroups().map((headerGroup) => (
@@ -283,9 +286,9 @@ const ProjectReposPage = () => {
                   {headerGroup.headers.map((header) => (
                     <TableHeadCell
                       key={header.id}
-                      onClick={header.column.getToggleSortingHandler()}
+                      onClick={header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
                       style={{ width: header.getSize() !== 0 ? header.getSize() : undefined }}
-                      className="px-3 py-3 text-left text-xs md:text-sm font-medium tracking-wider cursor-pointer group whitespace-nowrap"
+                      className={`px-3 py-3 text-left text-xs md:text-sm font-medium tracking-wider group whitespace-nowrap ${header.column.getCanSort() ? 'cursor-pointer' : ''}`}
                     >
                       <div className="flex items-center">
                         {flexRender(header.column.columnDef.header, header.getContext())}
@@ -296,7 +299,6 @@ const ProjectReposPage = () => {
                 </TableRow>
               ))}
             </TableHead>
-
             <TableBody className="divide-y divide-gray-700 bg-gray-800">
               {table.getRowModel().rows.map((row) => (
                 <TableRow
@@ -308,7 +310,7 @@ const ProjectReposPage = () => {
                       key={cell.id}
                       style={{ width: cell.column.getSize() !== 0 ? cell.column.getSize() : undefined}}
                       className={`px-3 py-2 text-xs md:text-sm whitespace-nowrap 
-                                  ${['repo_rank', 'stargaze_count', 'fork_count', 'watcher_count', 'weighted_score_index', 'quartile_bucket'].includes(cell.column.id) ? 'text-right' : 'text-left'}`}
+                                  ${['repo_rank', 'stargaze_count', 'fork_count', 'watcher_count'].includes(cell.column.id) ? 'text-right' : 'text-left'}`}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
@@ -320,7 +322,6 @@ const ProjectReposPage = () => {
         </div>
       )}
 
-      {/* Pagination Controls - Using Flowbite Buttons */}
       {pageCount > 0 && data.length > 0 && (
         <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 w-full">
           <div className="flex items-center gap-2">
@@ -340,15 +341,23 @@ const ProjectReposPage = () => {
             <TextInput
               type="number"
               defaultValue={table.getState().pagination.pageIndex + 1}
+              key={`go-to-page-${table.getState().pagination.pageIndex}`} // Force re-render on page change
               onChange={e => {
-                const page = e.target.value ? Number(e.target.value) - 1 : 0;
-                if (page >= 0 && page < table.getPageCount()) {
+                const pageVal = e.target.value;
+                if (pageVal === "") return; // Allow clearing
+                const page = Number(pageVal) - 1;
+                if (!isNaN(page) && page >= 0 && page < table.getPageCount()) {
                     table.setPageIndex(page);
                 }
               }}
-              onBlur={e => { // Reset if invalid on blur
-                 const page = e.target.value ? Number(e.target.value) -1 : 0;
-                 if (page < 0 || page >= table.getPageCount()) {
+              onBlur={(e) => {
+                const pageVal = e.target.value;
+                if (pageVal === "") { // If empty on blur, reset to current page
+                    e.target.value = (table.getState().pagination.pageIndex + 1).toString();
+                    return;
+                }
+                const page = Number(pageVal) - 1;
+                 if (isNaN(page) || page < 0 || page >= table.getPageCount()) {
                     e.target.value = (table.getState().pagination.pageIndex + 1).toString();
                  }
               }}
