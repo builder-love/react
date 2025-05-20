@@ -38,8 +38,8 @@ const ProjectReposPage = () => {
   const router = useRouter();
   const params = useParams();
   const searchParamsHook = useSearchParams();
-  const searchInputRef = useRef<HTMLInputElement | null>(null); // Initialize with null
-  const [searchHadFocus, setSearchHadFocus] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null); // Ref for the search input element
+  const _searchHadFocus = useRef(false); // *** CHANGED: Use useRef instead of useState for searchHadFocus ***
 
   const projectTitleUrlEncoded = params.projectTitle as string;
   const [projectTitle, setProjectTitle] = useState('');
@@ -178,6 +178,7 @@ const ProjectReposPage = () => {
   // Effect to manage focus on the search input during loading states
   useEffect(() => {
     // Ensure we have a reference to the input element if the direct ref prop isn't working
+    // This part tries to populate searchInputRef.current if it's not already set (e.g., by ref prop on TextInput)
     if (!searchInputRef.current) {
       const element = document.getElementById('repoSearch');
       if (element instanceof HTMLInputElement) {
@@ -185,23 +186,40 @@ const ProjectReposPage = () => {
       }
     }
 
+    let focusTimeoutId: NodeJS.Timeout | undefined = undefined;
+
+    console.log('Focus Effect - searchInputRef.current:', searchInputRef.current);
+    console.log('Focus Effect - document.activeElement:', document.activeElement);
+
     if (isLoading) {
+      // If loading starts and the search input (now definitely referenced if possible) has focus
       if (searchInputRef.current && document.activeElement === searchInputRef.current) {
-        setSearchHadFocus(true);
+        _searchHadFocus.current = true; // Set the ref's value (does not trigger re-render)
       }
     } else {
-      if (searchHadFocus && searchInputRef.current && !searchInputRef.current.disabled) {
+      // If loading just finished
+      // Read the ref's value (which persists across re-renders without causing them)
+      if (_searchHadFocus.current && searchInputRef.current && !searchInputRef.current.disabled) {
         // Using setTimeout to ensure focus is set after any potential DOM updates
         // related to disabling/enabling the input have settled.
-        setTimeout(() => {
-          if (searchInputRef.current && !searchInputRef.current.disabled) { // Re-check disabled state
+        focusTimeoutId = setTimeout(() => {
+          // Re-check conditions inside setTimeout as state might have changed again
+          if (searchInputRef.current && !searchInputRef.current.disabled) {
             searchInputRef.current.focus();
           }
-        }, 0);
+        }, 0); // Minimal delay
       }
-      setSearchHadFocus(false);
+      // Always reset the flag (ref value) when loading finishes.
+      _searchHadFocus.current = false;
     }
-  }, [isLoading, searchHadFocus]); // Dependencies: isLoading for state changes, searchHadFocus for focus management
+
+    return () => {
+      // Cleanup timeout if the effect re-runs before timeout completes or component unmounts
+      if (focusTimeoutId) {
+        clearTimeout(focusTimeoutId);
+      }
+    };
+  }, [isLoading]); // Dependency array is only [isLoading]. Linter should be happy.
 
   const columns = useMemo<ColumnDef<RepoData>[]>(() => [
     {
@@ -319,7 +337,7 @@ const ProjectReposPage = () => {
             value={globalFilter ?? ''}
             onChange={(e) => setGlobalFilter(e.target.value)}
             className="max-w-md dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600"
-            disabled={isLoading && data.length > 0}
+            // disabled={isLoading && data.length > 0} // <-- Temporarily remove this for testing
             />
         </div>
         )}
