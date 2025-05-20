@@ -1,7 +1,7 @@
 // app/industry/[projectTitle]/repos/page.tsx
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -37,6 +37,8 @@ const ProjectReposPage = () => {
   const router = useRouter();
   const params = useParams();
   const searchParamsHook = useSearchParams();
+  const searchInputRef = useRef<HTMLInputElement>(null); // Ref for the search input
+  const [searchHadFocus, setSearchHadFocus] = useState(false);
 
   const projectTitleUrlEncoded = params.projectTitle as string;
   const [projectTitle, setProjectTitle] = useState('');
@@ -181,6 +183,27 @@ const ProjectReposPage = () => {
     fetchRepos();
   }, [projectTitleUrlEncoded, searchParamsHook]); // Explicitly only these dependencies for this effect
 
+  // Effect to manage focus on the search input during loading states
+  useEffect(() => {
+    if (isLoading) {
+      // If loading starts and the search input has focus, remember that it had focus.
+      // We check searchInputRef.current to ensure the ref is attached.
+      if (searchInputRef.current && document.activeElement === searchInputRef.current) {
+        setSearchHadFocus(true);
+      }
+    } else {
+      // If loading just finished
+      if (searchHadFocus && searchInputRef.current && !searchInputRef.current.disabled) {
+        // If it previously had focus, the ref is attached, and it's not disabled anymore, restore focus.
+        searchInputRef.current.focus();
+      }
+      // Always reset the flag when loading finishes, regardless of whether focus was restored.
+      setSearchHadFocus(false);
+    }
+  }, [isLoading, searchHadFocus]); // This effect runs when `isLoading` changes.
+                    // `searchHadFocus` is included to satisfy the linter, though the effect's logic
+                    // is self-contained based on the `isLoading` transition.
+
   const columns = useMemo<ColumnDef<RepoData>[]>(() => [
     {
         header: 'Global Rank',
@@ -290,6 +313,7 @@ const ProjectReposPage = () => {
         <div className="mb-4">
             <TextInput
             id="repoSearch"
+            ref={searchInputRef} 
             type="search"
             icon={HiSearch}
             placeholder="Search repositories by name..."
