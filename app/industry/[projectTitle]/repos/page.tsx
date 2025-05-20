@@ -31,13 +31,14 @@ import { PaginatedRepos, RepoData } from '@/app/types';
 import { formatNumberWithCommas } from '@/app/utilities/formatters';
 import _debounce from 'lodash/debounce';
 
-type SortableRepoKeys = 'repo' | 'fork_count' | 'stargaze_count' | 'watcher_count' | 'weighted_score_index' | 'repo_rank' | 'latest_data_timestamp' | 'quartile_bucket' | 'repo_rank_category';
+// Consider removing 'latest_data_timestamp' if it's not actually sortable as per previous discussion.
+type SortableRepoKeys = 'repo' | 'fork_count' | 'stargaze_count' | 'watcher_count' | 'repo_rank' | 'repo_rank_category';
 
 const ProjectReposPage = () => {
   const router = useRouter();
   const params = useParams();
   const searchParamsHook = useSearchParams();
-  const searchInputRef = useRef<HTMLInputElement>(null); // Ref for the search input
+  const searchInputRef = useRef<HTMLInputElement | null>(null); // Initialize with null
   const [searchHadFocus, setSearchHadFocus] = useState(false);
 
   const projectTitleUrlEncoded = params.projectTitle as string;
@@ -73,7 +74,7 @@ const ProjectReposPage = () => {
         setDebouncedSearchTerm(value);
         setPagination((prev) => ({ ...prev, pageIndex: 0 }));
       }, 500),
-    [] // setDebouncedSearchTerm and setPagination are stable
+    []
   );
 
   useEffect(() => {
@@ -89,19 +90,16 @@ const ProjectReposPage = () => {
 
   useEffect(() => {
     if (!projectTitleUrlEncoded) return;
-
     const desiredParams = new URLSearchParams();
     desiredParams.set('page', (pagination.pageIndex + 1).toString());
     desiredParams.set('limit', pagination.pageSize.toString());
     desiredParams.set('sort_by', sorting[0]?.id || 'repo_rank');
     desiredParams.set('sort_order', sorting[0]?.desc ? 'desc' : 'asc');
-
     if (debouncedSearchTerm.trim()) {
       desiredParams.set('search', debouncedSearchTerm.trim());
     }
     const desiredQueryString = desiredParams.toString();
     const currentQueryString = searchParamsHook.toString();
-
     if (desiredQueryString !== currentQueryString) {
       router.replace(`/industry/${projectTitleUrlEncoded}/repos?${desiredQueryString}`, { scroll: false });
     }
@@ -119,7 +117,6 @@ const ProjectReposPage = () => {
       setIsLoading(false);
       return;
     }
-
     const pageFromUrl = parseInt(searchParamsHook.get('page') || '1', 10);
     const limitFromUrl = parseInt(searchParamsHook.get('limit') || '10', 10);
     const searchFromUrl = searchParamsHook.get('search') || '';
@@ -139,8 +136,6 @@ const ProjectReposPage = () => {
         }
         return prev;
     });
-
-    // Functional update for setGlobalFilter
     setGlobalFilter(currentGlobalFilter => {
       if (currentGlobalFilter !== searchFromUrl) {
         return searchFromUrl;
@@ -151,7 +146,6 @@ const ProjectReposPage = () => {
     const fetchRepos = async () => {
       setIsLoading(true);
       setError(null);
-
       const queryParamsForFetch = new URLSearchParams({
         page: pageFromUrl.toString(),
         limit: limitFromUrl.toString(),
@@ -162,7 +156,6 @@ const ProjectReposPage = () => {
         queryParamsForFetch.set('search', searchFromUrl.trim());
       }
       const queryStringForFetch = queryParamsForFetch.toString();
-
       try {
         const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/repos?${queryStringForFetch}`);
         if (!response.ok) {
@@ -179,30 +172,36 @@ const ProjectReposPage = () => {
         setIsLoading(false);
       }
     };
-
     fetchRepos();
-  }, [projectTitleUrlEncoded, searchParamsHook]); // Explicitly only these dependencies for this effect
+  }, [projectTitleUrlEncoded, searchParamsHook]);
 
   // Effect to manage focus on the search input during loading states
   useEffect(() => {
+    // Ensure we have a reference to the input element if the direct ref prop isn't working
+    if (!searchInputRef.current) {
+      const element = document.getElementById('repoSearch');
+      if (element instanceof HTMLInputElement) {
+        searchInputRef.current = element;
+      }
+    }
+
     if (isLoading) {
-      // If loading starts and the search input has focus, remember that it had focus.
-      // We check searchInputRef.current to ensure the ref is attached.
       if (searchInputRef.current && document.activeElement === searchInputRef.current) {
         setSearchHadFocus(true);
       }
     } else {
-      // If loading just finished
       if (searchHadFocus && searchInputRef.current && !searchInputRef.current.disabled) {
-        // If it previously had focus, the ref is attached, and it's not disabled anymore, restore focus.
-        searchInputRef.current.focus();
+        // Using setTimeout to ensure focus is set after any potential DOM updates
+        // related to disabling/enabling the input have settled.
+        setTimeout(() => {
+          if (searchInputRef.current && !searchInputRef.current.disabled) { // Re-check disabled state
+            searchInputRef.current.focus();
+          }
+        }, 0);
       }
-      // Always reset the flag when loading finishes, regardless of whether focus was restored.
       setSearchHadFocus(false);
     }
-  }, [isLoading, searchHadFocus]); // This effect runs when `isLoading` changes.
-                    // `searchHadFocus` is included to satisfy the linter, though the effect's logic
-                    // is self-contained based on the `isLoading` transition.
+  }, [isLoading, searchHadFocus]); // Dependencies: isLoading for state changes, searchHadFocus for focus management
 
   const columns = useMemo<ColumnDef<RepoData>[]>(() => [
     {
@@ -312,8 +311,8 @@ const ProjectReposPage = () => {
       {!showInitialLoader && (
         <div className="mb-4">
             <TextInput
-            id="repoSearch"
-            ref={searchInputRef} 
+            id="repoSearch" // ID used for fallback document.getElementById
+            ref={searchInputRef} // Attempt to use direct ref
             type="search"
             icon={HiSearch}
             placeholder="Search repositories by name..."
@@ -341,7 +340,7 @@ const ProjectReposPage = () => {
           );
         }
         if (!isLoading && data.length === 0) {
-          if (debouncedSearchTerm || globalFilter) {
+          if (debouncedSearchTerm || globalFilter) { // Check both to cover edge cases with debounce timing
             return <Alert color="info" className="my-4">No repositories found matching your search for &quot;{debouncedSearchTerm || globalFilter}&quot;.</Alert>;
           }
           return <Alert color="info" className="my-4">No repositories found for this project.</Alert>;
