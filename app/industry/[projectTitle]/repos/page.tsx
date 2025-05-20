@@ -31,25 +31,29 @@ import { PaginatedRepos, RepoData } from '@/app/types';
 import { formatNumberWithCommas } from '@/app/utilities/formatters';
 import _debounce from 'lodash/debounce';
 
-// Consider removing 'latest_data_timestamp' if it's not actually sortable as per previous discussion.
 type SortableRepoKeys = 'repo' | 'fork_count' | 'stargaze_count' | 'watcher_count' | 'repo_rank' | 'repo_rank_category';
 
 const ProjectReposPage = () => {
   const router = useRouter();
   const params = useParams();
   const searchParamsHook = useSearchParams();
-  const searchInputRef = useRef<HTMLInputElement | null>(null); // Ref for the search input element
-  const _searchHadFocus = useRef(false); // *** CHANGED: Use useRef instead of useState for searchHadFocus ***
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const _searchHadFocus = useRef(false);
 
   const projectTitleUrlEncoded = params.projectTitle as string;
   const [projectTitle, setProjectTitle] = useState('');
 
   const [data, setData] = useState<RepoData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Initial state
   const [error, setError] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState(0);
 
+  // Log isLoading whenever the component re-renders
+  console.log('ProjectReposPage RENDER - isLoading value:', isLoading, 'Timestamp:', new Date().toLocaleTimeString());
+
+
   const initialValues = useMemo(() => {
+    console.log('ProjectReposPage: Recalculating initialValues from searchParamsHook.');
     const page = parseInt(searchParamsHook.get('page') || '1', 10);
     const limit = parseInt(searchParamsHook.get('limit') || '10', 10);
     const search = searchParamsHook.get('search') || '';
@@ -71,25 +75,35 @@ const ProjectReposPage = () => {
   const debouncedSetSearchForAPI = useMemo(
     () =>
       _debounce((value: string) => {
+        console.log('Debounce triggered: setting debouncedSearchTerm and resetting pagination. Value:', value);
         setDebouncedSearchTerm(value);
         setPagination((prev) => ({ ...prev, pageIndex: 0 }));
       }, 500),
-    []
+    [] // setDebouncedSearchTerm and setPagination are stable, so empty array is fine
   );
 
   useEffect(() => {
+    console.log('Project Title Effect: projectTitleUrlEncoded =', projectTitleUrlEncoded);
     if (projectTitleUrlEncoded) {
       setProjectTitle(decodeURIComponent(projectTitleUrlEncoded));
     }
   }, [projectTitleUrlEncoded]);
 
   useEffect(() => {
+    console.log('Debounce Effect: globalFilter changed to', globalFilter);
     debouncedSetSearchForAPI(globalFilter);
-    return () => debouncedSetSearchForAPI.cancel();
+    return () => {
+      console.log('Debounce Effect: Cancelling pending debounce for', globalFilter);
+      debouncedSetSearchForAPI.cancel();
+    };
   }, [globalFilter, debouncedSetSearchForAPI]);
 
   useEffect(() => {
-    if (!projectTitleUrlEncoded) return;
+    console.log('URL Sync Effect: Running. debouncedSearchTerm =', debouncedSearchTerm, 'pagination =', pagination, 'sorting =', sorting);
+    if (!projectTitleUrlEncoded) {
+        console.log('URL Sync Effect: No projectTitleUrlEncoded. Skipping.');
+        return;
+    }
     const desiredParams = new URLSearchParams();
     desiredParams.set('page', (pagination.pageIndex + 1).toString());
     desiredParams.set('limit', pagination.pageSize.toString());
@@ -100,7 +114,10 @@ const ProjectReposPage = () => {
     }
     const desiredQueryString = desiredParams.toString();
     const currentQueryString = searchParamsHook.toString();
+
+    console.log('URL Sync Effect: Desired Query:', desiredQueryString, 'Current Query:', currentQueryString);
     if (desiredQueryString !== currentQueryString) {
+      console.log('URL Sync Effect: Replacing router with new query string.');
       router.replace(`/industry/${projectTitleUrlEncoded}/repos?${desiredQueryString}`, { scroll: false });
     }
   }, [
@@ -113,7 +130,9 @@ const ProjectReposPage = () => {
   ]);
 
   useEffect(() => {
+    console.log('Data Fetch/State Sync Effect: Running. projectTitleUrlEncoded =', projectTitleUrlEncoded, 'searchParamsHook changed.');
     if (!projectTitleUrlEncoded) {
+      console.log('Data Fetch Effect: No projectTitleUrlEncoded, setting isLoading to false.');
       setIsLoading(false);
       return;
     }
@@ -122,28 +141,34 @@ const ProjectReposPage = () => {
     const searchFromUrl = searchParamsHook.get('search') || '';
     const sortByFromUrl = (searchParamsHook.get('sort_by') as SortableRepoKeys) || 'repo_rank';
     const sortOrderFromUrl = (searchParamsHook.get('sort_order') as 'asc' | 'desc') || 'asc';
+    console.log('Data Fetch Effect: Params from URL - page:', pageFromUrl, 'limit:', limitFromUrl, 'search:', searchFromUrl, 'sortBy:', sortByFromUrl, 'sortOrder:', sortOrderFromUrl);
+
 
     setPagination(prev => {
         const newPageIndex = pageFromUrl - 1;
         if (prev.pageIndex !== newPageIndex || prev.pageSize !== limitFromUrl) {
+            console.log('Data Fetch Effect: Updating pagination state.');
             return { pageIndex: newPageIndex, pageSize: limitFromUrl };
         }
         return prev;
     });
     setSorting(prev => {
         if (prev[0]?.id !== sortByFromUrl || (prev[0]?.desc ? 'desc' : 'asc') !== sortOrderFromUrl) {
+            console.log('Data Fetch Effect: Updating sorting state.');
             return [{ id: sortByFromUrl, desc: sortOrderFromUrl === 'desc' }];
         }
         return prev;
     });
     setGlobalFilter(currentGlobalFilter => {
       if (currentGlobalFilter !== searchFromUrl) {
+        console.log('Data Fetch Effect: Updating globalFilter from URL. Old:', currentGlobalFilter, 'New:', searchFromUrl);
         return searchFromUrl;
       }
       return currentGlobalFilter;
     });
 
     const fetchRepos = async () => {
+      console.log('Data Fetch Effect - fetchRepos: Setting isLoading to true.');
       setIsLoading(true);
       setError(null);
       const queryParamsForFetch = new URLSearchParams({
@@ -156,80 +181,87 @@ const ProjectReposPage = () => {
         queryParamsForFetch.set('search', searchFromUrl.trim());
       }
       const queryStringForFetch = queryParamsForFetch.toString();
+      console.log('Data Fetch Effect - fetchRepos: Fetching with query string:', queryStringForFetch);
+
       try {
         const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/repos?${queryStringForFetch}`);
         if (!response.ok) {
           const errData = await response.json();
+          console.error('Data Fetch Effect - fetchRepos: Fetch error response', errData);
           throw new Error(errData.message || `Failed to fetch repositories (status: ${response.status})`);
         }
         const result: PaginatedRepos = await response.json();
         setData(result.items);
         setPageCount(result.total_pages);
+        console.log('Data Fetch Effect - fetchRepos: Data fetched successfully. Items:', result.items.length);
       } catch (errCatch) {
         console.error("Fetch repositories error:", errCatch);
         setError(errCatch instanceof Error ? errCatch.message : 'An unknown error occurred.');
       } finally {
+        console.log('Data Fetch Effect - fetchRepos: Setting isLoading to false in finally block.');
         setIsLoading(false);
       }
     };
     fetchRepos();
   }, [projectTitleUrlEncoded, searchParamsHook]);
 
-// Effect to manage focus on the search input
-useEffect(() => {
-  if (!searchInputRef.current) {
-    const element = document.getElementById('repoSearch');
-    if (element instanceof HTMLInputElement) {
-      searchInputRef.current = element;
-    }
-  }
 
-  const inputElement = searchInputRef.current; // Cache for readability
+  // Effect to manage focus on the search input
+  useEffect(() => {
+    // THIS IS THE CRITICAL LOG TO LOOK FOR:
+    console.log('FOCUS MANAGEMENT EFFECT RUNNING --- isLoading:', isLoading, '_searchHadFocus.current:', _searchHadFocus.current, 'Timestamp:', new Date().toLocaleTimeString());
 
-  if (inputElement) { // Only proceed if we have the input element
-    console.log('isLoading state:', isLoading);
-    console.log('Focus Effect - inputElement:', inputElement);
-    console.log('inputElement disabled?', inputElement.disabled);
-    console.log('Focus Effect - document.activeElement:', document.activeElement);
-    if (isLoading && inputElement.disabled === false) {
-      // If we are about to enter a loading state that will disable the input,
-      // and the input is currently enabled and focused, remember it.
-      if (document.activeElement === inputElement) {
-        _searchHadFocus.current = true;
-        // Log when we decide it had focus
-        console.log("Focus Effect: Loading started, input had focus. Remembering.");
+    if (!searchInputRef.current) {
+      const element = document.getElementById('repoSearch');
+      if (element instanceof HTMLInputElement) {
+        searchInputRef.current = element;
+        console.log('Focus Management Effect: searchInputRef.current assigned via getElementById.');
+      } else if (element) {
+         console.warn("Focus Management Effect: getElementById('repoSearch') did not return an HTMLInputElement for searchInputRef.", element);
+      } else {
+         console.warn("Focus Management Effect: getElementById('repoSearch') did not find an element for searchInputRef.");
       }
-    } else if (!isLoading && inputElement.disabled === false) {
-      // If we just finished loading AND the input is now ENABLED
-      if (_searchHadFocus.current) {
-        console.log("Focus Effect: Loading finished, input HAD focus, trying to restore.");
-        // Try to restore focus
-        const focusAttempt = () => {
-          if (searchInputRef.current && !searchInputRef.current.disabled && document.activeElement !== searchInputRef.current) {
-            searchInputRef.current.focus();
-            console.log("Focus Effect: Focus restored.");
-          } else if (searchInputRef.current && document.activeElement === searchInputRef.current) {
-            console.log("Focus Effect: Focus was already on input or restored very quickly.");
-          } else {
-            console.log("Focus Effect: Conditions not met for restoring focus in timeout (e.g., input still disabled or ref gone).");
-          }
-        };
-        
-        // Attempt focus with a minimal delay, then try again with a slightly longer one
-        // if the first attempt fails. This is to combat race conditions with component re-enabling.
-        setTimeout(focusAttempt, 0);
-        // setTimeout(focusAttempt, 50); // You could even add a second, slightly longer attempt
-        
+    }
+
+    const inputElement = searchInputRef.current;
+    let focusTimeoutId: NodeJS.Timeout | undefined = undefined;
+
+    if (inputElement) {
+      console.log('Focus Management Effect - Have inputElement. ID:', inputElement.id, 'Value:', inputElement.value, 'Disabled:', inputElement.disabled, 'ActiveElement is input:', document.activeElement === inputElement);
+      if (isLoading) {
+        if (document.activeElement === inputElement) {
+          _searchHadFocus.current = true;
+          console.log("Focus Management Effect: isLoading is TRUE. Input had focus. Remembering (_searchHadFocus.current = true).");
+        } else {
+          console.log("Focus Management Effect: isLoading is TRUE. Input did NOT have focus. Active element:", document.activeElement);
+        }
+      } else { // isLoading is false
+        console.log("Focus Management Effect: isLoading is FALSE. _searchHadFocus.current was:", _searchHadFocus.current, "Input disabled:", inputElement.disabled);
+        if (_searchHadFocus.current && !inputElement.disabled) {
+          console.log("Focus Management Effect: Attempting to restore focus via setTimeout.");
+          focusTimeoutId = setTimeout(() => {
+            if (searchInputRef.current && !searchInputRef.current.disabled) {
+              searchInputRef.current.focus();
+              console.log("Focus Management Effect: Focus restore attempt inside setTimeout. ActiveElement now:", document.activeElement === searchInputRef.current ? 'IS input' : 'is NOT input', searchInputRef.current);
+            } else {
+              console.log("Focus Management Effect: Conditions for focus in setTimeout not met (ref missing, or input became disabled again). Input ref:", searchInputRef.current, "Disabled state:", searchInputRef.current?.disabled);
+            }
+          }, 0); // Minimal delay
+        }
         _searchHadFocus.current = false; // Reset the flag
+        console.log("Focus Management Effect: _searchHadFocus.current reset to false.");
       }
-    } else if (!isLoading && _searchHadFocus.current) {
-        // This case means isLoading is false, but input might still be disabled for some reason
-        // or became disabled again. We should reset the flag.
-        console.log("Focus Effect: Loading finished, input HAD focus, but input is currently disabled. Resetting flag.");
-        _searchHadFocus.current = false;
+    } else {
+      console.log('Focus Management Effect: inputElement (searchInputRef.current) is null/undefined at this point.');
     }
-  }
-  }, [isLoading]); // Still primarily driven by isLoading
+    return () => {
+      if (focusTimeoutId) {
+        console.log('Focus Management Effect: Clearing timeout ID:', focusTimeoutId);
+        clearTimeout(focusTimeoutId);
+      }
+    };
+  }, [isLoading]);
+
 
   const columns = useMemo<ColumnDef<RepoData>[]>(() => [
     {
@@ -345,7 +377,12 @@ useEffect(() => {
             icon={HiSearch}
             placeholder="Search repositories by name..."
             value={globalFilter ?? ''}
-            onChange={(e) => setGlobalFilter(e.target.value)}
+            onChange={(e) => {
+                console.log('TextInput onChange:', e.target.value);
+                setGlobalFilter(e.target.value);
+            }}
+            onFocus={() => console.log('TextInput onFocus')}
+            onBlur={() => console.log('TextInput onBlur. Active element:', document.activeElement)}
             className="max-w-md dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600"
             disabled={isLoading && data.length > 0}
             />
@@ -368,7 +405,7 @@ useEffect(() => {
           );
         }
         if (!isLoading && data.length === 0) {
-          if (debouncedSearchTerm || globalFilter) { // Check both to cover edge cases with debounce timing
+          if (debouncedSearchTerm || globalFilter) {
             return <Alert color="info" className="my-4">No repositories found matching your search for &quot;{debouncedSearchTerm || globalFilter}&quot;.</Alert>;
           }
           return <Alert color="info" className="my-4">No repositories found for this project.</Alert>;
