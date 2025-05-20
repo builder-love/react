@@ -187,44 +187,48 @@ useEffect(() => {
   const inputElement = searchInputRef.current; // Cache for readability
 
   if (inputElement) { // Only proceed if we have the input element
-      if (isLoading && inputElement.disabled === false) {
-        // If we are about to enter a loading state that will disable the input,
-        // and the input is currently enabled and focused, remember it.
-        if (document.activeElement === inputElement) {
-          _searchHadFocus.current = true;
-          // Log when we decide it had focus
-          console.log("Focus Effect: Loading started, input had focus. Remembering.");
-        }
-      } else if (!isLoading && inputElement.disabled === false) {
-        // If we just finished loading AND the input is now ENABLED
-        if (_searchHadFocus.current) {
-          console.log("Focus Effect: Loading finished, input HAD focus, trying to restore.");
-          // Try to restore focus
-          const focusAttempt = () => {
-            if (searchInputRef.current && !searchInputRef.current.disabled && document.activeElement !== searchInputRef.current) {
-              searchInputRef.current.focus();
-              console.log("Focus Effect: Focus restored.");
-            } else if (searchInputRef.current && document.activeElement === searchInputRef.current) {
-              console.log("Focus Effect: Focus was already on input or restored very quickly.");
-            } else {
-              console.log("Focus Effect: Conditions not met for restoring focus in timeout (e.g., input still disabled or ref gone).");
-            }
-          };
-          
-          // Attempt focus with a minimal delay, then try again with a slightly longer one
-          // if the first attempt fails. This is to combat race conditions with component re-enabling.
-          setTimeout(focusAttempt, 0);
-          // setTimeout(focusAttempt, 50); // You could even add a second, slightly longer attempt
-          
-          _searchHadFocus.current = false; // Reset the flag
-        }
-      } else if (!isLoading && _searchHadFocus.current) {
-          // This case means isLoading is false, but input might still be disabled for some reason
-          // or became disabled again. We should reset the flag.
-          console.log("Focus Effect: Loading finished, input HAD focus, but input is currently disabled. Resetting flag.");
-          _searchHadFocus.current = false;
+    console.log('isLoading state:', isLoading);
+    console.log('Focus Effect - inputElement:', inputElement);
+    console.log('inputElement disabled?', inputElement.disabled);
+    console.log('Focus Effect - document.activeElement:', document.activeElement);
+    if (isLoading && inputElement.disabled === false) {
+      // If we are about to enter a loading state that will disable the input,
+      // and the input is currently enabled and focused, remember it.
+      if (document.activeElement === inputElement) {
+        _searchHadFocus.current = true;
+        // Log when we decide it had focus
+        console.log("Focus Effect: Loading started, input had focus. Remembering.");
       }
+    } else if (!isLoading && inputElement.disabled === false) {
+      // If we just finished loading AND the input is now ENABLED
+      if (_searchHadFocus.current) {
+        console.log("Focus Effect: Loading finished, input HAD focus, trying to restore.");
+        // Try to restore focus
+        const focusAttempt = () => {
+          if (searchInputRef.current && !searchInputRef.current.disabled && document.activeElement !== searchInputRef.current) {
+            searchInputRef.current.focus();
+            console.log("Focus Effect: Focus restored.");
+          } else if (searchInputRef.current && document.activeElement === searchInputRef.current) {
+            console.log("Focus Effect: Focus was already on input or restored very quickly.");
+          } else {
+            console.log("Focus Effect: Conditions not met for restoring focus in timeout (e.g., input still disabled or ref gone).");
+          }
+        };
+        
+        // Attempt focus with a minimal delay, then try again with a slightly longer one
+        // if the first attempt fails. This is to combat race conditions with component re-enabling.
+        setTimeout(focusAttempt, 0);
+        // setTimeout(focusAttempt, 50); // You could even add a second, slightly longer attempt
+        
+        _searchHadFocus.current = false; // Reset the flag
+      }
+    } else if (!isLoading && _searchHadFocus.current) {
+        // This case means isLoading is false, but input might still be disabled for some reason
+        // or became disabled again. We should reset the flag.
+        console.log("Focus Effect: Loading finished, input HAD focus, but input is currently disabled. Resetting flag.");
+        _searchHadFocus.current = false;
     }
+  }
   }, [isLoading]); // Still primarily driven by isLoading
 
   const columns = useMemo<ColumnDef<RepoData>[]>(() => [
