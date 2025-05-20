@@ -343,7 +343,7 @@ useEffect(() => {
             value={globalFilter ?? ''}
             onChange={(e) => setGlobalFilter(e.target.value)}
             className="max-w-md dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600"
-            // disabled={isLoading && data.length > 0} // <-- Temporarily remove this for testing
+            disabled={isLoading && data.length > 0}
             />
         </div>
         )}
