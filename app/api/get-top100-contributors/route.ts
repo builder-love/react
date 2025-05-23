@@ -18,8 +18,7 @@ const GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID = process.env.GCP_WORKLOAD_IDENTITY
 const GCP_SERVICE_ACCOUNT_EMAIL = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function GET(req: NextRequest) {
-  console.log("Current process.env.API_AUTH_MODE:", process.env.API_AUTH_MODE);
+export async function GET(_request: NextRequest) {
 
   // check if API_BASE_URL is set
   if (!API_BASE_URL) {
