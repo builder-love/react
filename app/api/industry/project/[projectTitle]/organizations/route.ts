@@ -4,7 +4,6 @@ import { ExternalAccountClient } from 'google-auth-library';
 import { NextRequest, NextResponse } from 'next/server';
 
 // --- Environment Variable Configuration ---
-// Consistent with your new template route
 const API_BASE_URL = process.env.API_BASE_URL;
 const API_AUTH_MODE = process.env.API_AUTH_MODE || 'OIDC_WORKLOAD_IDENTITY'; // Default to OIDC
 const TARGET_CLOUD_RUN_AUDIENCE = process.env.CLOUD_RUN_URL; // Audience for OIDC ID token generation
@@ -18,13 +17,11 @@ const GCP_SERVICE_ACCOUNT_EMAIL = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
 
 export async function GET(
   _request: NextRequest,
-  context: { params: Promise<{ projectTitle: string }> | { projectTitle: string } } // Handle both potential types for params
+  // Corrected type for context: params is expected to be a direct object
+  context: { params: { projectTitle: string } }
 ) {
-  // Resolve params, accommodating if it's a Promise
-  const resolvedParams = ('then' in context.params && typeof context.params.then === 'function')
-    ? await context.params
-    : context.params as { projectTitle: string };
-  const projectTitleUrlEncoded = resolvedParams.projectTitle;
+  // Directly access projectTitle from context.params
+  const projectTitleUrlEncoded = context.params.projectTitle;
 
   // --- Environment Variable Checks ---
   if (!API_BASE_URL) {
@@ -32,7 +29,6 @@ export async function GET(
     return NextResponse.json({ message: 'Internal server configuration error: API endpoint not configured.' }, { status: 500 });
   }
   if (!API_KEY_VALUE) {
-    // If API_KEY_VALUE is critical for all paths (which it is now for your FastAPI)
     console.error("Application API Key (API_KEY environment variable) is not set!");
     return NextResponse.json({ message: 'Internal server configuration error: Application API Key is missing.' }, { status: 500 });
   }
@@ -47,7 +43,6 @@ export async function GET(
   };
 
   // Construct the FastAPI target endpoint path
-  // This should match your FastAPI endpoint: /api/projects/{project_title_url_encoded}/top_organizations
   const pathSegment = `/api/projects/${projectTitleUrlEncoded}/top_organizations`;
   const finalApiUrl = API_BASE_URL.endsWith('/')
     ? `${API_BASE_URL.slice(0, -1)}${pathSegment}`
@@ -74,7 +69,6 @@ export async function GET(
             const token = await getVercelOidcToken();
             if (!token) {
               console.warn("getVercelOidcToken returned null or undefined. This is expected if not running on Vercel or if the Vercel OIDC token generation failed.");
-              // Depending on strictness, you might throw an error here if a token is absolutely expected.
             }
             return token;
           },
@@ -108,7 +102,6 @@ export async function GET(
 
     } else if (API_AUTH_MODE === 'LOCAL_API_KEY') {
       console.log(`Using X-API-Key authentication for ${finalApiUrl} (no Cloud Run IAM token).`);
-      // X-API-Key is already added. No 'Authorization: Bearer' header is needed if Cloud Run allows unauthenticated invocations (e.g., for staging or dev API not requiring IAM).
     } else if (API_AUTH_MODE === 'NONE') {
       console.log(`Making request to ${finalApiUrl} with no additional auth headers from this route (X-API-Key still sent if API_KEY_VALUE is present).`);
     } else {
