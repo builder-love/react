@@ -16,12 +16,13 @@ const GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID = process.env.GCP_WORKLOAD_IDENTITY
 const GCP_SERVICE_ACCOUNT_EMAIL = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
 
 export async function GET(
-  _request: NextRequest,
-  // Corrected type for context: params is expected to be a direct object
-  context: { params: { projectTitle: string } }
+  _request: NextRequest, // First argument is NextRequest (prefix with _ if unused)
+  // For Next.js 15, params is a Promise
+  context: { params: Promise<{ projectTitle: string }> }
 ) {
-  // Directly access projectTitle from context.params
-  const projectTitleUrlEncoded = context.params.projectTitle;
+    // Await the resolution of params
+    const resolvedParams = await context.params;
+    const projectTitleUrlEncoded = resolvedParams.projectTitle;
 
   // --- Environment Variable Checks ---
   if (!API_BASE_URL) {
