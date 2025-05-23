@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // --- Environment Variable Configuration ---
 const API_BASE_URL = process.env.API_BASE_URL;
 const API_AUTH_MODE = process.env.API_AUTH_MODE || 'OIDC_WORKLOAD_IDENTITY'; // Default to OIDC
-const TARGET_CLOUD_RUN_AUDIENCE = process.env.TARGET_CLOUD_RUN_AUDIENCE; // Needed for OIDC
+const TARGET_CLOUD_RUN_AUDIENCE = process.env.CLOUD_RUN_URL; // Needed for OIDC
 const API_KEY_VALUE = process.env.API_KEY;
 
 // GCP variables for OIDC (only used if API_AUTH_MODE is OIDC_WORKLOAD_IDENTITY)
