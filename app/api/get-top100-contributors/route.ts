@@ -21,6 +21,7 @@ const GCP_SERVICE_ACCOUNT_EMAIL = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
 export async function GET(req: NextRequest) {
   console.log("Current process.env.API_AUTH_MODE:", process.env.API_AUTH_MODE);
 
+  // check if API_BASE_URL is set
   if (!API_BASE_URL) {
     console.error("Missing API_BASE_URL environment variable.");
     return NextResponse.json({ message: 'Internal server configuration error: API endpoint not configured.' }, { status: 500 });
