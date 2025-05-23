@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: 'Internal server configuration error: API endpoint not configured.' }, { status: 500 });
   }
 
+  // set requestHeader initialization params
   const requestHeaders: HeadersInit = {
     'Content-Type': 'application/json',
   };
