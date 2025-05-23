@@ -21,17 +21,15 @@ const CustomFooter: React.FC = () => {
       <div className="w-full max-w-screen-xl mx-auto md:py-8">
         <div className="sm:flex sm:items-center sm:justify-end">
           <ul className="flex flex-wrap items-center mb-6 text-sm font-medium text-gray-500 sm:mb-0 dark:text-gray-400">
-            <li>
-              <FooterLink
-                as={Link}
-                href="https://docs.builder.love"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:underline me-4 md:me-6"
-              >
-                Knowledge
-              </FooterLink>
-            </li>
+            <FooterLink
+              as={Link}
+              href="https://docs.builder.love"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline me-4 md:me-6"
+            >
+              Knowledge
+            </FooterLink>
             <li className="flex items-center space-x-3 rtl:space-x-reverse ms-4 md:ms-6">
               <FooterIcon
                 href="https://github.com/builder-love"

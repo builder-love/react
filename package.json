@@ -10,6 +10,7 @@
     "postinstall": "flowbite-react patch"
   },
   "dependencies": {
+    "@aws-sdk/credential-provider-web-identity": "^3.816.0",
     "@tanstack/react-query": "^5.64.1",
     "@tanstack/react-table": "^8.20.6",
     "@vercel/functions": "^2.0.0",
