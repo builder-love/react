@@ -16,11 +16,6 @@ import {
 } from '@tanstack/react-table';
 import {
   Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableHeadCell,
-  TableCell,
   Spinner,
   Alert,
   Button,
@@ -44,16 +39,11 @@ const ProjectReposPage = () => {
   const [projectTitle, setProjectTitle] = useState('');
 
   const [data, setData] = useState<RepoData[]>([]);
-  const [isLoading, setIsLoading] = useState(true); // Initial state
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState(0);
 
-  // Log isLoading whenever the component re-renders
-  console.log('ProjectReposPage RENDER - isLoading value:', isLoading, 'Timestamp:', new Date().toLocaleTimeString());
-
-
   const initialValues = useMemo(() => {
-    console.log('ProjectReposPage: Recalculating initialValues from searchParamsHook.');
     const page = parseInt(searchParamsHook.get('page') || '1', 10);
     const limit = parseInt(searchParamsHook.get('limit') || '10', 10);
     const search = searchParamsHook.get('search') || '';
@@ -75,33 +65,27 @@ const ProjectReposPage = () => {
   const debouncedSetSearchForAPI = useMemo(
     () =>
       _debounce((value: string) => {
-        console.log('Debounce triggered: setting debouncedSearchTerm and resetting pagination. Value:', value);
         setDebouncedSearchTerm(value);
         setPagination((prev) => ({ ...prev, pageIndex: 0 }));
       }, 500),
-    [] // setDebouncedSearchTerm and setPagination are stable, so empty array is fine
+    []
   );
 
   useEffect(() => {
-    console.log('Project Title Effect: projectTitleUrlEncoded =', projectTitleUrlEncoded);
     if (projectTitleUrlEncoded) {
       setProjectTitle(decodeURIComponent(projectTitleUrlEncoded));
     }
   }, [projectTitleUrlEncoded]);
 
   useEffect(() => {
-    console.log('Debounce Effect: globalFilter changed to', globalFilter);
     debouncedSetSearchForAPI(globalFilter);
     return () => {
-      console.log('Debounce Effect: Cancelling pending debounce for', globalFilter);
       debouncedSetSearchForAPI.cancel();
     };
   }, [globalFilter, debouncedSetSearchForAPI]);
 
   useEffect(() => {
-    console.log('URL Sync Effect: Running. debouncedSearchTerm =', debouncedSearchTerm, 'pagination =', pagination, 'sorting =', sorting);
     if (!projectTitleUrlEncoded) {
-        console.log('URL Sync Effect: No projectTitleUrlEncoded. Skipping.');
         return;
     }
     const desiredParams = new URLSearchParams();
@@ -115,9 +99,7 @@ const ProjectReposPage = () => {
     const desiredQueryString = desiredParams.toString();
     const currentQueryString = searchParamsHook.toString();
 
-    console.log('URL Sync Effect: Desired Query:', desiredQueryString, 'Current Query:', currentQueryString);
     if (desiredQueryString !== currentQueryString) {
-      console.log('URL Sync Effect: Replacing router with new query string.');
       router.replace(`/industry/${projectTitleUrlEncoded}/repos?${desiredQueryString}`, { scroll: false });
     }
   }, [
@@ -130,9 +112,7 @@ const ProjectReposPage = () => {
   ]);
 
   useEffect(() => {
-    console.log('Data Fetch/State Sync Effect: Running. projectTitleUrlEncoded =', projectTitleUrlEncoded, 'searchParamsHook changed.');
     if (!projectTitleUrlEncoded) {
-      console.log('Data Fetch Effect: No projectTitleUrlEncoded, setting isLoading to false.');
       setIsLoading(false);
       return;
     }
@@ -141,34 +121,28 @@ const ProjectReposPage = () => {
     const searchFromUrl = searchParamsHook.get('search') || '';
     const sortByFromUrl = (searchParamsHook.get('sort_by') as SortableRepoKeys) || 'repo_rank';
     const sortOrderFromUrl = (searchParamsHook.get('sort_order') as 'asc' | 'desc') || 'asc';
-    console.log('Data Fetch Effect: Params from URL - page:', pageFromUrl, 'limit:', limitFromUrl, 'search:', searchFromUrl, 'sortBy:', sortByFromUrl, 'sortOrder:', sortOrderFromUrl);
-
 
     setPagination(prev => {
         const newPageIndex = pageFromUrl - 1;
         if (prev.pageIndex !== newPageIndex || prev.pageSize !== limitFromUrl) {
-            console.log('Data Fetch Effect: Updating pagination state.');
             return { pageIndex: newPageIndex, pageSize: limitFromUrl };
         }
         return prev;
     });
     setSorting(prev => {
         if (prev[0]?.id !== sortByFromUrl || (prev[0]?.desc ? 'desc' : 'asc') !== sortOrderFromUrl) {
-            console.log('Data Fetch Effect: Updating sorting state.');
             return [{ id: sortByFromUrl, desc: sortOrderFromUrl === 'desc' }];
         }
         return prev;
     });
     setGlobalFilter(currentGlobalFilter => {
       if (currentGlobalFilter !== searchFromUrl) {
-        console.log('Data Fetch Effect: Updating globalFilter from URL. Old:', currentGlobalFilter, 'New:', searchFromUrl);
         return searchFromUrl;
       }
       return currentGlobalFilter;
     });
 
     const fetchRepos = async () => {
-      console.log('Data Fetch Effect - fetchRepos: Setting isLoading to true.');
       setIsLoading(true);
       setError(null);
       const queryParamsForFetch = new URLSearchParams({
@@ -181,24 +155,19 @@ const ProjectReposPage = () => {
         queryParamsForFetch.set('search', searchFromUrl.trim());
       }
       const queryStringForFetch = queryParamsForFetch.toString();
-      console.log('Data Fetch Effect - fetchRepos: Fetching with query string:', queryStringForFetch);
 
       try {
         const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/repos?${queryStringForFetch}`);
         if (!response.ok) {
           const errData = await response.json();
-          console.error('Data Fetch Effect - fetchRepos: Fetch error response', errData);
           throw new Error(errData.message || `Failed to fetch repositories (status: ${response.status})`);
         }
         const result: PaginatedRepos = await response.json();
         setData(result.items);
         setPageCount(result.total_pages);
-        console.log('Data Fetch Effect - fetchRepos: Data fetched successfully. Items:', result.items.length);
       } catch (errCatch) {
-        console.error("Fetch repositories error:", errCatch);
         setError(errCatch instanceof Error ? errCatch.message : 'An unknown error occurred.');
       } finally {
-        console.log('Data Fetch Effect - fetchRepos: Setting isLoading to false in finally block.');
         setIsLoading(false);
       }
     };
@@ -208,18 +177,11 @@ const ProjectReposPage = () => {
 
   // Effect to manage focus on the search input
   useEffect(() => {
-    // THIS IS THE CRITICAL LOG TO LOOK FOR:
-    console.log('FOCUS MANAGEMENT EFFECT RUNNING --- isLoading:', isLoading, '_searchHadFocus.current:', _searchHadFocus.current, 'Timestamp:', new Date().toLocaleTimeString());
-
+    // Fallback to assign searchInputRef if direct ref prop didn't work or input wasn't initially rendered
     if (!searchInputRef.current) {
       const element = document.getElementById('repoSearch');
       if (element instanceof HTMLInputElement) {
         searchInputRef.current = element;
-        console.log('Focus Management Effect: searchInputRef.current assigned via getElementById.');
-      } else if (element) {
-         console.warn("Focus Management Effect: getElementById('repoSearch') did not return an HTMLInputElement for searchInputRef.", element);
-      } else {
-         console.warn("Focus Management Effect: getElementById('repoSearch') did not find an element for searchInputRef.");
       }
     }
 
@@ -227,40 +189,35 @@ const ProjectReposPage = () => {
     let focusTimeoutId: NodeJS.Timeout | undefined = undefined;
 
     if (inputElement) {
-      console.log('Focus Management Effect - Have inputElement. ID:', inputElement.id, 'Value:', inputElement.value, 'Disabled:', inputElement.disabled, 'ActiveElement is input:', document.activeElement === inputElement);
-      if (isLoading) {
-        if (document.activeElement === inputElement) {
-          _searchHadFocus.current = true;
-          console.log("Focus Management Effect: isLoading is TRUE. Input had focus. Remembering (_searchHadFocus.current = true).");
-        } else {
-          console.log("Focus Management Effect: isLoading is TRUE. Input did NOT have focus. Active element:", document.activeElement);
-        }
-      } else { // isLoading is false
-        console.log("Focus Management Effect: isLoading is FALSE. _searchHadFocus.current was:", _searchHadFocus.current, "Input disabled:", inputElement.disabled);
+      if (!isLoading) { // Only manage focus when loading is NOT active
         if (_searchHadFocus.current && !inputElement.disabled) {
-          console.log("Focus Management Effect: Attempting to restore focus via setTimeout.");
           focusTimeoutId = setTimeout(() => {
             if (searchInputRef.current && !searchInputRef.current.disabled) {
               searchInputRef.current.focus();
-              console.log("Focus Management Effect: Focus restore attempt inside setTimeout. ActiveElement now:", document.activeElement === searchInputRef.current ? 'IS input' : 'is NOT input', searchInputRef.current);
             } else {
-              console.log("Focus Management Effect: Conditions for focus in setTimeout not met (ref missing, or input became disabled again). Input ref:", searchInputRef.current, "Disabled state:", searchInputRef.current?.disabled);
             }
-          }, 0); // Minimal delay
+          }, 0);
+          // Consume the flag: we've processed this "focus intent" for this loading cycle.
+          // If the user focuses the input again (triggering onFocus), it will be set to true for the next cycle.
+          _searchHadFocus.current = false;
+        } else if (_searchHadFocus.current && inputElement.disabled) {
+          // This case should ideally not happen if isLoading is false,
+          // but as a safeguard, if the flag is true but input is still disabled, reset the flag.
+          _searchHadFocus.current = false;
         }
-        _searchHadFocus.current = false; // Reset the flag
-        console.log("Focus Management Effect: _searchHadFocus.current reset to false.");
+        // If _searchHadFocus.current was already false when !isLoading, do nothing, it remains false.
       }
     } else {
-      console.log('Focus Management Effect: inputElement (searchInputRef.current) is null/undefined at this point.');
+      // do nothing
+      console.log("FOCUS EFFECT: inputElement is null/undefined.");
     }
+
     return () => {
       if (focusTimeoutId) {
-        console.log('Focus Management Effect: Clearing timeout ID:', focusTimeoutId);
         clearTimeout(focusTimeoutId);
       }
     };
-  }, [isLoading]);
+  }, [isLoading]); // Re-run this effect ONLY when isLoading changes.
 
 
   const columns = useMemo<ColumnDef<RepoData>[]>(() => [
@@ -371,20 +328,26 @@ const ProjectReposPage = () => {
       {!showInitialLoader && (
         <div className="mb-4">
             <TextInput
-            id="repoSearch" // ID used for fallback document.getElementById
-            ref={searchInputRef} // Attempt to use direct ref
-            type="search"
-            icon={HiSearch}
-            placeholder="Search repositories by name..."
-            value={globalFilter ?? ''}
-            onChange={(e) => {
-                console.log('TextInput onChange:', e.target.value);
-                setGlobalFilter(e.target.value);
-            }}
-            onFocus={() => console.log('TextInput onFocus')}
-            onBlur={() => console.log('TextInput onBlur. Active element:', document.activeElement)}
-            className="max-w-md dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600"
-            disabled={isLoading && data.length > 0}
+              id="repoSearch" // ID used for fallback document.getElementById
+              ref={searchInputRef} // Attempt to use direct ref
+              type="search"
+              icon={HiSearch}
+              placeholder="Search repositories by name..."
+              value={globalFilter ?? ''}
+              onChange={(e) => {
+                  // console.log('TextInput onChange:', e.target.value);
+                  setGlobalFilter(e.target.value);
+              }}
+              onFocus={() => {
+                  _searchHadFocus.current = true;
+              }}
+              onBlur={() => {
+                  // Deliberately not setting _searchHadFocus.current = false here.
+                  // onFocus is the source of truth for "focus intent".
+                  // The effect handles consuming/resetting this intent.
+              }}
+              className="max-w-md dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600"
+              disabled={isLoading && data.length > 0} // This disabling causes the focus loss
             />
         </div>
         )}
@@ -420,11 +383,11 @@ const ProjectReposPage = () => {
                 </div>
               )}
               <Table hoverable striped className={(isLoading && data.length > 0) ? 'opacity-60' : ''}>
-                <TableHead className="text-xs text-gray-400 uppercase bg-gray-700">
+                <thead className="text-xs text-gray-400 uppercase bg-gray-700">
                   {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id} className="border-b-gray-600">
+                    <tr key={headerGroup.id} className="border-b-gray-600">
                       {headerGroup.headers.map((header) => (
-                        <TableHeadCell
+                        <th
                           key={header.id}
                           onClick={header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
                           style={{ width: header.getSize() !== 0 ? header.getSize() : undefined }}
@@ -434,30 +397,30 @@ const ProjectReposPage = () => {
                             {flexRender(header.column.columnDef.header, header.getContext())}
                             {header.column.getCanSort() && renderSortIcon(header.column.id)}
                           </div>
-                        </TableHeadCell>
+                        </th>
                       ))}
-                    </TableRow>
+                    </tr>
                   ))}
-                </TableHead>
-                <TableBody className="divide-y divide-gray-700 bg-gray-800">
+                </thead>
+                <tbody className="divide-y divide-gray-700 bg-gray-800">
                   {table.getRowModel().rows.map((row) => (
-                    <TableRow
+                    <tr
                       key={row.id}
                       className="hover:bg-gray-700 dark:hover:bg-gray-600"
                     >
                       {row.getVisibleCells().map((cell) => (
-                        <TableCell
+                        <td
                           key={cell.id}
                           style={{ width: cell.column.getSize() !== 0 ? cell.column.getSize() : undefined}}
                           className={`px-3 py-2 text-xs md:text-sm whitespace-nowrap 
                                       ${['repo_rank', 'stargaze_count', 'fork_count', 'watcher_count'].includes(cell.column.id) ? 'text-right' : 'text-left'}`}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
+                        </td>
                       ))}
-                    </TableRow>
+                    </tr>
                   ))}
-                </TableBody>
+                </tbody>
               </Table>
             </div>
           );
