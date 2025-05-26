@@ -3,11 +3,21 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Card, Spinner, Alert, Button, Table, TableBody, TableCell, TableHead, TableHeadCell, TableRow, ListGroup, ListGroupItem } from 'flowbite-react'; 
-import { HiInformationCircle, HiLink } from 'react-icons/hi'; 
-import { TopProjects, ProjectOrganizationData } from '@/app/types';
+import { Card, Spinner, Alert, Button, Table, TableBody, TableCell, TableHead, TableHeadCell, TableRow, ListGroup, ListGroupItem } from 'flowbite-react';
+import { HiInformationCircle, HiLink } from 'react-icons/hi';
+import { TopProjects, ProjectOrganizationData, ProjectTrendsData } from '@/app/types'; 
 import { formatNumberWithCommas } from '@/app/utilities/formatters';
 import Link from 'next/link';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
 const ProjectDetailPage = () => {
   const router = useRouter();
@@ -15,11 +25,14 @@ const ProjectDetailPage = () => {
   const projectTitleUrlEncoded = params.projectTitle as string;
 
   const [project, setProject] = useState<TopProjects | null>(null);
-  const [organizations, setOrganizations] = useState<ProjectOrganizationData[]>([]); 
+  const [organizations, setOrganizations] = useState<ProjectOrganizationData[]>([]);
+  const [projectTrends, setProjectTrends] = useState<ProjectTrendsData[]>([]); // State for trend data
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isLoadingOrgs, setIsLoadingOrgs] = useState(true); // Separate loading state for orgs
-  const [orgError, setOrgError] = useState<string | null>(null); // Separate error state for orgs
+  const [isLoadingOrgs, setIsLoadingOrgs] = useState(true);
+  const [orgError, setOrgError] = useState<string | null>(null);
+  const [isLoadingTrends, setIsLoadingTrends] = useState(true); // Loading state for trends
+  const [trendsError, setTrendsError] = useState<string | null>(null); // Error state for trends
 
   useEffect(() => {
     if (projectTitleUrlEncoded) {
@@ -53,32 +66,56 @@ const ProjectDetailPage = () => {
           }
           const data: ProjectOrganizationData[] = await response.json();
           setOrganizations(data);
-        } catch (err: Error | unknown) {
+        } catch (err: unknown) {
           console.error("Fetch project organizations error:", err);
           setOrgError(err instanceof Error ? err.message : 'An unknown error occurred fetching organizations.');
-          setOrganizations([]); // Clear organizations on error
+          setOrganizations([]);
         } finally {
           setIsLoadingOrgs(false);
         }
       };
 
+      const fetchProjectTrendsData = async () => {
+        setIsLoadingTrends(true);
+        setTrendsError(null);
+        try {
+          const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/trends`);
+          if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.message || `Failed to fetch project trends (status: ${response.status})`);
+          }
+          const data: ProjectTrendsData[] = await response.json();
+          const formattedData = data.map(d => ({
+            ...d,
+            report_date: new Date(d.report_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          })).sort((a, b) => new Date(a.report_date).getTime() - new Date(b.report_date).getTime());
+          setProjectTrends(formattedData);
+        } catch (err: unknown) {
+          console.error("Fetch project trends error:", err);
+          setTrendsError(err instanceof Error ? err.message : 'An unknown error occurred fetching project trends.');
+          setProjectTrends([]);
+        } finally {
+          setIsLoadingTrends(false);
+        }
+      };
+
       fetchProjectData();
-      fetchOrganizationData(); // Fetch organizations data
+      fetchOrganizationData();
+      fetchProjectTrendsData(); // Fetch trend data
 
     } else {
       setIsLoading(false);
       setIsLoadingOrgs(false);
+      setIsLoadingTrends(false);
       setError("Project title not found in URL.");
     }
   }, [projectTitleUrlEncoded]);
 
-  // Main content loading spinner
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen"><Spinner size="xl" /> Loading project details...</div>;
   }
 
-  // Main content error
-  if (error && !project) { // Only show main error if project data itself failed
+  if (error && !project) {
     return (
       <div className="container mx-auto p-4">
         <Alert color="failure" icon={HiInformationCircle}>
@@ -89,7 +126,6 @@ const ProjectDetailPage = () => {
     );
   }
 
-  // Project not found or main data issue
   if (!project) {
     return (
        <div className="container mx-auto p-4">
@@ -119,6 +155,60 @@ const ProjectDetailPage = () => {
     return `${(value * 100).toFixed(2)}%`;
   };
 
+  // Helper function to render a generic line chart
+  const renderTrendChart = (
+    title: string,
+    data: ProjectTrendsData[],
+    lines: { dataKey: keyof ProjectTrendsData; stroke: string; name: string; yAxisId?: string }[],
+    yAxisLabel?: string,
+    yAxisRankLabel?: string
+  ) => {
+    const hasRank = lines.some(line => line.dataKey.toString().includes('rank'));
+
+    return (
+      <Card className="mb-6">
+        <h2 className="text-xl font-semibold mb-3">{title} Trend</h2>
+        {isLoadingTrends && (
+          <div className="flex justify-center items-center h-64"><Spinner /> Loading trend data...</div>
+        )}
+        {trendsError && !isLoadingTrends && (
+          <Alert color="failure" icon={HiInformationCircle}>Error: {trendsError}</Alert>
+        )}
+        {!isLoadingTrends && !trendsError && projectTrends.length === 0 && (
+          <Alert color="info">No trend data available.</Alert>
+        )}
+        {!isLoadingTrends && !trendsError && projectTrends.length > 0 && (
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer>
+              <LineChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="report_date" />
+                <YAxis yAxisId="left" label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', fill: '#8884d8' }} />
+                {hasRank && (
+                  <YAxis yAxisId="right" orientation="right" label={{ value: yAxisRankLabel || "Rank", angle: -90, position: 'insideRight', fill: '#82ca9d' }} />
+                )}
+                <Tooltip />
+                <Legend />
+                {lines.map(line => (
+                  <Line
+                    key={line.dataKey as string}
+                    type="monotone"
+                    dataKey={line.dataKey}
+                    stroke={line.stroke}
+                    name={line.name}
+                    yAxisId={line.yAxisId || "left"}
+                    dot={false}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </Card>
+    );
+  };
+
+
   return (
     <div className="container mx-auto p-4 md:p-8">
       <Button onClick={() => router.push('/industry')} className="mb-6 print:hidden">
@@ -130,9 +220,7 @@ const ProjectDetailPage = () => {
           Latest Data: {new Date(project.latest_data_timestamp).toLocaleString()}
         </p>
 
-        {/* Link to Repositories Page */}
-        {project && ( // Only show if project data is loaded
-          <Card className="mt-6">
+        <Card className="mt-6 mb-6"> {/* Moved "Explore Repositories" card to be part of main card content flow */}
             <h2 className="text-xl font-semibold mb-3">Explore Repositories</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
               View detailed information about repositories associated with {project.project_title}.
@@ -144,10 +232,8 @@ const ProjectDetailPage = () => {
             >
               View Repositories &rarr;
             </Button>
-          </Card>
-        )}
+        </Card>
 
-        {/* ... existing grid for Key Ranks & Activity Metrics ... */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <Card>
             <h2 className="text-xl font-semibold mb-3">Key Ranks & Scores</h2>
@@ -176,8 +262,74 @@ const ProjectDetailPage = () => {
               </TableBody>
             </Table>
           </Card>
-        </div>
-         <Card className="mb-6">
+        </div> {/* End of Key Ranks & Activity Metrics grid */}
+
+        {/* ----------- TREND CHARTS START ----------- */}
+        {renderTrendChart(
+            "Repository Count",
+            projectTrends,
+            [{ dataKey: "repo_count", stroke: "#8884d8", name: "Repos" }],
+            "Repo Count"
+        )}
+
+        {renderTrendChart(
+            "Fork Count",
+            projectTrends,
+            [
+                { dataKey: "fork_count", stroke: "#8884d8", name: "Forks", yAxisId: "left" },
+                { dataKey: "fork_count_rank", stroke: "#82ca9d", name: "Fork Rank", yAxisId: "right" }
+            ],
+            "Fork Count",
+            "Rank"
+        )}
+
+        {renderTrendChart(
+            "Stargaze Count",
+            projectTrends,
+            [
+                { dataKey: "stargaze_count", stroke: "#8884d8", name: "Stars", yAxisId: "left" },
+                { dataKey: "stargaze_count_rank", stroke: "#82ca9d", name: "Star Rank", yAxisId: "right" }
+            ],
+            "Stargaze Count",
+            "Rank"
+        )}
+
+        {renderTrendChart(
+            "Contributor Count",
+            projectTrends,
+            [
+                { dataKey: "contributor_count", stroke: "#8884d8", name: "Contributors", yAxisId: "left" },
+                { dataKey: "contributor_count_rank", stroke: "#82ca9d", name: "Contributor Rank", yAxisId: "right" }
+            ],
+            "Contributor Count",
+            "Rank"
+        )}
+
+        {renderTrendChart(
+            "Commit Count",
+            projectTrends,
+            [
+                { dataKey: "commit_count", stroke: "#8884d8", name: "Commits", yAxisId: "left" },
+                { dataKey: "commit_count_rank", stroke: "#82ca9d", name: "Commit Rank", yAxisId: "right" }
+            ],
+            "Commit Count",
+            "Rank"
+        )}
+
+        {renderTrendChart(
+            "Watcher Count",
+            projectTrends,
+            [
+                { dataKey: "watcher_count", stroke: "#8884d8", name: "Watchers", yAxisId: "left" },
+                { dataKey: "watcher_count_rank", stroke: "#82ca9d", name: "Watcher Rank", yAxisId: "right" }
+            ],
+            "Watcher Count",
+            "Rank"
+        )}
+        {/* ----------- TREND CHARTS END ----------- */}
+
+
+         <Card className="mb-6 mt-6"> {/* Added mt-6 for spacing */}
             <h2 className="text-xl font-semibold mb-3">Rank Changes (Last 4 Weeks)</h2>
             <Table striped>
                 <TableBody className="divide-y">
@@ -187,7 +339,7 @@ const ProjectDetailPage = () => {
                 </TableBody>
             </Table>
         </Card>
-         <Card className="mb-6"> {/* Ensure this card closes before the new one */}
+         <Card className="mb-6">
             <h2 className="text-xl font-semibold mb-3">4-Week Percentage Changes</h2>
             <Table striped>
                 <TableHead>

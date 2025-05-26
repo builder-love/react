@@ -75,7 +75,8 @@ export interface ProjectOrganizationData {
 }
 
 // Define the interface for the top projects trends data you expect from the API route
-export interface TopProjectsTrendsData {
+// for the top 50 chart
+export interface Top50ProjectsTrendsData {
   project_title: string;
   report_date: string;
   weighted_score_index: number;
@@ -93,6 +94,41 @@ export interface TopProjectsTrendsData {
   watcher_count_pct_change_over_4_weeks: number | null;
   is_not_fork_ratio_pct_change_over_4_weeks: number | null; 
   project_rank_category: string;
+}
+
+// Define a type for project trend data points based on the project_trend Pydantic model
+// for individual project trend charts
+export interface ProjectTrendsData {
+  project_title: string;
+  report_date: string; 
+  latest_data_timestamp: string;
+  contributor_count: number | null;
+  contributor_count_rank: number | null;
+  contributor_count_pct_change_over_4_weeks: number | null;
+  contributor_count_pct_change_over_4_weeks_rank: number | null;
+  repo_count: number | null;
+  fork_count: number | null;
+  fork_count_pct_change_over_4_weeks: number | null;
+  fork_count_rank: number | null;
+  fork_count_pct_change_over_4_weeks_rank: number | null;
+  stargaze_count: number | null;
+  stargaze_count_pct_change_over_4_weeks: number | null;
+  stargaze_count_rank: number | null;
+  stargaze_count_pct_change_over_4_weeks_rank: number | null;
+  commit_count: number | null;
+  commit_count_pct_change_over_4_weeks: number | null;
+  commit_count_rank: number | null;
+  commit_count_pct_change_over_4_weeks_rank: number | null;
+  watcher_count: number | null;
+  watcher_count_pct_change_over_4_weeks: number | null;
+  watcher_count_rank: number | null;
+  watcher_count_pct_change_over_4_weeks_rank: number | null;
+  is_not_fork_ratio: number | null;
+  is_not_fork_ratio_pct_change_over_4_weeks: number | null;
+  is_not_fork_ratio_rank: number | null;
+  is_not_fork_ratio_pct_change_over_4_weeks_rank: number | null;
+  quartile_project_rank: number | null;
+  overall_project_rank: number | null;
 }
 
 export interface RepoData {
@@ -117,7 +153,7 @@ export interface PaginatedRepos {
 }
 
 // Define the type for the enhanced top projects trends data you expect from the API route
-export type EnhancedTopProjectsTrendsData = TopProjectsTrendsData & {
+export type EnhancedTopProjectsTrendsData = Top50ProjectsTrendsData & {
   [key: string]: string | number | null | undefined; // Index signature to allow dynamic access like item[selectedMetric]
 }
 
