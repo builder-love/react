@@ -18,7 +18,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { ValueType } from 'recharts/types/component/DefaultTooltipContent';
 
 const ProjectDetailPage = () => {
   const router = useRouter();
@@ -161,16 +160,16 @@ const ProjectDetailPage = () => {
     data: ProjectTrendsData[],
     lines: { dataKey: keyof ProjectTrendsData; stroke: string; name: string; yAxisId?: string }[],
     yAxisLabelValue?: string,
-    yAxisRankLabelValue?: string // This argument will be undefined for the simplified charts
+    yAxisRankLabelValue?: string
   ) => {
     const hasRankAxis = lines.some(line => line.yAxisId === 'right');
 
     const leftMargin = yAxisLabelValue ? 50 : 25;
-    const rightMargin = yAxisRankLabelValue && hasRankAxis ? 50 : 25; // Only add large right margin if rank axis is actually used
+    const rightMargin = yAxisRankLabelValue && hasRankAxis ? 50 : 25;
 
     return (
       <Card className="mb-6">
-        <h2 className="text-xl font-semibold mb-3">{title}</h2> {/* Removed "Trend" from individual chart titles for brevity */}
+        <h2 className="text-xl font-semibold mb-3">{title}</h2>
         {isLoadingTrends && (
           <div className="flex justify-center items-center h-64"><Spinner /> Loading trend data...</div>
         )}
@@ -194,7 +193,7 @@ const ProjectDetailPage = () => {
                   label={yAxisLabelValue ? { value: yAxisLabelValue, angle: -90, position: 'insideLeft', dx: -25, fill: '#6b7280', style: { textAnchor: 'middle', fontSize: '0.8rem' } } : undefined}
                   width={80}
                 />
-                {hasRankAxis && yAxisRankLabelValue && ( // Only render right YAxis if explicitly needed
+                {hasRankAxis && yAxisRankLabelValue && (
                   <YAxis
                     yAxisId="right"
                     orientation="right"
@@ -203,7 +202,7 @@ const ProjectDetailPage = () => {
                     width={80}
                   />
                 )}
-                <Tooltip formatter={(value: ValueType) => typeof value === 'number' ? formatNumberWithCommas(value) : value} />
+                <Tooltip formatter={(value: number | string) => typeof value === 'number' ? formatNumberWithCommas(value) : value} />
                 <Legend />
                 {lines.map(line => (
                   <Line
@@ -212,7 +211,7 @@ const ProjectDetailPage = () => {
                     dataKey={line.dataKey}
                     stroke={line.stroke}
                     name={line.name}
-                    yAxisId={line.yAxisId || "left"} // Default to left axis if not specified
+                    yAxisId={line.yAxisId || "left"}
                     dot={false}
                     strokeWidth={2}
                   />
@@ -303,6 +302,14 @@ const ProjectDetailPage = () => {
             projectTrends,
             [{ dataKey: "fork_count", stroke: "#ffc658", name: "Forks" }],
             "Forks"
+        )}
+
+        {/* ADDED COMMIT COUNT TREND CHART */}
+        {renderTrendChart(
+            "Commit Count",
+            projectTrends,
+            [{ dataKey: "commit_count", stroke: "#0088FE", name: "Commits" }], // Using a new color
+            "Commits"
         )}
         {/* ----------- TREND CHARTS END ----------- */}
 
