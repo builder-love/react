@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Card, Spinner, Alert, Button, Table, TableBody, TableCell, TableHead, TableHeadCell, TableRow, ListGroup, ListGroupItem } from 'flowbite-react';
 import { HiInformationCircle, HiLink } from 'react-icons/hi';
 import { TopProjects, ProjectOrganizationData, ProjectTrendsData } from '@/app/types';
-import { formatNumberWithCommas } from '@/app/utilities/formatters'; // Ensure this path is correct
+import { formatNumberWithCommas } from '@/app/utilities/formatters';
 import Link from 'next/link';
 import {
   LineChart,
@@ -18,6 +18,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { ValueType } from 'recharts/types/component/DefaultTooltipContent';
 
 const ProjectDetailPage = () => {
   const router = useRouter();
@@ -87,12 +88,11 @@ const ProjectDetailPage = () => {
           const data: ProjectTrendsData[] = await response.json();
           const formattedData = data.map(d => ({
             ...d,
-            report_date: new Date(d.report_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) // Compact date format
+            report_date: new Date(d.report_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
           })).sort((a, b) => new Date(a.report_date).getTime() - new Date(b.report_date).getTime());
           setProjectTrends(formattedData);
         } catch (err: unknown) {
           console.error("Fetch project trends error:", err);
-          // Set a user-friendly error message
           setTrendsError('Trend data could not be loaded. Please try again later.');
           setProjectTrends([]);
         } finally {
@@ -156,35 +156,34 @@ const ProjectDetailPage = () => {
     return `${(value * 100).toFixed(2)}%`;
   };
 
-  // Helper function to render a generic line chart
   const renderTrendChart = (
     title: string,
     data: ProjectTrendsData[],
     lines: { dataKey: keyof ProjectTrendsData; stroke: string; name: string; yAxisId?: string }[],
     yAxisLabelValue?: string,
-    yAxisRankLabelValue?: string
+    yAxisRankLabelValue?: string // This argument will be undefined for the simplified charts
   ) => {
     const hasRankAxis = lines.some(line => line.yAxisId === 'right');
 
-    const leftMargin = yAxisLabelValue ? 50 : 25; // Increased space for Y-axis label + formatted numbers
-    const rightMargin = yAxisRankLabelValue ? 50 : 25; // Increased space for Rank Y-axis label
+    const leftMargin = yAxisLabelValue ? 50 : 25;
+    const rightMargin = yAxisRankLabelValue && hasRankAxis ? 50 : 25; // Only add large right margin if rank axis is actually used
 
     return (
       <Card className="mb-6">
-        <h2 className="text-xl font-semibold mb-3">{title} Trend</h2>
+        <h2 className="text-xl font-semibold mb-3">{title}</h2> {/* Removed "Trend" from individual chart titles for brevity */}
         {isLoadingTrends && (
           <div className="flex justify-center items-center h-64"><Spinner /> Loading trend data...</div>
         )}
         {trendsError && !isLoadingTrends && (
           <Alert color="failure" icon={HiInformationCircle}>
-            <span>{trendsError}</span> {/* Displays user-friendly error from fetch block */}
+            <span>{trendsError}</span>
           </Alert>
         )}
         {!isLoadingTrends && !trendsError && projectTrends.length === 0 && (
           <Alert color="info">No trend data available for {title.toLowerCase()}.</Alert>
         )}
         {!isLoadingTrends && !trendsError && projectTrends.length > 0 && (
-          <div style={{ width: '100%', height: 300 }} className="text-xs"> {/* Smaller base font for axes */}
+          <div style={{ width: '100%', height: 300 }} className="text-xs">
             <ResponsiveContainer>
               <LineChart data={data} margin={{ top: 5, right: rightMargin, left: leftMargin, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -193,18 +192,18 @@ const ProjectDetailPage = () => {
                   yAxisId="left"
                   tickFormatter={(value) => formatNumberWithCommas(value as number)}
                   label={yAxisLabelValue ? { value: yAxisLabelValue, angle: -90, position: 'insideLeft', dx: -25, fill: '#6b7280', style: { textAnchor: 'middle', fontSize: '0.8rem' } } : undefined}
-                  width={80} // Provide ample width for formatted numbers and label
+                  width={80}
                 />
-                {hasRankAxis && (
+                {hasRankAxis && yAxisRankLabelValue && ( // Only render right YAxis if explicitly needed
                   <YAxis
                     yAxisId="right"
                     orientation="right"
-                    tickFormatter={(value) => formatNumberWithCommas(value as number)} // Format ranks if they can be large
-                    label={yAxisRankLabelValue ? { value: yAxisRankLabelValue, angle: -90, position: 'insideRight', dx: 25, fill: '#6b7280', style: { textAnchor: 'middle', fontSize: '0.8rem' } } : undefined}
-                    width={80} // Provide ample width
+                    tickFormatter={(value) => formatNumberWithCommas(value as number)}
+                    label={{ value: yAxisRankLabelValue, angle: -90, position: 'insideRight', dx: 25, fill: '#6b7280', style: { textAnchor: 'middle', fontSize: '0.8rem' } }}
+                    width={80}
                   />
                 )}
-                <Tooltip formatter={(value: number | string) => typeof value === 'number' ? formatNumberWithCommas(value) : value} />
+                <Tooltip formatter={(value: ValueType) => typeof value === 'number' ? formatNumberWithCommas(value) : value} />
                 <Legend />
                 {lines.map(line => (
                   <Line
@@ -213,7 +212,7 @@ const ProjectDetailPage = () => {
                     dataKey={line.dataKey}
                     stroke={line.stroke}
                     name={line.name}
-                    yAxisId={line.yAxisId || "left"}
+                    yAxisId={line.yAxisId || "left"} // Default to left axis if not specified
                     dot={false}
                     strokeWidth={2}
                   />
@@ -282,67 +281,28 @@ const ProjectDetailPage = () => {
           </Card>
         </div>
 
-        {/* ----------- TREND CHARTS START ----------- */}
-        {renderTrendChart(
-            "Repository Count",
-            projectTrends,
-            [{ dataKey: "repo_count", stroke: "#8884d8", name: "Repos" }],
-            "Repo Count"
-        )}
+        {/* ----------- TREND CHARTS START (Updated Order & Content) ----------- */}
+        {projectTrends.length > 0 && <h2 className="text-2xl font-bold mt-8 mb-4 text-white">Metric Trends Over Time</h2>}
 
         {renderTrendChart(
-            "Fork Count",
+            "Contributor Count",
             projectTrends,
-            [
-                { dataKey: "fork_count", stroke: "#8884d8", name: "Forks", yAxisId: "left" },
-                { dataKey: "fork_count_rank", stroke: "#82ca9d", name: "Fork Rank", yAxisId: "right" }
-            ],
-            "Fork Count",
-            "Rank"
+            [{ dataKey: "contributor_count", stroke: "#8884d8", name: "Contributors" }],
+            "Contributors"
         )}
 
         {renderTrendChart(
             "Stargaze Count",
             projectTrends,
-            [
-                { dataKey: "stargaze_count", stroke: "#8884d8", name: "Stars", yAxisId: "left" },
-                { dataKey: "stargaze_count_rank", stroke: "#82ca9d", name: "Star Rank", yAxisId: "right" }
-            ],
-            "Stargaze Count",
-            "Rank"
+            [{ dataKey: "stargaze_count", stroke: "#82ca9d", name: "Stars" }],
+            "Stars"
         )}
 
         {renderTrendChart(
-            "Contributor Count",
+            "Fork Count",
             projectTrends,
-            [
-                { dataKey: "contributor_count", stroke: "#8884d8", name: "Contributors", yAxisId: "left" },
-                { dataKey: "contributor_count_rank", stroke: "#82ca9d", name: "Contributor Rank", yAxisId: "right" }
-            ],
-            "Contributor Count",
-            "Rank"
-        )}
-
-        {renderTrendChart(
-            "Commit Count",
-            projectTrends,
-            [
-                { dataKey: "commit_count", stroke: "#8884d8", name: "Commits", yAxisId: "left" },
-                { dataKey: "commit_count_rank", stroke: "#82ca9d", name: "Commit Rank", yAxisId: "right" }
-            ],
-            "Commit Count",
-            "Rank"
-        )}
-
-        {renderTrendChart(
-            "Watcher Count",
-            projectTrends,
-            [
-                { dataKey: "watcher_count", stroke: "#8884d8", name: "Watchers", yAxisId: "left" },
-                { dataKey: "watcher_count_rank", stroke: "#82ca9d", name: "Watcher Rank", yAxisId: "right" }
-            ],
-            "Watcher Count",
-            "Rank"
+            [{ dataKey: "fork_count", stroke: "#ffc658", name: "Forks" }],
+            "Forks"
         )}
         {/* ----------- TREND CHARTS END ----------- */}
 
