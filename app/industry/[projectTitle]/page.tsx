@@ -5,8 +5,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, Spinner, Alert, Button, Table, TableBody, TableCell, TableHead, TableHeadCell, TableRow, ListGroup, ListGroupItem } from 'flowbite-react';
 import { HiInformationCircle, HiLink } from 'react-icons/hi';
-import { TopProjects, ProjectOrganizationData, ProjectTrendsData } from '@/app/types'; 
-import { formatNumberWithCommas } from '@/app/utilities/formatters';
+import { TopProjects, ProjectOrganizationData, ProjectTrendsData } from '@/app/types';
+import { formatNumberWithCommas } from '@/app/utilities/formatters'; // Ensure this path is correct
 import Link from 'next/link';
 import {
   LineChart,
@@ -26,13 +26,13 @@ const ProjectDetailPage = () => {
 
   const [project, setProject] = useState<TopProjects | null>(null);
   const [organizations, setOrganizations] = useState<ProjectOrganizationData[]>([]);
-  const [projectTrends, setProjectTrends] = useState<ProjectTrendsData[]>([]); // State for trend data
+  const [projectTrends, setProjectTrends] = useState<ProjectTrendsData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(true);
   const [orgError, setOrgError] = useState<string | null>(null);
-  const [isLoadingTrends, setIsLoadingTrends] = useState(true); // Loading state for trends
-  const [trendsError, setTrendsError] = useState<string | null>(null); // Error state for trends
+  const [isLoadingTrends, setIsLoadingTrends] = useState(true);
+  const [trendsError, setTrendsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (projectTitleUrlEncoded) {
@@ -87,12 +87,13 @@ const ProjectDetailPage = () => {
           const data: ProjectTrendsData[] = await response.json();
           const formattedData = data.map(d => ({
             ...d,
-            report_date: new Date(d.report_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            report_date: new Date(d.report_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) // Compact date format
           })).sort((a, b) => new Date(a.report_date).getTime() - new Date(b.report_date).getTime());
           setProjectTrends(formattedData);
         } catch (err: unknown) {
           console.error("Fetch project trends error:", err);
-          setTrendsError(err instanceof Error ? err.message : 'An unknown error occurred fetching project trends.');
+          // Set a user-friendly error message
+          setTrendsError('Trend data could not be loaded. Please try again later.');
           setProjectTrends([]);
         } finally {
           setIsLoadingTrends(false);
@@ -101,7 +102,7 @@ const ProjectDetailPage = () => {
 
       fetchProjectData();
       fetchOrganizationData();
-      fetchProjectTrendsData(); // Fetch trend data
+      fetchProjectTrendsData();
 
     } else {
       setIsLoading(false);
@@ -160,10 +161,13 @@ const ProjectDetailPage = () => {
     title: string,
     data: ProjectTrendsData[],
     lines: { dataKey: keyof ProjectTrendsData; stroke: string; name: string; yAxisId?: string }[],
-    yAxisLabel?: string,
-    yAxisRankLabel?: string
+    yAxisLabelValue?: string,
+    yAxisRankLabelValue?: string
   ) => {
-    const hasRank = lines.some(line => line.dataKey.toString().includes('rank'));
+    const hasRankAxis = lines.some(line => line.yAxisId === 'right');
+
+    const leftMargin = yAxisLabelValue ? 50 : 25; // Increased space for Y-axis label + formatted numbers
+    const rightMargin = yAxisRankLabelValue ? 50 : 25; // Increased space for Rank Y-axis label
 
     return (
       <Card className="mb-6">
@@ -172,22 +176,35 @@ const ProjectDetailPage = () => {
           <div className="flex justify-center items-center h-64"><Spinner /> Loading trend data...</div>
         )}
         {trendsError && !isLoadingTrends && (
-          <Alert color="failure" icon={HiInformationCircle}>Error: {trendsError}</Alert>
+          <Alert color="failure" icon={HiInformationCircle}>
+            <span>{trendsError}</span> {/* Displays user-friendly error from fetch block */}
+          </Alert>
         )}
         {!isLoadingTrends && !trendsError && projectTrends.length === 0 && (
-          <Alert color="info">No trend data available.</Alert>
+          <Alert color="info">No trend data available for {title.toLowerCase()}.</Alert>
         )}
         {!isLoadingTrends && !trendsError && projectTrends.length > 0 && (
-          <div style={{ width: '100%', height: 300 }}>
+          <div style={{ width: '100%', height: 300 }} className="text-xs"> {/* Smaller base font for axes */}
             <ResponsiveContainer>
-              <LineChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+              <LineChart data={data} margin={{ top: 5, right: rightMargin, left: leftMargin, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="report_date" />
-                <YAxis yAxisId="left" label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', fill: '#8884d8' }} />
-                {hasRank && (
-                  <YAxis yAxisId="right" orientation="right" label={{ value: yAxisRankLabel || "Rank", angle: -90, position: 'insideRight', fill: '#82ca9d' }} />
+                <YAxis
+                  yAxisId="left"
+                  tickFormatter={(value) => formatNumberWithCommas(value as number)}
+                  label={yAxisLabelValue ? { value: yAxisLabelValue, angle: -90, position: 'insideLeft', dx: -25, fill: '#6b7280', style: { textAnchor: 'middle', fontSize: '0.8rem' } } : undefined}
+                  width={80} // Provide ample width for formatted numbers and label
+                />
+                {hasRankAxis && (
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    tickFormatter={(value) => formatNumberWithCommas(value as number)} // Format ranks if they can be large
+                    label={yAxisRankLabelValue ? { value: yAxisRankLabelValue, angle: -90, position: 'insideRight', dx: 25, fill: '#6b7280', style: { textAnchor: 'middle', fontSize: '0.8rem' } } : undefined}
+                    width={80} // Provide ample width
+                  />
                 )}
-                <Tooltip />
+                <Tooltip formatter={(value: number | string) => typeof value === 'number' ? formatNumberWithCommas(value) : value} />
                 <Legend />
                 {lines.map(line => (
                   <Line
@@ -198,6 +215,7 @@ const ProjectDetailPage = () => {
                     name={line.name}
                     yAxisId={line.yAxisId || "left"}
                     dot={false}
+                    strokeWidth={2}
                   />
                 ))}
               </LineChart>
@@ -220,7 +238,7 @@ const ProjectDetailPage = () => {
           Latest Data: {new Date(project.latest_data_timestamp).toLocaleString()}
         </p>
 
-        <Card className="mt-6 mb-6"> {/* Moved "Explore Repositories" card to be part of main card content flow */}
+        <Card className="mt-6 mb-6">
             <h2 className="text-xl font-semibold mb-3">Explore Repositories</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
               View detailed information about repositories associated with {project.project_title}.
@@ -262,7 +280,7 @@ const ProjectDetailPage = () => {
               </TableBody>
             </Table>
           </Card>
-        </div> {/* End of Key Ranks & Activity Metrics grid */}
+        </div>
 
         {/* ----------- TREND CHARTS START ----------- */}
         {renderTrendChart(
@@ -329,7 +347,7 @@ const ProjectDetailPage = () => {
         {/* ----------- TREND CHARTS END ----------- */}
 
 
-         <Card className="mb-6 mt-6"> {/* Added mt-6 for spacing */}
+         <Card className="mb-6 mt-6">
             <h2 className="text-xl font-semibold mb-3">Rank Changes (Last 4 Weeks)</h2>
             <Table striped>
                 <TableBody className="divide-y">
@@ -356,7 +374,7 @@ const ProjectDetailPage = () => {
                 </TableBody>
             </Table>
         </Card>
-      </Card> {/* End of main project details card */}
+      </Card>
 
 
       {/* Top Organizations Section */}
