@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Card, Spinner, Alert, Button, Table, TableBody, TableCell, TableHead, TableHeadCell, TableRow, ListGroup, ListGroupItem } from 'flowbite-react';
+import { Card, Spinner, Alert, Button, ListGroup, ListGroupItem } from 'flowbite-react';
 import { HiInformationCircle, HiLink } from 'react-icons/hi';
 import { TopProjects, ProjectOrganizationData, ProjectTrendsData } from '@/app/types';
 import { formatNumberWithCommas } from '@/app/utilities/formatters';
@@ -18,6 +18,17 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+
+// Helper component for consistent metric display in new cards
+const MetricDisplayBox = ({ title, value, className }: { title: string, value: string | number | undefined | null, className?: string }) => (
+  <div className={`text-center p-2 ${className}`}>
+    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+      {value !== null && value !== undefined ? String(value) : 'N/A'}
+    </p>
+    <p className="text-xs text-gray-500 dark:text-gray-400">{title}</p>
+  </div>
+);
+
 
 const ProjectDetailPage = () => {
   const router = useRouter();
@@ -137,22 +148,10 @@ const ProjectDetailPage = () => {
     );
   }
 
-  const renderDetailRow = (label: string, value: string | number | null | undefined, isNumber: boolean = true) => {
-    let displayValue = 'N/A';
-    if (value !== null && value !== undefined) {
-      displayValue = isNumber && typeof value === 'number' ? formatNumberWithCommas(value) : String(value);
-    }
-    return (
-      <TableRow>
-        <TableCell className="font-medium text-gray-900 dark:text-white whitespace-nowrap">{label}</TableCell>
-        <TableCell>{displayValue}</TableCell>
-      </TableRow>
-    );
-  };
-
-  const formatPercentage = (value: number | null | undefined) => {
+  const formatPercentage = (value: number | null | undefined, addPlusSign: boolean = false) => {
     if (value === null || value === undefined) return 'N/A';
-    return `${(value * 100).toFixed(2)}%`;
+    const percentage = (value * 100).toFixed(2);
+    return addPlusSign && value > 0 ? `+${percentage}%` : `${percentage}%`;
   };
 
   const renderTrendChart = (
@@ -230,58 +229,103 @@ const ProjectDetailPage = () => {
       <Button onClick={() => router.push('/industry')} className="mb-6 print:hidden">
         &larr; Back to Search
       </Button>
-      <Card className="mb-6"> {/* Main project details card */}
-        <h1 className="text-3xl font-bold mb-2">{project.project_title}</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-          Latest Data: {new Date(project.latest_data_timestamp).toLocaleString()}
-        </p>
 
-        <Card className="mt-6 mb-6">
-            <h2 className="text-xl font-semibold mb-3">Explore Repositories</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              View detailed information about repositories associated with {project.project_title}.
+      {/* Main project details card - MODIFIED */}
+      <Card className="mb-6">
+        <div className="flex justify-between items-start mb-2">
+          <div>
+            <h1 className="text-3xl font-bold">{project.project_title}</h1>
+            {/* (2) Rank Category moved here */}
+            <p className="text-md text-gray-700 dark:text-gray-300 mt-1">
+              Category: <span className="font-semibold">{project.project_rank_category || 'N/A'}</span>
             </p>
+          </div>
+          {/* (1) Latest Data moved to upper right */}
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-right whitespace-nowrap">
+            Latest Data:<br />{new Date(project.latest_data_timestamp).toLocaleString()}
+          </p>
+        </div>
+
+        {/* (6) Explore Repositories Card - MODIFIED */}
+        <Card className="mt-6 mb-6">
+            <div className="flex justify-between items-start">
+                <div>
+                    <h2 className="text-xl font-semibold">Explore Repositories</h2>
+                    <p className="text-gray-600 dark:text-gray-400 mt-1 mb-4">
+                    View detailed information about repositories associated with {project.project_title}.
+                    </p>
+                </div>
+                <p className="text-lg font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    Repo Count: {formatNumberWithCommas(project.repo_count ?? 0)}
+                </p>
+            </div>
             <Button
               as={Link}
               href={`/industry/${projectTitleUrlEncoded}/repos`}
               color="alternative"
+              className="w-full sm:w-auto"
             >
               View Repositories &rarr;
             </Button>
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <Card>
-            <h2 className="text-xl font-semibold mb-3">Key Ranks & Scores</h2>
-            <Table striped>
-              <TableBody className="divide-y">
-                {renderDetailRow("Overall Project Rank", project.project_rank)}
-                {renderDetailRow("Rank Category", project.project_rank_category, false)}
-                {renderDetailRow("Quartile Bucket", project.quartile_bucket)}
-                {renderDetailRow("Weighted Score Index", project.weighted_score_index?.toFixed(4), false)}
-                {renderDetailRow("Weighted Score SMA", project.weighted_score_sma?.toFixed(4), false)}
-                {renderDetailRow("Prior 4 Weeks Weighted Score", project.prior_4_weeks_weighted_score?.toFixed(4), false)}
-              </TableBody>
-            </Table>
-          </Card>
-          <Card>
-            <h2 className="text-xl font-semibold mb-3">Activity Metrics</h2>
-             <Table striped>
-              <TableBody className="divide-y">
-                {renderDetailRow("Contributors", project.contributor_count)}
-                {renderDetailRow("Repositories", project.repo_count)}
-                {renderDetailRow("Commits (All Time)", project.commit_count)}
-                {renderDetailRow("Stars", project.stargaze_count)}
-                {renderDetailRow("Forks", project.fork_count)}
-                {renderDetailRow("Watchers", project.watcher_count)}
-                {renderDetailRow("Original Ratio (Not Fork)", project.is_not_fork_ratio?.toFixed(4), false)}
-              </TableBody>
-            </Table>
-          </Card>
+            {/* (3) New Project Ranking Card */}
+            <Card>
+                <h2 className="text-xl font-semibold mb-4 text-center md:text-left">Project Ranking</h2>
+                <div className="grid grid-cols-2 gap-4">
+                    <MetricDisplayBox title="Overall Project Rank" value={formatNumberWithCommas(project.project_rank)} />
+                    <MetricDisplayBox title="Quartile Bucket" value={project.quartile_bucket} />
+                    <MetricDisplayBox title="Prior Rank (4 Wks Ago)" value={formatNumberWithCommas(project.prior_4_weeks_project_rank)} />
+                    <MetricDisplayBox title="Absolute Rank Change" value={formatNumberWithCommas(project.absolute_project_rank_change_over_4_weeks)} />
+                </div>
+            </Card>
+
+            {/* (4) New Builder Activity Score Card */}
+            <Card>
+                <h2 className="text-xl font-semibold mb-4 text-center md:text-left">Builder Activity Score</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <MetricDisplayBox title="Weighted Score Index" value={project.weighted_score_index?.toFixed(4)} />
+                    <MetricDisplayBox title="Weighted Score SMA" value={project.weighted_score_sma?.toFixed(4)} />
+                    <MetricDisplayBox title="Prior 4 Wks Weighted Score" value={project.prior_4_weeks_weighted_score?.toFixed(4)} />
+                </div>
+            </Card>
         </div>
 
+        {/* (5) New All Time Activity Metrics Card */}
+        <Card className="mb-6">
+            <h2 className="text-xl font-semibold mb-4">All Time Activity Metrics (4wk. % Change)</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <MetricDisplayBox
+                    title="Contributors"
+                    value={`${formatNumberWithCommas(project.contributor_count)} (${formatPercentage(project.contributor_count_pct_change_over_4_weeks, true)})`}
+                />
+                <MetricDisplayBox
+                    title="Commits (All Time)"
+                    value={`${formatNumberWithCommas(project.commit_count)} (${formatPercentage(project.commit_count_pct_change_over_4_weeks, true)})`}
+                />
+                <MetricDisplayBox
+                    title="Stars"
+                    value={`${formatNumberWithCommas(project.stargaze_count)} (${formatPercentage(project.stargaze_count_pct_change_over_4_weeks, true)})`}
+                />
+                <MetricDisplayBox
+                    title="Forks"
+                    value={`${formatNumberWithCommas(project.fork_count)} (${formatPercentage(project.fork_count_pct_change_over_4_weeks, true)})`}
+                />
+                 <MetricDisplayBox
+                    title="Watchers"
+                    value={`${formatNumberWithCommas(project.watcher_count)} (${formatPercentage(project.watcher_count_pct_change_over_4_weeks, true)})`}
+                />
+                <MetricDisplayBox
+                    title="Original Ratio (Not Fork)"
+                    value={`${project.is_not_fork_ratio?.toFixed(4)} (${formatPercentage(project.is_not_fork_ratio_pct_change_over_4_weeks, true)})`}
+                />
+            </div>
+        </Card>
+
+
         {/* ----------- TREND CHARTS START (Updated Order & Content) ----------- */}
-        {projectTrends.length > 0 && <h2 className="text-2xl font-bold mt-8 mb-4 text-white">Metric Trends Over Time</h2>}
+        {projectTrends.length > 0 && <h2 className="text-2xl font-bold mt-8 mb-4 text-center md:text-left text-gray-800 dark:text-white">Metric Trends Over Time</h2>}
 
         {renderTrendChart(
             "Contributor Count",
@@ -304,47 +348,20 @@ const ProjectDetailPage = () => {
             "Forks"
         )}
 
-        {/* ADDED COMMIT COUNT TREND CHART */}
         {renderTrendChart(
             "Commit Count",
             projectTrends,
-            [{ dataKey: "commit_count", stroke: "#0088FE", name: "Commits" }], // Using a new color
+            [{ dataKey: "commit_count", stroke: "#0088FE", name: "Commits" }],
             "Commits"
         )}
         {/* ----------- TREND CHARTS END ----------- */}
 
+        {/* Old Key Ranks & Scores, Activity Metrics, Rank Changes, and 4-Week Percentage Changes cards/tables are removed as their data is now in the new cards above or integrated. */}
 
-         <Card className="mb-6 mt-6">
-            <h2 className="text-xl font-semibold mb-3">Rank Changes (Last 4 Weeks)</h2>
-            <Table striped>
-                <TableBody className="divide-y">
-                    {renderDetailRow("Prior Rank (4 Weeks Ago)", project.prior_4_weeks_project_rank)}
-                    {renderDetailRow("Absolute Rank Change", project.absolute_project_rank_change_over_4_weeks)}
-                    {renderDetailRow("Rank of Rank Change", project.rank_of_project_rank_change_over_4_weeks)}
-                </TableBody>
-            </Table>
-        </Card>
-         <Card className="mb-6">
-            <h2 className="text-xl font-semibold mb-3">4-Week Percentage Changes</h2>
-            <Table striped>
-                <TableHead>
-                    <TableHeadCell>Metric</TableHeadCell>
-                    <TableHeadCell>% Change</TableHeadCell>
-                </TableHead>
-                <TableBody className="divide-y">
-                    {renderDetailRow("Contributors % Change", formatPercentage(project.contributor_count_pct_change_over_4_weeks), false)}
-                    {renderDetailRow("Forks % Change", formatPercentage(project.fork_count_pct_change_over_4_weeks), false)}
-                    {renderDetailRow("Stars % Change", formatPercentage(project.stargaze_count_pct_change_over_4_weeks), false)}
-                    {renderDetailRow("Commits % Change", formatPercentage(project.commit_count_pct_change_over_4_weeks), false)}
-                    {renderDetailRow("Watchers % Change", formatPercentage(project.watcher_count_pct_change_over_4_weeks), false)}
-                    {renderDetailRow("Original Ratio % Change", formatPercentage(project.is_not_fork_ratio_pct_change_over_4_weeks), false)}
-                </TableBody>
-            </Table>
-        </Card>
       </Card>
 
 
-      {/* Top Organizations Section */}
+      {/* Top Organizations Section (Unchanged from your original) */}
       <Card className="mt-6">
         <h2 className="text-2xl font-semibold mb-4">Top Associated Organizations</h2>
         {isLoadingOrgs && (
