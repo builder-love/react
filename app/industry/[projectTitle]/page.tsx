@@ -2,8 +2,8 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { Card, Spinner, Alert, Button, ListGroup, ListGroupItem } from 'flowbite-react';
+import { useParams, useRouter } from 'next/navigation'; // useRouter might still be used if there are other programmatic navigations, or can be removed if not.
+import { Card, Spinner, Alert, Button, ListGroup, ListGroupItem } from 'flowbite-react'; // Button can be removed from imports if not used elsewhere on this page.
 import { HiInformationCircle, HiLink } from 'react-icons/hi';
 import { TopProjects, ProjectOrganizationData, ProjectTrendsData } from '@/app/types';
 import { formatNumberWithCommas } from '@/app/utilities/formatters';
@@ -22,16 +22,16 @@ import {
 // Helper component for consistent metric display in new cards
 const MetricDisplayBox = ({ title, value, className }: { title: string, value: string | number | undefined | null, className?: string }) => (
   <div className={`text-center p-2 ${className}`}>
-    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+    <div className="text-2xl font-bold text-gray-900 dark:text-white">
       {value !== null && value !== undefined ? String(value) : 'N/A'}
-    </p>
-    <p className="text-xs text-gray-500 dark:text-gray-400">{title}</p>
+    </div>
+    <div className="text-xs text-gray-500 dark:text-gray-400">{title}</div>
   </div>
 );
 
 
 const ProjectDetailPage = () => {
-  const router = useRouter();
+  const router = useRouter(); // Keep if router.back() is used in error states, or for other navigation.
   const params = useParams();
   const projectTitleUrlEncoded = params.projectTitle as string;
 
@@ -126,6 +126,8 @@ const ProjectDetailPage = () => {
     return <div className="flex justify-center items-center h-screen"><Spinner size="xl" /> Loading project details...</div>;
   }
 
+  // The router.back() is still used here, so useRouter import is needed.
+  // Button from flowbite-react is also used here, so its import is needed.
   if (error && !project) {
     return (
       <div className="container mx-auto p-4">
@@ -231,55 +233,31 @@ const ProjectDetailPage = () => {
 
   return (
     <div className="container mx-auto p-4 md:p-8">
-      <Button onClick={() => router.push('/industry')} className="mb-6 print:hidden">
-        &larr; Back to Search
-      </Button>
+      {/* "Back to Search" Button REMOVED from here */}
 
-      <Card className="mb-6"> {/* Main project details card */}
-        <div className="flex justify-between items-start mb-2">
-          <div>
+      <Card className="mb-6 pt-6 sm:pt-4"> {/* Added padding top to the card to give space from top of viewport now that button is gone */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2">
+          <div className="w-full sm:w-auto mb-4 sm:mb-0">
             <h1 className="text-3xl font-bold">{project.project_title}</h1>
             <p className="text-md text-gray-700 dark:text-gray-300 mt-1">
               Category: <span className="font-semibold">{project.project_rank_category || 'N/A'}</span>
             </p>
+            <p className="text-md text-gray-700 dark:text-gray-300 mt-1">
+              Repo Count: <span className="font-semibold">{formatNumberWithCommas(project.repo_count ?? 0)}</span>
+              <Link
+                href={`/industry/${projectTitleUrlEncoded}/repos`}
+                className="text-sm italic text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 mt-1 block"
+              >
+              view repos
+              </Link>
+            </p>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 text-right whitespace-nowrap">
+          <p className="hidden sm:block text-xs text-gray-500 dark:text-gray-400 text-right whitespace-nowrap sm:ml-4 flex-shrink-0">
             Latest Data:<br />{new Date(project.latest_data_timestamp).toLocaleString()}
           </p>
         </div>
 
-        {/* "Explore Repositories" Card with responsive Repo Count */}
-        <Card className="mt-6 mb-6">
-            {/* Container for Title/Description and Desktop Repo Count */}
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
-                <div> {/* Title and description */}
-                    <h2 className="text-xl font-semibold">Explore Repositories</h2>
-                    <p className="text-gray-600 dark:text-gray-400 mt-1 mb-2 sm:mb-4"> {/* Adjusted bottom margin for mobile */}
-                        View detailed information about repositories associated with {project.project_title}.
-                    </p>
-                </div>
-                {/* Repo Count for DESKTOP (sm screens and up) */}
-                <p className="hidden sm:block text-lg font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap sm:ml-4 flex-shrink-0">
-                    Repo Count: {formatNumberWithCommas(project.repo_count ?? 0)}
-                </p>
-            </div>
-
-            <Button
-              as={Link}
-              href={`/industry/${projectTitleUrlEncoded}/repos`}
-              color="alternative"
-              className="w-full sm:w-auto mt-3" // Added margin-top for spacing
-            >
-              View Repositories &rarr;
-            </Button>
-
-            {/* Repo Count for MOBILE (hidden on sm screens and up) */}
-            <p className="block sm:hidden text-lg font-semibold text-gray-700 dark:text-gray-300 mt-4 text-left"> {/* text-left to align with other content */}
-                Repo Count: {formatNumberWithCommas(project.repo_count ?? 0)}
-            </p>
-        </Card>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 mt-6">
             <Card>
                 <h2 className="text-xl font-semibold mb-4 text-center md:text-left">Project Ranking</h2>
                 <div className="grid grid-cols-2 gap-4">
@@ -340,30 +318,26 @@ const ProjectDetailPage = () => {
             </div>
         </Card>
 
-
         {projectTrends.length > 0 && <h2 className="text-2xl font-bold mt-8 mb-4 text-center md:text-left text-gray-800 dark:text-white">Metric Trends Over Time</h2>}
-
+        
         {renderTrendChart(
             "Contributor Count",
             projectTrends,
             [{ dataKey: "contributor_count", stroke: "#8884d8", name: "Contributors" }],
             "Contributors"
         )}
-
         {renderTrendChart(
             "Stargaze Count",
             projectTrends,
             [{ dataKey: "stargaze_count", stroke: "#82ca9d", name: "Stars" }],
             "Stars"
         )}
-
         {renderTrendChart(
             "Fork Count",
             projectTrends,
             [{ dataKey: "fork_count", stroke: "#ffc658", name: "Forks" }],
             "Forks"
         )}
-
         {renderTrendChart(
             "Commit Count",
             projectTrends,
@@ -422,6 +396,13 @@ const ProjectDetailPage = () => {
           </ListGroup>
         )}
       </Card>
+
+      {project && (
+        <div className="block sm:hidden text-center text-xs text-gray-500 dark:text-gray-400 mt-8 mb-4">
+          <p>Latest Data Updated:</p>
+          <p>{new Date(project.latest_data_timestamp).toLocaleString()}</p>
+        </div>
+      )}
     </div>
   );
 };

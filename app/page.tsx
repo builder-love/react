@@ -604,51 +604,65 @@ const Page: React.FC = () => {
         </div>
       </div>
 
-      {/* Explanation Section */}
+      {/* Explanation Section - CORRECTED */}
       <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-gray-600 px-1">
         <h3 className="text-md sm:text-lg font-semibold mb-2 text-gray-200">
           How is weighted score calculated?
         </h3>
-        <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
-          {/* PASTE THE CODE BLOCK ABOVE HERE */}
-          The Weighted Score is calculated weekly to rank blockchain projects based on GitHub development activity and community engagement metrics. Here&apos;s the process:
-          <br/><br/>
-          1. Data Collection: Gathers both all-time counts and recent (4-week percentage) changes for repo-specific key metrics like Commits, Forks, Stargazers, Contributors, and Watchers. It also includes an originality metric.
-          <br/><br/>
-          2. Any missing values are filled from the previous non-missing value. This is why sometimes the trend apears to be flat.
-          <br/><br/>
-          3. Repo metrics are rolled up to the project level. Some projects, like Ethereum have many sub-ecosystems.
-          <br/><br/>
-          4. Normalization: For each metric, every project&apos;s value is compared to all other projects within the same week and scaled to a value between 0 and 1.
-          <br/><br/>
-          5. Weighting: These normalized scores are multiplied by specific weights:
+        {/* Changed the outer p to a div */}
+        <div className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+          {/* Wrapped text blocks in p tags and removed <br/><br/> */}
+          <p>
+            The Weighted Score is calculated weekly to rank blockchain projects based on GitHub development activity and community engagement metrics. Here&apos;s the process:
+          </p>
+          <p>
+            1. Data Collection: Gathers both all-time counts and recent (4-week percentage) changes for repo-specific key metrics like Commits, Forks, Stargazers, Contributors, and Watchers. It also includes an originality metric.
+          </p>
+          <p>
+            2. Any missing values are filled from the previous non-missing value. This is why sometimes the trend apears to be flat.
+          </p>
+          <p>
+            3. Repo metrics are rolled up to the project level. Some projects, like Ethereum have many sub-ecosystems.
+          </p>
+          <p>
+            4. Normalization: For each metric, every project&apos;s value is compared to all other projects within the same week and scaled to a value between 0 and 1.
+          </p>
+          <p>
+            5. Weighting: These normalized scores are multiplied by specific weights:
+          </p>
+          {/* These divs are now valid children of the outer div */}
           <div className="pl-4">
             - Major All-Time Metrics (12.5% each): Commits, Forks, Stars, Contributors.
           </div>
           <div className="pl-4">
             - Major Recent Change Metrics (10% each): 4-week change in Commits, Forks, Stars, Contributors.
           </div>
-          <div className="pl-4 mb-2">
+          <div className="pl-4 mb-2"> {/* Added mb-2 here for a little space before the next paragraph if needed, or rely on paragraph margin */}
             - Minor Metrics (2.5% each): All-time Watchers, All-time Originality Ratio, 4-week change in Watchers, 4-week change in Originality Ratio.
           </div>
-          6. Summation: The weighted, normalized scores for all metrics are added together to get a final weighted_score between 0 and 1.
-          <br/><br/>
-          7. Index Conversion: The &quot;Weighted Score Index&quot; shown in the chart is simply this weighted_score multiplied by 100.
-          <br/><br/>
-          Primary source for project-to-repo mapping is Electric Capital Crypto Ecosystems {' '}
-          <a
-            href="https://github.com/electric-capital/crypto-ecosystems" target="_blank" rel="noopener noreferrer"
-            className="inline-block align-middle hover:underline"
-          >
-            <Image
-              src="/electric_capital_logo_transparent.png" alt="Electric Capital Crypto Ecosystems Logo Link"
-              width={isMobile ? 200 : 371} height={isMobile ? 17 : 32} // Make sure 'isMobile' is in scope here
-              className="inline-block h-3 sm:h-4 w-auto align-middle"
-            />
-          </a>
-          <br/><br/>
-          Note: the crypto-ecosystems data architecture was updated in April 2025. The new architecture more easily allows for aggregating sub-ecosystem repos to top level project. The impact is a big spike in weighted score, and input metric values for top ecosystems, like Ethereum who have a lot of sub-ecosystems. These trends will smooth out over time.
-        </p>
+          <p>
+            6. Summation: The weighted, normalized scores for all metrics are added together to get a final weighted_score between 0 and 1.
+          </p>
+          <p>
+            7. Index Conversion: The &quot;Weighted Score Index&quot; shown in the chart is simply this weighted_score multiplied by 100.
+          </p>
+          <p>
+            Primary source for project-to-repo mapping is Electric Capital Crypto Ecosystems {' '}
+            <a
+              href="https://github.com/electric-capital/crypto-ecosystems" target="_blank" rel="noopener noreferrer"
+              className="inline-block align-middle hover:underline"
+            >
+              <Image
+                src="/electric_capital_logo_transparent.png" alt="Electric Capital Crypto Ecosystems Logo Link"
+                width={isMobile ? 200 : 371} height={isMobile ? 17 : 32} 
+                className="inline-block h-3 sm:h-4 w-auto align-middle"
+              />
+            </a>
+          </p>
+          <p>
+            Note: the crypto-ecosystems data architecture was updated in April 2025. The new architecture more easily allows for aggregating sub-ecosystem repos to top level project. The impact is a big spike in weighted score, and input metric values for top ecosystems, like Ethereum who have a lot of sub-ecosystems. These trends will smooth out over time.
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -3,10 +3,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from 'next/script';
 import "./globals.css";
-import CustomNavigation from "./navigation"; // Using the new Navigation
-import CustomFooter from "./footer";       // Using the new Footer
-// Make sure Flowbite's base styles are included if not handled by the plugin entirely
-// Typically, the Tailwind plugin for Flowbite handles this.
+import CustomNavigation from "./navigation";
+import CustomFooter from "./footer";
 
 const inter = Inter({ subsets: ["latin"] });
 const GTM_ID = 'GTM-TRZ2C7L2';
@@ -48,14 +46,15 @@ export default function RootLayout({
           }}
         />
 
-        <CustomNavigation> {/* Navigation now wraps the main content to apply margins */}
-          <main className="flex-1 p-5 pt-20 md:pt-5 min-h-screen w-full"> {/* Adjusted pt-20 for fixed mobile toggle button */}
-            <h1 className="text-4xl font-bold text-red-500 text-center mb-5">
+        <CustomNavigation>
+          {/* MODIFIED: Removed p-5 from main, keeping only top padding */}
+          <main className="flex-1 pt-20 md:pt-5 min-h-screen w-full">
+            <h1 className="text-4xl font-bold text-red-500 text-center mb-5 px-4"> {/* Added px-4 to title for some padding */}
               Builder <span className="text-red-500">♥</span>
             </h1>
             <div className="flex justify-center items-center w-full">
               <div className="w-full max-w-7xl">
-                {children}
+                {children} {/* ProjectDetailPage will use its own p-4 / md:p-8 */}
               </div>
             </div>
           </main>
