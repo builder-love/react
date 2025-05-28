@@ -248,26 +248,35 @@ const ProjectDetailPage = () => {
           </p>
         </div>
 
+        {/* "Explore Repositories" Card with responsive Repo Count */}
         <Card className="mt-6 mb-6">
-            <div className="flex justify-between items-start">
-                <div>
+            {/* Container for Title/Description and Desktop Repo Count */}
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
+                <div> {/* Title and description */}
                     <h2 className="text-xl font-semibold">Explore Repositories</h2>
-                    <p className="text-gray-600 dark:text-gray-400 mt-1 mb-4">
-                    View detailed information about repositories associated with {project.project_title}.
+                    <p className="text-gray-600 dark:text-gray-400 mt-1 mb-2 sm:mb-4"> {/* Adjusted bottom margin for mobile */}
+                        View detailed information about repositories associated with {project.project_title}.
                     </p>
                 </div>
-                <p className="text-lg font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                {/* Repo Count for DESKTOP (sm screens and up) */}
+                <p className="hidden sm:block text-lg font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap sm:ml-4 flex-shrink-0">
                     Repo Count: {formatNumberWithCommas(project.repo_count ?? 0)}
                 </p>
             </div>
+
             <Button
               as={Link}
               href={`/industry/${projectTitleUrlEncoded}/repos`}
               color="alternative"
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto mt-3" // Added margin-top for spacing
             >
               View Repositories &rarr;
             </Button>
+
+            {/* Repo Count for MOBILE (hidden on sm screens and up) */}
+            <p className="block sm:hidden text-lg font-semibold text-gray-700 dark:text-gray-300 mt-4 text-left"> {/* text-left to align with other content */}
+                Repo Count: {formatNumberWithCommas(project.repo_count ?? 0)}
+            </p>
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
