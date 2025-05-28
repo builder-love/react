@@ -333,9 +333,14 @@ const ProjectDetailPage = () => {
             <Card>
                 <h2 className="text-xl font-semibold mb-4 text-center md:text-left">Builder Activity Score</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <MetricDisplayBox title="Weighted Score" value={formatScore(project.weighted_score_index)} />
-                    <MetricDisplayBox title="Weighted Score (Simple Moving Average)" value={formatScore(project.weighted_score_sma, true)} />
-                    <MetricDisplayBox className="sm:col-span-2 flex flex-col items-center justify-center" title="Prior 4 Wks Weighted Score" value={formatScore(project.prior_4_weeks_weighted_score, true)} />
+                    <MetricDisplayBox
+                        title="Weighted Score"
+                        value={formatScore(project.weighted_score_index)}
+                    />
+                    <MetricDisplayBox
+                        title="Prior 4 Wks Weighted Score"
+                        value={formatScore(project.prior_4_weeks_weighted_score, true)}
+                    />
                 </div>
             </Card>
         </div>
