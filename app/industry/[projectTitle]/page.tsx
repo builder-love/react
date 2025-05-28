@@ -162,7 +162,6 @@ const ProjectDetailPage = () => {
     yAxisRankLabelValue?: string
   ) => {
     const hasRankAxis = lines.some(line => line.yAxisId === 'right');
-
     const leftMargin = yAxisLabelValue ? 50 : 25;
     const rightMargin = yAxisRankLabelValue && hasRankAxis ? 50 : 25;
 
@@ -223,6 +222,12 @@ const ProjectDetailPage = () => {
     );
   };
 
+  const formatScore = (score: number | null | undefined, multiplyBy100 = false, decimalPlaces = 1): string => {
+    if (score === null || score === undefined) return 'N/A';
+    const value = multiplyBy100 ? score * 100 : score;
+    return value.toFixed(decimalPlaces);
+  };
+
 
   return (
     <div className="container mx-auto p-4 md:p-8">
@@ -230,23 +235,19 @@ const ProjectDetailPage = () => {
         &larr; Back to Search
       </Button>
 
-      {/* Main project details card - MODIFIED */}
-      <Card className="mb-6">
+      <Card className="mb-6"> {/* Main project details card */}
         <div className="flex justify-between items-start mb-2">
           <div>
             <h1 className="text-3xl font-bold">{project.project_title}</h1>
-            {/* (2) Rank Category moved here */}
             <p className="text-md text-gray-700 dark:text-gray-300 mt-1">
               Category: <span className="font-semibold">{project.project_rank_category || 'N/A'}</span>
             </p>
           </div>
-          {/* (1) Latest Data moved to upper right */}
           <p className="text-xs text-gray-500 dark:text-gray-400 text-right whitespace-nowrap">
             Latest Data:<br />{new Date(project.latest_data_timestamp).toLocaleString()}
           </p>
         </div>
 
-        {/* (6) Explore Repositories Card - MODIFIED */}
         <Card className="mt-6 mb-6">
             <div className="flex justify-between items-start">
                 <div>
@@ -270,7 +271,6 @@ const ProjectDetailPage = () => {
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            {/* (3) New Project Ranking Card */}
             <Card>
                 <h2 className="text-xl font-semibold mb-4 text-center md:text-left">Project Ranking</h2>
                 <div className="grid grid-cols-2 gap-4">
@@ -281,18 +281,26 @@ const ProjectDetailPage = () => {
                 </div>
             </Card>
 
-            {/* (4) New Builder Activity Score Card */}
             <Card>
                 <h2 className="text-xl font-semibold mb-4 text-center md:text-left">Builder Activity Score</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <MetricDisplayBox title="Weighted Score Index" value={project.weighted_score_index?.toFixed(4)} />
-                    <MetricDisplayBox title="Weighted Score SMA" value={project.weighted_score_sma?.toFixed(4)} />
-                    <MetricDisplayBox title="Prior 4 Wks Weighted Score" value={project.prior_4_weeks_weighted_score?.toFixed(4)} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <MetricDisplayBox
+                        title="Weighted Score"
+                        value={formatScore(project.weighted_score_index)}
+                    />
+                    <MetricDisplayBox
+                        title="Weighted Score (Simple Moving Average)"
+                        value={formatScore(project.weighted_score_sma, true)}
+                    />
+                    <MetricDisplayBox
+                        className="sm:col-span-2 flex flex-col items-center justify-center"
+                        title="Prior 4 Wks Weighted Score"
+                        value={formatScore(project.prior_4_weeks_weighted_score, true)}
+                    />
                 </div>
             </Card>
         </div>
 
-        {/* (5) New All Time Activity Metrics Card */}
         <Card className="mb-6">
             <h2 className="text-xl font-semibold mb-4">All Time Activity Metrics (4wk. % Change)</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -324,7 +332,6 @@ const ProjectDetailPage = () => {
         </Card>
 
 
-        {/* ----------- TREND CHARTS START (Updated Order & Content) ----------- */}
         {projectTrends.length > 0 && <h2 className="text-2xl font-bold mt-8 mb-4 text-center md:text-left text-gray-800 dark:text-white">Metric Trends Over Time</h2>}
 
         {renderTrendChart(
@@ -354,14 +361,10 @@ const ProjectDetailPage = () => {
             [{ dataKey: "commit_count", stroke: "#0088FE", name: "Commits" }],
             "Commits"
         )}
-        {/* ----------- TREND CHARTS END ----------- */}
-
-        {/* Old Key Ranks & Scores, Activity Metrics, Rank Changes, and 4-Week Percentage Changes cards/tables are removed as their data is now in the new cards above or integrated. */}
-
       </Card>
 
 
-      {/* Top Organizations Section (Unchanged from your original) */}
+      {/* Top Organizations Section */}
       <Card className="mt-6">
         <h2 className="text-2xl font-semibold mb-4">Top Associated Organizations</h2>
         {isLoadingOrgs && (
