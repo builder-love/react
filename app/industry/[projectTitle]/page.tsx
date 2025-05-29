@@ -252,7 +252,7 @@ const ProjectDetailPage = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 mt-6 items-start">
             <Card>
                 <h2 className="text-xl font-semibold mb-4 text-center md:text-left">Project Ranking</h2>
                 <div className="grid grid-cols-2 gap-4">
