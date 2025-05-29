@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Card, Spinner, Alert, Button, ListGroup, ListGroupItem } from 'flowbite-react';
 import { HiInformationCircle, HiLink } from 'react-icons/hi';
 import { TopProjects, ProjectOrganizationData, ProjectTrendsData } from '@/app/types';
-import { formatNumberWithCommas } from '@/app/utilities/formatters';
+import { formatNumberWithCommas, formatYAxisTickValue, formatPercentage } from '@/app/utilities/formatters';
 import Link from 'next/link';
 import {
   LineChart,
@@ -174,44 +174,34 @@ const ProjectDetailPage = () => {
     );
   }
 
-  const formatPercentage = (value: number | null | undefined, addPlusSign: boolean = false) => {
-    if (value === null || value === undefined) return 'N/A';
-    const percentage = (value * 100).toFixed(2);
-    return addPlusSign && value > 0 ? `+${percentage}%` : `${percentage}%`;
-  };
-
   const renderTrendChart = (
     title: string,
     data: ProjectTrendsData[],
     lines: { dataKey: keyof ProjectTrendsData; stroke: string; name: string; yAxisId?: string }[],
-    yAxisLabelValue?: string, // This is the text for the left Y-axis label
+    yAxisLabelValue?: string,
     yAxisRankLabelValue?: string
   ) => {
     const hasRankAxis = lines.some(line => line.yAxisId === 'right');
 
     // Responsive settings
-    const yAxisTickWidth = isMobile ? 40 : 70;
-    // Desktop-only label settings for left Y-axis
+    const yAxisTickWidth = isMobile ? 45 : 70; // Adjusted mobile width, 45px should be ok for "1.2M" or "120k"
     const yAxisLabelFontSizeDesktop = '0.8rem';
     const yAxisLabelDxLeftDesktop = -20; 
+    const yAxisLabelFontSizeMobile = '0.55rem'; 
+    const yAxisLabelDxRightMobile = 8;
 
-    // chartLeftMargin: if mobile, always use the smaller margin (left Y-axis label is hidden).
-    // If desktop, use larger margin if label exists.
     const chartLeftMargin = isMobile 
-        ? 5 // Minimal margin as left Y-axis label is hidden on mobile
+        ? 5 
         : (yAxisLabelValue ? 45 : 25); 
 
-    // Right margin logic remains, adjust if right Y-axis label is also hidden on mobile
     const chartRightMargin = isMobile 
         ? (yAxisRankLabelValue && hasRankAxis ? 15 : 5) 
         : (yAxisRankLabelValue && hasRankAxis ? 45 : 25);
     
-    const axisTickFontSize = isMobile ? '0.55rem' : '0.75rem';
+    const axisTickFontSize = isMobile ? '0.55rem' : '0.75rem'; // Approx 8.8px on mobile
     const xAxisHeight = isMobile ? 40 : 40;
     const xAxisDy = isMobile ? 3 : 2;
-
     const chartTopBottomMargin = isMobile ? 2 : 5;
-
     const legendFontSize = isMobile ? '0.6rem' : '0.8rem';
     const tooltipFontSize = isMobile ? '0.6rem' : '0.8rem';
 
@@ -253,8 +243,7 @@ const ProjectDetailPage = () => {
                 />
                 <YAxis
                   yAxisId="left"
-                  tickFormatter={(value) => formatNumberWithCommas(value as number)}
-                  // MODIFIED: Left Y-axis label is hidden on mobile
+                  tickFormatter={(tickValue) => formatYAxisTickValue(tickValue, isMobile)} // MODIFIED
                   label={(!isMobile && yAxisLabelValue) ? { 
                       value: yAxisLabelValue, 
                       angle: -90, 
@@ -263,16 +252,26 @@ const ProjectDetailPage = () => {
                       fill: '#6b7280', 
                       style: { textAnchor: 'middle', fontSize: yAxisLabelFontSizeDesktop } 
                   } : undefined}
-                  width={yAxisTickWidth}
+                  width={yAxisTickWidth} // MODIFIED (slightly adjusted for mobile if needed)
                   tick={{ fontSize: axisTickFontSize }}
+                  allowDecimals={false} // Usually good for abbreviated values like "1M", "120k"
                 />
                 {hasRankAxis && yAxisRankLabelValue && (
                   <YAxis
                     yAxisId="right"
                     orientation="right"
-                    tickFormatter={(value) => formatNumberWithCommas(value as number)}
-                    width={yAxisTickWidth}
+                    tickFormatter={(tickValue) => formatYAxisTickValue(tickValue, isMobile)} // MODIFIED
+                    label={yAxisRankLabelValue ? { 
+                        value: yAxisRankLabelValue, 
+                        angle: -90, 
+                        position: 'insideRight', 
+                        dx: isMobile ? yAxisLabelDxRightMobile : 20,
+                        fill: '#6b7280', 
+                        style: { textAnchor: 'middle', fontSize: isMobile ? yAxisLabelFontSizeMobile : yAxisLabelFontSizeDesktop } 
+                    } : undefined}
+                    width={yAxisTickWidth} // MODIFIED
                     tick={{ fontSize: axisTickFontSize }}
+                    allowDecimals={false}
                   />
                 )}
                 <Tooltip 
