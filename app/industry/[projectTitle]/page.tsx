@@ -184,36 +184,120 @@ const ProjectDetailPage = () => {
     title: string,
     data: ProjectTrendsData[],
     lines: { dataKey: keyof ProjectTrendsData; stroke: string; name: string; yAxisId?: string }[],
-    yAxisLabelValue?: string,
+    yAxisLabelValue?: string, // This is the text for the left Y-axis label
     yAxisRankLabelValue?: string
   ) => {
     const hasRankAxis = lines.some(line => line.yAxisId === 'right');
-    const yAxisTickWidth = isMobile ? 50 : 70;
-    const yAxisLabelFontSize = isMobile ? '0.65rem' : '0.8rem';
-    const yAxisLabelDxLeft = isMobile ? -10 : -20;
-    const yAxisLabelDxRight = isMobile ? 10 : 20;
-    const chartLeftMargin = isMobile ? (yAxisLabelValue ? 25 : 10) : (yAxisLabelValue ? 45 : 25);
-    const chartRightMargin = isMobile ? (yAxisRankLabelValue && hasRankAxis ? 25 : 10) : (yAxisRankLabelValue && hasRankAxis ? 45 : 25);
-    const axisTickFontSize = isMobile ? '0.6rem' : '0.75rem';
-    const xAxisHeight = isMobile ? 50 : 40;
+
+    // Responsive settings
+    const yAxisTickWidth = isMobile ? 40 : 70;
+    // Desktop-only label settings for left Y-axis
+    const yAxisLabelFontSizeDesktop = '0.8rem';
+    const yAxisLabelDxLeftDesktop = -20; 
+
+    // chartLeftMargin: if mobile, always use the smaller margin (left Y-axis label is hidden).
+    // If desktop, use larger margin if label exists.
+    const chartLeftMargin = isMobile 
+        ? 5 // Minimal margin as left Y-axis label is hidden on mobile
+        : (yAxisLabelValue ? 45 : 25); 
+
+    // Right margin logic remains, adjust if right Y-axis label is also hidden on mobile
+    const chartRightMargin = isMobile 
+        ? (yAxisRankLabelValue && hasRankAxis ? 15 : 5) 
+        : (yAxisRankLabelValue && hasRankAxis ? 45 : 25);
+    
+    const axisTickFontSize = isMobile ? '0.55rem' : '0.75rem';
+    const xAxisHeight = isMobile ? 40 : 40;
+    const xAxisDy = isMobile ? 3 : 2;
+
+    const chartTopBottomMargin = isMobile ? 2 : 5;
+
+    const legendFontSize = isMobile ? '0.6rem' : '0.8rem';
+    const tooltipFontSize = isMobile ? '0.6rem' : '0.8rem';
 
     return (
       <Card className="mb-6">
         <h2 className="text-xl font-semibold mb-3">{title}</h2>
-        {isLoadingTrends && ( <div className="flex justify-center items-center h-64"><Spinner /> Loading trend data...</div> )}
-        {trendsError && !isLoadingTrends && ( <Alert color="failure" icon={HiInformationCircle}> <span>{trendsError}</span> </Alert> )}
-        {!isLoadingTrends && !trendsError && projectTrends.length === 0 && ( <Alert color="info">No trend data available for {title.toLowerCase()}.</Alert> )}
+        {isLoadingTrends && (
+          <div className="flex justify-center items-center h-64"><Spinner /> Loading trend data...</div>
+        )}
+        {trendsError && !isLoadingTrends && (
+          <Alert color="failure" icon={HiInformationCircle}>
+            <span>{trendsError}</span>
+          </Alert>
+        )}
+        {!isLoadingTrends && !trendsError && projectTrends.length === 0 && (
+          <Alert color="info">No trend data available for {title.toLowerCase()}.</Alert>
+        )}
         {!isLoadingTrends && !trendsError && projectTrends.length > 0 && (
           <div style={{ width: '100%', height: 300 }}>
             <ResponsiveContainer>
-              <LineChart data={data} margin={{ top: 5, right: chartRightMargin, left: chartLeftMargin, bottom: 5 }} >
+              <LineChart 
+                data={data} 
+                margin={{ 
+                    top: chartTopBottomMargin, 
+                    right: chartRightMargin, 
+                    left: chartLeftMargin, 
+                    bottom: chartTopBottomMargin 
+                }}
+              >
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="report_date" tick={{ fontSize: axisTickFontSize }} angle={-30} textAnchor="end" height={xAxisHeight} dy={isMobile ? 5 : 2} interval={"preserveStartEnd"} />
-                <YAxis yAxisId="left" tickFormatter={(value) => formatNumberWithCommas(value as number)} label={yAxisLabelValue ? { value: yAxisLabelValue, angle: -90, position: 'insideLeft', dx: yAxisLabelDxLeft, fill: '#6b7280', style: { textAnchor: 'middle', fontSize: yAxisLabelFontSize } } : undefined} width={yAxisTickWidth} tick={{ fontSize: axisTickFontSize }} />
-                {hasRankAxis && yAxisRankLabelValue && ( <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => formatNumberWithCommas(value as number)} label={{ value: yAxisRankLabelValue, angle: -90, position: 'insideRight', dx: yAxisLabelDxRight, fill: '#6b7280', style: { textAnchor: 'middle', fontSize: yAxisLabelFontSize } }} width={yAxisTickWidth} tick={{ fontSize: axisTickFontSize }} /> )}
-                <Tooltip formatter={(value: number | string) => typeof value === 'number' ? formatNumberWithCommas(value) : value} labelStyle={{ fontSize: isMobile ? '0.7rem' : '0.8rem' }} itemStyle={{ fontSize: isMobile ? '0.7rem' : '0.8rem' }} />
-                <Legend wrapperStyle={{ fontSize: isMobile ? '0.7rem' : '0.8rem', paddingTop: (isMobile && xAxisHeight > 30) ? 10 : 0 }} />
-                {lines.map(line => ( <Line key={line.dataKey as string} type="monotone" dataKey={line.dataKey} stroke={line.stroke} name={line.name} yAxisId={line.yAxisId || "left"} dot={isMobile ? false : {r: 2}} strokeWidth={2} /> ))}
+                <XAxis 
+                  dataKey="report_date" 
+                  tick={{ fontSize: axisTickFontSize }}
+                  angle={-35}
+                  textAnchor="end"
+                  height={xAxisHeight}
+                  dy={xAxisDy}
+                  interval={"preserveStartEnd"} 
+                />
+                <YAxis
+                  yAxisId="left"
+                  tickFormatter={(value) => formatNumberWithCommas(value as number)}
+                  // MODIFIED: Left Y-axis label is hidden on mobile
+                  label={(!isMobile && yAxisLabelValue) ? { 
+                      value: yAxisLabelValue, 
+                      angle: -90, 
+                      position: 'insideLeft', 
+                      dx: yAxisLabelDxLeftDesktop, 
+                      fill: '#6b7280', 
+                      style: { textAnchor: 'middle', fontSize: yAxisLabelFontSizeDesktop } 
+                  } : undefined}
+                  width={yAxisTickWidth}
+                  tick={{ fontSize: axisTickFontSize }}
+                />
+                {hasRankAxis && yAxisRankLabelValue && (
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    tickFormatter={(value) => formatNumberWithCommas(value as number)}
+                    width={yAxisTickWidth}
+                    tick={{ fontSize: axisTickFontSize }}
+                  />
+                )}
+                <Tooltip 
+                    formatter={(value: number | string) => typeof value === 'number' ? formatNumberWithCommas(value) : value} 
+                    labelStyle={{ fontSize: tooltipFontSize }}
+                    itemStyle={{ fontSize: tooltipFontSize }}
+                />
+                <Legend 
+                  wrapperStyle={{ 
+                    fontSize: legendFontSize, 
+                    paddingTop: (isMobile && xAxisHeight > 20) ? 5 : 0 
+                  }} 
+                />
+                {lines.map(line => (
+                  <Line
+                    key={line.dataKey as string}
+                    type="monotone"
+                    dataKey={line.dataKey}
+                    stroke={line.stroke}
+                    name={line.name}
+                    yAxisId={line.yAxisId || "left"}
+                    dot={isMobile ? false : {r: 1}}
+                    strokeWidth={isMobile ? 1.5 : 2}
+                  />
+                ))}
               </LineChart>
             </ResponsiveContainer>
           </div>
