@@ -21,11 +21,11 @@ import {
 
 // useIsMobile hook definition
 const useIsMobile = (breakpoint = 768): boolean => {
-  const [isMobileView, setIsMobileView] = useState(false); // Default to false
+  const [isMobileView, setIsMobileView] = useState(false);
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const checkScreenSize = () => setIsMobileView(window.innerWidth < breakpoint);
-      checkScreenSize(); // Initial check
+      checkScreenSize();
       window.addEventListener('resize', checkScreenSize);
       return () => window.removeEventListener('resize', checkScreenSize);
     }
@@ -33,18 +33,33 @@ const useIsMobile = (breakpoint = 768): boolean => {
   return isMobileView;
 };
 
-// Helper component for consistent metric display in new cards
-const MetricDisplayBox = ({ title, value, className }: { title: string, value: string | number | undefined | null, className?: string }) => (
+// MODIFIED Helper component for consistent metric display
+const MetricDisplayBox = ({
+  title,
+  value,
+  changeText,
+  className 
+}: {
+  title: string;
+  value: string | number | undefined | null;
+  changeText?: string;
+  className?: string;
+}) => (
   <div className={`text-center p-2 ${className}`}>
     <div className="text-2xl font-bold text-gray-900 dark:text-white">
       {value !== null && value !== undefined ? String(value) : 'N/A'}
     </div>
     <div className="text-xs text-gray-500 dark:text-gray-400">{title}</div>
+    {changeText && (
+      <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+        {changeText}
+      </div>
+    )}
   </div>
 );
 
 const ProjectDetailPage = () => {
-  const isMobile = useIsMobile(); // Initialize useIsMobile hook
+  const isMobile = useIsMobile();
   const router = useRouter();
   const params = useParams();
   const projectTitleUrlEncoded = params.projectTitle as string;
@@ -61,6 +76,7 @@ const ProjectDetailPage = () => {
 
   useEffect(() => {
     if (projectTitleUrlEncoded) {
+      // Data fetching logic (remains the same)
       const fetchProjectData = async () => {
         setIsLoading(true);
         setError(null);
@@ -79,7 +95,6 @@ const ProjectDetailPage = () => {
           setIsLoading(false);
         }
       };
-
       const fetchOrganizationData = async () => {
         setIsLoadingOrgs(true);
         setOrgError(null);
@@ -99,7 +114,6 @@ const ProjectDetailPage = () => {
           setIsLoadingOrgs(false);
         }
       };
-
       const fetchProjectTrendsData = async () => {
         setIsLoadingTrends(true);
         setTrendsError(null);
@@ -123,11 +137,9 @@ const ProjectDetailPage = () => {
           setIsLoadingTrends(false);
         }
       };
-
       fetchProjectData();
       fetchOrganizationData();
       fetchProjectTrendsData();
-
     } else {
       setIsLoading(false);
       setIsLoadingOrgs(false);
@@ -176,112 +188,32 @@ const ProjectDetailPage = () => {
     yAxisRankLabelValue?: string
   ) => {
     const hasRankAxis = lines.some(line => line.yAxisId === 'right');
-
     const yAxisTickWidth = isMobile ? 50 : 70;
     const yAxisLabelFontSize = isMobile ? '0.65rem' : '0.8rem';
     const yAxisLabelDxLeft = isMobile ? -10 : -20;
     const yAxisLabelDxRight = isMobile ? 10 : 20;
-
-    const chartLeftMargin = isMobile 
-        ? (yAxisLabelValue ? 25 : 10) 
-        : (yAxisLabelValue ? 45 : 25);
-    const chartRightMargin = isMobile 
-        ? (yAxisRankLabelValue && hasRankAxis ? 25 : 10) 
-        : (yAxisRankLabelValue && hasRankAxis ? 45 : 25);
-    
-    const axisTickFontSize = isMobile ? '0.6rem' : '0.75rem'; // For both X and Y axis ticks
-    const xAxisHeight = isMobile ? 50 : 40; // Adjusted height for X-axis if labels are rotated
+    const chartLeftMargin = isMobile ? (yAxisLabelValue ? 25 : 10) : (yAxisLabelValue ? 45 : 25);
+    const chartRightMargin = isMobile ? (yAxisRankLabelValue && hasRankAxis ? 25 : 10) : (yAxisRankLabelValue && hasRankAxis ? 45 : 25);
+    const axisTickFontSize = isMobile ? '0.6rem' : '0.75rem';
+    const xAxisHeight = isMobile ? 50 : 40;
 
     return (
       <Card className="mb-6">
         <h2 className="text-xl font-semibold mb-3">{title}</h2>
-        {isLoadingTrends && (
-          <div className="flex justify-center items-center h-64"><Spinner /> Loading trend data...</div>
-        )}
-        {trendsError && !isLoadingTrends && (
-          <Alert color="failure" icon={HiInformationCircle}>
-            <span>{trendsError}</span>
-          </Alert>
-        )}
-        {!isLoadingTrends && !trendsError && projectTrends.length === 0 && (
-          <Alert color="info">No trend data available for {title.toLowerCase()}.</Alert>
-        )}
+        {isLoadingTrends && ( <div className="flex justify-center items-center h-64"><Spinner /> Loading trend data...</div> )}
+        {trendsError && !isLoadingTrends && ( <Alert color="failure" icon={HiInformationCircle}> <span>{trendsError}</span> </Alert> )}
+        {!isLoadingTrends && !trendsError && projectTrends.length === 0 && ( <Alert color="info">No trend data available for {title.toLowerCase()}.</Alert> )}
         {!isLoadingTrends && !trendsError && projectTrends.length > 0 && (
-          <div style={{ width: '100%', height: 300 }}> {/* Removed text-xs from here to control fonts specifically */}
+          <div style={{ width: '100%', height: 300 }}>
             <ResponsiveContainer>
-              <LineChart 
-                data={data} 
-                margin={{ 
-                    top: 5, 
-                    right: chartRightMargin, 
-                    left: chartLeftMargin, 
-                    bottom: 5 // Bottom margin might need to increase if XAxis height is significant
-                }}
-              >
+              <LineChart data={data} margin={{ top: 5, right: chartRightMargin, left: chartLeftMargin, bottom: 5 }} >
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="report_date" 
-                  tick={{ fontSize: axisTickFontSize }}
-                  angle={-30}
-                  textAnchor="end"
-                  height={xAxisHeight}
-                  dy={isMobile ? 5 : 2} // dy to nudge labels if needed after rotation
-                  interval={"preserveStartEnd"} // Ensure labels don't get too crowded
-                />
-                <YAxis
-                  yAxisId="left"
-                  tickFormatter={(value) => formatNumberWithCommas(value as number)}
-                  label={yAxisLabelValue ? { 
-                      value: yAxisLabelValue, 
-                      angle: -90, 
-                      position: 'insideLeft', 
-                      dx: yAxisLabelDxLeft, 
-                      fill: '#6b7280', 
-                      style: { textAnchor: 'middle', fontSize: yAxisLabelFontSize } 
-                  } : undefined}
-                  width={yAxisTickWidth}
-                  tick={{ fontSize: axisTickFontSize }}
-                />
-                {hasRankAxis && yAxisRankLabelValue && (
-                  <YAxis
-                    yAxisId="right"
-                    orientation="right"
-                    tickFormatter={(value) => formatNumberWithCommas(value as number)}
-                    label={{ 
-                        value: yAxisRankLabelValue, 
-                        angle: -90, 
-                        position: 'insideRight', 
-                        dx: yAxisLabelDxRight, 
-                        fill: '#6b7280', 
-                        style: { textAnchor: 'middle', fontSize: yAxisLabelFontSize } 
-                    }}
-                    width={yAxisTickWidth}
-                    tick={{ fontSize: axisTickFontSize }}
-                  />
-                )}
-                <Tooltip 
-                  formatter={(value: number | string) => typeof value === 'number' ? formatNumberWithCommas(value) : value} 
-                  labelStyle={{ fontSize: isMobile ? '0.7rem' : '0.8rem' }}
-                  itemStyle={{ fontSize: isMobile ? '0.7rem' : '0.8rem' }}
-                />
-                <Legend 
-                  wrapperStyle={{ 
-                    fontSize: isMobile ? '0.7rem' : '0.8rem', 
-                    paddingTop: (isMobile && xAxisHeight > 30) ? 10 : 0 // Adjust legend spacing if X-axis is tall
-                  }} 
-                />
-                {lines.map(line => (
-                  <Line
-                    key={line.dataKey as string}
-                    type="monotone"
-                    dataKey={line.dataKey}
-                    stroke={line.stroke}
-                    name={line.name}
-                    yAxisId={line.yAxisId || "left"}
-                    dot={isMobile ? false : {r: 2}}
-                    strokeWidth={2}
-                  />
-                ))}
+                <XAxis dataKey="report_date" tick={{ fontSize: axisTickFontSize }} angle={-30} textAnchor="end" height={xAxisHeight} dy={isMobile ? 5 : 2} interval={"preserveStartEnd"} />
+                <YAxis yAxisId="left" tickFormatter={(value) => formatNumberWithCommas(value as number)} label={yAxisLabelValue ? { value: yAxisLabelValue, angle: -90, position: 'insideLeft', dx: yAxisLabelDxLeft, fill: '#6b7280', style: { textAnchor: 'middle', fontSize: yAxisLabelFontSize } } : undefined} width={yAxisTickWidth} tick={{ fontSize: axisTickFontSize }} />
+                {hasRankAxis && yAxisRankLabelValue && ( <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => formatNumberWithCommas(value as number)} label={{ value: yAxisRankLabelValue, angle: -90, position: 'insideRight', dx: yAxisLabelDxRight, fill: '#6b7280', style: { textAnchor: 'middle', fontSize: yAxisLabelFontSize } }} width={yAxisTickWidth} tick={{ fontSize: axisTickFontSize }} /> )}
+                <Tooltip formatter={(value: number | string) => typeof value === 'number' ? formatNumberWithCommas(value) : value} labelStyle={{ fontSize: isMobile ? '0.7rem' : '0.8rem' }} itemStyle={{ fontSize: isMobile ? '0.7rem' : '0.8rem' }} />
+                <Legend wrapperStyle={{ fontSize: isMobile ? '0.7rem' : '0.8rem', paddingTop: (isMobile && xAxisHeight > 30) ? 10 : 0 }} />
+                {lines.map(line => ( <Line key={line.dataKey as string} type="monotone" dataKey={line.dataKey} stroke={line.stroke} name={line.name} yAxisId={line.yAxisId || "left"} dot={isMobile ? false : {r: 2}} strokeWidth={2} /> ))}
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -333,27 +265,46 @@ const ProjectDetailPage = () => {
             <Card>
                 <h2 className="text-xl font-semibold mb-4 text-center md:text-left">Builder Activity Score</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <MetricDisplayBox
-                        title="Weighted Score"
-                        value={formatScore(project.weighted_score_index)}
-                    />
-                    <MetricDisplayBox
-                        title="Prior 4 Wks Weighted Score"
-                        value={formatScore(project.prior_4_weeks_weighted_score, true)}
-                    />
+                    <MetricDisplayBox title="Weighted Score" value={formatScore(project.weighted_score_index)} />
+                    <MetricDisplayBox title="Prior 4 Wks Weighted Score" value={formatScore(project.prior_4_weeks_weighted_score, true)} />
                 </div>
             </Card>
         </div>
 
+        {/* MODIFIED Card Title and MetricDisplayBox calls */}
         <Card className="mb-6">
-            <h2 className="text-xl font-semibold mb-4">All Time Activity Metrics (4wk. % Change)</h2>
+            <h2 className="text-xl font-semibold mb-4">All Time Activity Metrics</h2> {/* Title Changed */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <MetricDisplayBox title="Contributors" value={`${formatNumberWithCommas(project.contributor_count)} (${formatPercentage(project.contributor_count_pct_change_over_4_weeks, true)})`} />
-                <MetricDisplayBox title="Commits (All Time)" value={`${formatNumberWithCommas(project.commit_count)} (${formatPercentage(project.commit_count_pct_change_over_4_weeks, true)})`} />
-                <MetricDisplayBox title="Stars" value={`${formatNumberWithCommas(project.stargaze_count)} (${formatPercentage(project.stargaze_count_pct_change_over_4_weeks, true)})`} />
-                <MetricDisplayBox title="Forks" value={`${formatNumberWithCommas(project.fork_count)} (${formatPercentage(project.fork_count_pct_change_over_4_weeks, true)})`} />
-                <MetricDisplayBox title="Watchers" value={`${formatNumberWithCommas(project.watcher_count)} (${formatPercentage(project.watcher_count_pct_change_over_4_weeks, true)})`} />
-                <MetricDisplayBox title="Original Ratio (Not Fork)" value={`${project.is_not_fork_ratio?.toFixed(4)} (${formatPercentage(project.is_not_fork_ratio_pct_change_over_4_weeks, true)})`} />
+                <MetricDisplayBox
+                    title="Contributors"
+                    value={formatNumberWithCommas(project.contributor_count)}
+                    changeText={`4wk Change: ${formatPercentage(project.contributor_count_pct_change_over_4_weeks, true)}`}
+                />
+                <MetricDisplayBox
+                    title="Commits (All Time)"
+                    value={formatNumberWithCommas(project.commit_count)}
+                    changeText={`4wk Change: ${formatPercentage(project.commit_count_pct_change_over_4_weeks, true)}`}
+                />
+                <MetricDisplayBox
+                    title="Stars"
+                    value={formatNumberWithCommas(project.stargaze_count)}
+                    changeText={`4wk Change: ${formatPercentage(project.stargaze_count_pct_change_over_4_weeks, true)}`}
+                />
+                <MetricDisplayBox
+                    title="Forks"
+                    value={formatNumberWithCommas(project.fork_count)}
+                    changeText={`4wk Change: ${formatPercentage(project.fork_count_pct_change_over_4_weeks, true)}`}
+                />
+                 <MetricDisplayBox
+                    title="Watchers"
+                    value={formatNumberWithCommas(project.watcher_count)}
+                    changeText={`4wk Change: ${formatPercentage(project.watcher_count_pct_change_over_4_weeks, true)}`}
+                />
+                <MetricDisplayBox
+                    title="Original Ratio (Not Fork)"
+                    value={project.is_not_fork_ratio?.toFixed(4)}
+                    changeText={`4wk Change: ${formatPercentage(project.is_not_fork_ratio_pct_change_over_4_weeks, true)}`}
+                />
             </div>
         </Card>
 
