@@ -503,16 +503,16 @@ const Page: React.FC = () => {
             <p className="text-2xl">fight FUD, with love</p>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={isMobile ? 400 : 600}>
+          <ResponsiveContainer width="100%" height={isMobile ? 400 : 500}>
             <LineChart
               data={chartData}
-              margin={{ top: 5, right: isMobile ? 10 : 30, left: isMobile ? 5 : Math.abs(dynamicYLabelOffset) + (isMobile ? 15 : 25) , bottom: isMobile ? 70 : 50 }}
+              margin={{ top: 5, right: isMobile ? 10 : 30, left: isMobile ? 5 : Math.abs(dynamicYLabelOffset) + (isMobile ? 15 : 25) , bottom: isMobile ? 70 : 35 }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#555" />
               <XAxis
                 dataKey="report_date" type="category" tickFormatter={formatDateTick}
                 angle={isMobile ? -60 : -45} textAnchor="end"
-                height={isMobile ? 80 : 60}
+                height={isMobile ? 80 : 50}
                 interval={isMobile ? Math.max(0, Math.floor(chartData.length / (isMobile && chartData.length > 10 ? 5 : 3)) -1) : "preserveStartEnd"}
                 tick={{ fontSize: isMobile ? 9 : 12 }}
               />
