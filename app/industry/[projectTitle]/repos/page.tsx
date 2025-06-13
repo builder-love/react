@@ -26,7 +26,7 @@ import { PaginatedRepos, RepoData } from '@/app/types';
 import { formatNumberWithCommas } from '@/app/utilities/formatters';
 import _debounce from 'lodash/debounce';
 
-type SortableRepoKeys = 'repo' | 'fork_count' | 'stargaze_count' | 'watcher_count' | 'repo_rank' | 'repo_rank_category';
+type SortableRepoKeys = 'repo' | 'fork_count' | 'stargaze_count' | 'watcher_count' | 'repo_rank' | 'repo_rank_category' | 'predicted_is_dev_tooling' | 'predicted_is_educational' | 'predicted_is_scaffold';
 
 const ProjectReposPage = () => {
   const router = useRouter();
@@ -274,6 +274,30 @@ const ProjectReposPage = () => {
         id: 'watcher_count',
         cell: ({ getValue }) => formatNumberWithCommas(getValue<number>() ?? 0),
         size: 100,
+        enableSorting: true,
+    },
+    {
+      header: 'Dev Tooling',
+      accessorKey: 'predicted_is_dev_tooling',
+      id: 'predicted_is_dev_tooling',
+      cell: ({ getValue }) => (getValue<boolean>() ? '✔️' : ''),
+      size: 90,
+      enableSorting: true,
+    },
+    {
+        header: 'Educational',
+        accessorKey: 'predicted_is_educational',
+        id: 'predicted_is_educational',
+        cell: ({ getValue }) => (getValue<boolean>() ? '✔️' : ''),
+        size: 90,
+        enableSorting: true,
+    },
+    {
+        header: 'Scaffold',
+        accessorKey: 'predicted_is_scaffold',
+        id: 'predicted_is_scaffold',
+        cell: ({ getValue }) => (getValue<boolean>() ? '✔️' : ''),
+        size: 90,
         enableSorting: true,
     },
     {

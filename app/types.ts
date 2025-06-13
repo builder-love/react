@@ -142,6 +142,9 @@ export interface RepoData {
   repo_rank: number | null;
   quartile_bucket: number | null;
   repo_rank_category: string | null;
+  predicted_is_dev_tooling: boolean | null;
+  predicted_is_educational: boolean | null;
+  predicted_is_scaffold: boolean | null;
 }
 
 export interface PaginatedRepos {
