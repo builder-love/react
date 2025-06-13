@@ -285,28 +285,28 @@ const ProjectReposPage = () => {
       enableSorting: true,
     },
     {
-        header: 'Educational',
-        accessorKey: 'predicted_is_educational',
-        id: 'predicted_is_educational',
-        cell: ({ getValue }) => (getValue<boolean>() ? '✔️' : ''),
-        size: 90,
-        enableSorting: true,
+      header: 'Educational',
+      accessorKey: 'predicted_is_educational',
+      id: 'predicted_is_educational',
+      cell: ({ getValue }) => (getValue<boolean>() ? '✔️' : ''),
+      size: 90,
+      enableSorting: true,
     },
     {
-        header: 'Scaffold',
-        accessorKey: 'predicted_is_scaffold',
-        id: 'predicted_is_scaffold',
-        cell: ({ getValue }) => (getValue<boolean>() ? '✔️' : ''),
-        size: 90,
-        enableSorting: true,
+      header: 'Scaffold',
+      accessorKey: 'predicted_is_scaffold',
+      id: 'predicted_is_scaffold',
+      cell: ({ getValue }) => (getValue<boolean>() ? '✔️' : ''),
+      size: 90,
+      enableSorting: true,
     },
     {
-        header: 'Rank Category',
-        accessorKey: 'repo_rank_category',
-        id: 'repo_rank_category',
-        cell: ({ getValue }) => getValue<string>() ?? 'N/A',
-        size: 120,
-        enableSorting: true,
+      header: 'Rank Category',
+      accessorKey: 'repo_rank_category',
+      id: 'repo_rank_category',
+      cell: ({ getValue }) => getValue<string>() ?? 'N/A',
+      size: 120,
+      enableSorting: true,
     }
   ], []);
 
@@ -432,16 +432,27 @@ const ProjectReposPage = () => {
                       key={row.id}
                       className="hover:bg-gray-700 dark:hover:bg-gray-600"
                     >
-                      {row.getVisibleCells().map((cell) => (
+                      {row.getVisibleCells().map((cell) => {
+                      // Define which columns should have which text alignment
+                      const isRightAligned = ['repo_rank', 'stargaze_count', 'fork_count', 'watcher_count'].includes(cell.column.id);
+                      const isCenterAligned = ['predicted_is_dev_tooling', 'predicted_is_educational', 'predicted_is_scaffold'].includes(cell.column.id);
+
+                      const alignmentClass = isRightAligned
+                        ? 'text-right'
+                        : isCenterAligned
+                        ? 'text-center' // Apply text-center for the checkmark columns
+                        : 'text-left';
+
+                      return (
                         <td
                           key={cell.id}
                           style={{ width: cell.column.getSize() !== 0 ? cell.column.getSize() : undefined}}
-                          className={`px-3 py-2 text-xs md:text-sm whitespace-nowrap 
-                                      ${['repo_rank', 'stargaze_count', 'fork_count', 'watcher_count'].includes(cell.column.id) ? 'text-right' : 'text-left'}`}
+                          className={`px-3 py-2 text-xs md:text-sm whitespace-nowrap ${alignmentClass}`}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
-                      ))}
+                      );
+                    })}
                     </tr>
                   ))}
                 </tbody>
