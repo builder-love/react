@@ -145,6 +145,8 @@ export interface RepoData {
   predicted_is_dev_tooling: boolean | null;
   predicted_is_educational: boolean | null;
   predicted_is_scaffold: boolean | null;
+  predicted_is_app: boolean | null;
+  predicted_is_infrastructure: boolean | null;
 }
 
 export interface PaginatedRepos {
