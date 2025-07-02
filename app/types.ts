@@ -29,6 +29,13 @@ export interface FormattedLineChartData {
   [projectTitle: string]: number | string | null | undefined;
 }
 
+// The data structure after being processed and pivoted for the chart
+export interface LanguageTrendChartDataItem {
+  timestamp: string;
+  // Allows for dynamic language keys, e.g., 'Javascript' for percentage and 'Javascript_count' for raw count
+  [language: string]: number | string;
+}
+
 export type TooltipProps = DefaultTooltipContentProps<number, string> & {
   payload?: Payload[];
   active?: boolean;

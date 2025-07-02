@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -11,31 +11,27 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import type { TooltipProps, LanguageTrendData } from '../types';
-
-interface ChartDataItem {
-  timestamp: string;
-  [language: string]: number | string; // Allows for dynamic language keys
-}
+import type { LanguageTrendData, LanguageTrendChartDataItem, TooltipProps } from '../types';
 
 // --- Color Palette ---
 const COLORS = [
   '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4500',
-  '#8A2BE2', '#DEB887', '#5F9EA0', '#D2691E', '#FF7F50', '#6495ED'
+  '#8A2BE2', '#DEB887', '#5F9EA0', '#D2691E'
 ];
 
 // --- Custom Tooltip Component ---
 const CustomTooltip: React.FC<TooltipProps> = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
-    // Sort the payload in descending order based on percentage value
-    const sortedPayload = [...payload].sort((a, b) => (b.value as number) - (a.value as number));
+    const sortedPayload = [...payload].sort((a, b) => b.value - a.value);
 
     return (
       <div className="bg-gray-800 text-white p-3 rounded-md shadow-md border border-gray-700">
         <p className="label font-bold text-lg mb-2">{`Date: ${new Date(label).toLocaleDateString()}`}</p>
         {sortedPayload.map((pld, index) => {
           const count = (pld.payload[`${pld.name}_count`] as number)?.toLocaleString() || 'N/A';
-          const percentage = ((pld.value as number) * 100).toFixed(2);
+          const percentage = (pld.value * 100).toFixed(2);
+          
+          if (pld.value === 0) return null;
 
           return (
             <div key={index} style={{ color: pld.color }}>
@@ -49,10 +45,9 @@ const CustomTooltip: React.FC<TooltipProps> = ({ active, payload, label }) => {
   return null;
 };
 
-
 // --- Main Page Component ---
 const LanguageTrendPage: React.FC = () => {
-  const [chartData, setChartData] = useState<ChartDataItem[]>([]);
+  const [chartData, setChartData] = useState<LanguageTrendChartDataItem[]>([]);
   const [topLanguages, setTopLanguages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,63 +62,43 @@ const LanguageTrendPage: React.FC = () => {
         }
         const data: LanguageTrendData[] = await response.json();
 
-        // --- Data Processing ---
-        // 1. Group by timestamp
         const groupedByTimestamp: { [key: string]: LanguageTrendData[] } = data.reduce((acc, item) => {
           const timestamp = item.latest_data_timestamp;
-          if (!acc[timestamp]) {
-            acc[timestamp] = [];
-          }
+          if (!acc[timestamp]) acc[timestamp] = [];
           acc[timestamp].push(item);
           return acc;
         }, {} as { [key: string]: LanguageTrendData[] });
 
-        // 2. Identify top 12 languages based on average contribution
         const languageAverages: { [key: string]: number } = {};
-        const languageCounts: { [key: string]: number } = {};
         data.forEach(item => {
             const totalForTimestamp = groupedByTimestamp[item.latest_data_timestamp].reduce((sum, i) => sum + i.developer_count, 0);
             const percentage = totalForTimestamp > 0 ? (item.developer_count / totalForTimestamp) * 100 : 0;
             languageAverages[item.dominant_language] = (languageAverages[item.dominant_language] || 0) + percentage;
-            languageCounts[item.dominant_language] = (languageCounts[item.dominant_language] || 0) + 1;
-        });
-        Object.keys(languageAverages).forEach(lang => {
-            languageAverages[lang] /= Object.keys(groupedByTimestamp).length; // Average over all timestamps
         });
         
-        const top12Langs = Object.entries(languageAverages)
+        const top10Langs = Object.entries(languageAverages)
           .sort(([, a], [, b]) => b - a)
-          .slice(0, 12)
+          .slice(0, 10)
           .map(([lang]) => lang);
-        setTopLanguages(top12Langs);
+        setTopLanguages(top10Langs);
 
-        // 3. Pivot data for charting, including an "Other" category
         const processedData = Object.entries(groupedByTimestamp).map(([timestamp, items]) => {
           const totalDevelopers = items.reduce((sum, item) => sum + item.developer_count, 0);
+          const chartItem: LanguageTrendChartDataItem = { timestamp: new Date(timestamp).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) };
           
-          const chartItem: ChartDataItem = { timestamp: new Date(timestamp).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) };
-          
-          let topLangsTotalPercentage = 0;
-          top12Langs.forEach(lang => {
+          top10Langs.forEach(lang => {
             const langData = items.find(item => item.dominant_language === lang);
             const percentage = langData && totalDevelopers > 0 ? langData.developer_count / totalDevelopers : 0;
             chartItem[lang] = percentage;
-            // Store raw count for tooltip
             chartItem[`${lang}_count`] = langData ? langData.developer_count : 0;
-            topLangsTotalPercentage += percentage;
           });
-
-          // Aggregate remaining languages into "Other"
-          const otherPercentage = 1 - topLangsTotalPercentage;
-          chartItem['Other'] = otherPercentage < 0 ? 0 : otherPercentage; // Clamp at 0
           
           return chartItem;
         });
 
-        // Sort data chronologically
         processedData.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
         setChartData(processedData);
+
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : 'An unknown error occurred');
       } finally {
@@ -134,14 +109,8 @@ const LanguageTrendPage: React.FC = () => {
     fetchData();
   }, []);
 
-  const languagesForChart = useMemo(() => [...topLanguages, 'Other'], [topLanguages]);
-
-  if (isLoading) {
-    return <div className="text-center mt-20">Loading chart data...</div>;
-  }
-  if (error) {
-    return <div className="text-center mt-20 text-red-500">Error: {error}</div>;
-  }
+  if (isLoading) return <div className="text-center mt-20">Loading chart data...</div>;
+  if (error) return <div className="text-center mt-20 text-red-500">Error: {error}</div>;
 
   return (
     <div className="p-6">
@@ -153,7 +122,7 @@ const LanguageTrendPage: React.FC = () => {
           <BarChart
             data={chartData}
             margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-            stackOffset="expand" // This creates the 100% stacked effect
+            stackOffset="expand"
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
             <XAxis dataKey="timestamp" />
@@ -163,7 +132,7 @@ const LanguageTrendPage: React.FC = () => {
             />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}/>
             <Legend />
-            {languagesForChart.map((lang, index) => (
+            {topLanguages.map((lang, index) => (
               <Bar 
                 key={lang} 
                 dataKey={lang} 
