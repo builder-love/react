@@ -27,18 +27,22 @@ const COLORS = [
 // --- Custom Tooltip Component ---
 const CustomTooltip: React.FC<TooltipProps> = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
+    // Sort the payload in descending order based on percentage value
+    const sortedPayload = [...payload].sort((a, b) => (b.value as number) - (a.value as number));
+
     return (
       <div className="bg-gray-800 text-white p-3 rounded-md shadow-md border border-gray-700">
         <p className="label font-bold text-lg mb-2">{`Date: ${new Date(label).toLocaleDateString()}`}</p>
-        {payload.map((pld, index) => (
-          <div key={index} style={{ color: pld.color }}>
-            <strong>{pld.name}:</strong> {(pld.value as number * 100).toFixed(2)}%
-            <br />
-            <span className="text-sm text-gray-400">
-              Contributors: {(pld.payload[`${pld.name}_count`] as number)?.toLocaleString() || 'N/A'}
-            </span>
-          </div>
-        ))}
+        {sortedPayload.map((pld, index) => {
+          const count = (pld.payload[`${pld.name}_count`] as number)?.toLocaleString() || 'N/A';
+          const percentage = ((pld.value as number) * 100).toFixed(2);
+
+          return (
+            <div key={index} style={{ color: pld.color }}>
+              <strong>{pld.name}:</strong> {count} ({percentage}%)
+            </div>
+          );
+        })}
       </div>
     );
   }
