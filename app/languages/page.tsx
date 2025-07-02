@@ -122,9 +122,9 @@ const LanguageTrendPage: React.FC = () => {
         <ResponsiveContainer width="100%" height={400}>
           <BarChart
             data={chartData}
-            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+            margin={{ top: 20, right: 30, left: 40, bottom: 5 }}
             stackOffset="expand"
-            barCategoryGap={0} // Remove space between bars
+            barCategoryGap={2} 
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
             <XAxis dataKey="timestamp" />
@@ -134,7 +134,6 @@ const LanguageTrendPage: React.FC = () => {
             />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}/>
             <Legend />
-            {/* Reverse the array to stack largest percentages on top */}
             {[...topLanguages].reverse().map((lang, index) => (
               <Bar 
                 key={lang} 
@@ -142,7 +141,7 @@ const LanguageTrendPage: React.FC = () => {
                 stackId="a" 
                 fill={COLORS[index % COLORS.length]} 
                 name={lang}
-                maxBarSize={100} // Enforce a max width for each bar
+                maxBarSize={100}
               />
             ))}
           </BarChart>
