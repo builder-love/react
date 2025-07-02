@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from 'flowbite-react';
 import {
-  BarChart,
-  Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -12,26 +12,25 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { schemeTableau10 } from 'd3-scale-chromatic';
 import type { LanguageTrendData, LanguageTrendChartDataItem, TooltipProps } from '../types';
 
 // --- Color Palette ---
-const COLORS = [
-  '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4500',
-  '#8A2BE2', '#DEB887', '#5F9EA0', '#D2691E'
-];
+const COLORS = schemeTableau10;;
 
 // --- Custom Tooltip Component ---
 const CustomTooltip: React.FC<TooltipProps> = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     const sortedPayload = [...payload].sort((a, b) => b.value - a.value);
+    const total = sortedPayload.reduce((sum, entry) => sum + entry.value, 0);
 
     return (
       <div className="bg-gray-800 text-white p-3 rounded-md shadow-lg border border-gray-700">
         <p className="label font-bold text-lg mb-2">{`Date: ${new Date(label).toLocaleDateString()}`}</p>
         {sortedPayload.map((pld, index) => {
-          const count = (pld.payload[`${pld.name}_count`] as number)?.toLocaleString() || 'N/A';
-          const percentage = (pld.value * 100).toFixed(2);
-          
+          const count = pld.value.toLocaleString();
+          const percentage = total > 0 ? ((pld.value / total) * 100).toFixed(2) : 0;
+
           if (pld.value === 0) return null;
 
           return (
@@ -72,9 +71,7 @@ const LanguageTrendPage: React.FC = () => {
 
         const languageAverages: { [key: string]: number } = {};
         data.forEach(item => {
-            const totalForTimestamp = groupedByTimestamp[item.latest_data_timestamp].reduce((sum, i) => sum + i.developer_count, 0);
-            const percentage = totalForTimestamp > 0 ? (item.developer_count / totalForTimestamp) * 100 : 0;
-            languageAverages[item.dominant_language] = (languageAverages[item.dominant_language] || 0) + percentage;
+            languageAverages[item.dominant_language] = (languageAverages[item.dominant_language] || 0) + item.developer_count;
         });
         
         const top10Langs = Object.entries(languageAverages)
@@ -84,14 +81,12 @@ const LanguageTrendPage: React.FC = () => {
         setTopLanguages(top10Langs);
 
         const processedData = Object.entries(groupedByTimestamp).map(([timestamp, items]) => {
-          const totalDevelopers = items.reduce((sum, item) => sum + item.developer_count, 0);
           const chartItem: LanguageTrendChartDataItem = { timestamp: new Date(timestamp).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) };
           
           top10Langs.forEach(lang => {
             const langData = items.find(item => item.dominant_language === lang);
-            const percentage = langData && totalDevelopers > 0 ? langData.developer_count / totalDevelopers : 0;
-            chartItem[lang] = percentage;
-            chartItem[`${lang}_count`] = langData ? langData.developer_count : 0;
+            // **FIX**: Ensure raw developer_count is used, not a percentage
+            chartItem[lang] = langData ? langData.developer_count : 0;
           });
           
           return chartItem;
@@ -117,34 +112,34 @@ const LanguageTrendPage: React.FC = () => {
     <div className="p-4 md:p-6">
       <Card>
         <h3 className="text-2xl font-bold mb-4 text-center">
-          Language Contribution Trend by Developer Count
+          Contributor Count by Dominant Language
         </h3>
         <ResponsiveContainer width="100%" height={400}>
-          <BarChart
+          <AreaChart
             data={chartData}
-            margin={{ top: 20, right: 30, left: 40, bottom: 5 }}
-            stackOffset="expand"
-            barCategoryGap={2} 
+            // Increased left margin for better label spacing
+            margin={{ top: 10, right: 30, left: 40, bottom: 0 }}
           >
-            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
+            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
             <XAxis dataKey="timestamp" />
             <YAxis 
-              tickFormatter={(tick) => `${(tick * 100).toFixed(0)}%`} 
-              label={{ value: 'Percentage of Contributors', angle: -90, position: 'insideLeft' }}
+              tickFormatter={(tick) => new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short' }).format(tick as number)}
+              label={{ value: 'Total Contributors', angle: -90, position: 'insideLeft', offset: -15 }}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}/>
+            <Tooltip content={<CustomTooltip />} />
             <Legend />
-            {[...topLanguages].reverse().map((lang, index) => (
-              <Bar 
-                key={lang} 
+            {topLanguages.map((lang, index) => (
+              <Area 
+                key={lang}
+                type="monotone"
                 dataKey={lang} 
-                stackId="a" 
+                stackId="1"
+                stroke={COLORS[index % COLORS.length]} 
                 fill={COLORS[index % COLORS.length]} 
                 name={lang}
-                maxBarSize={100}
               />
             ))}
-          </BarChart>
+          </AreaChart>
         </ResponsiveContainer>
       </Card>
     </div>
