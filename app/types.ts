@@ -6,6 +6,12 @@ export interface LanguageItem {
   byte_dominance: number;
 }
 
+export interface LanguageTrendData {
+  dominant_language: string;
+  developer_count: number;
+  latest_data_timestamp: string;
+}
+
 export type Payload = {
   dataKey: string;
   fill: string;

@@ -1,221 +1,178 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  PieChart,
-  Pie,
-  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
 } from 'recharts';
-import type { LanguageItem, TooltipProps } from '../types';
-import languageData from '../data/top_languages_all_repos.json';
-import otherLanguagesData from '../data/other_languages_repos.json';
+import type { TooltipProps, LanguageTrendData } from '../types';
 
+interface ChartDataItem {
+  timestamp: string;
+  [language: string]: number | string; // Allows for dynamic language keys
+}
+
+// --- Color Palette ---
 const COLORS = [
-  '#0088FE',
-  '#00C49F',
-  '#FFBB28',
-  '#FF8042',
-  '#AF19FF',
-  '#FF4500',
-  '#808000',
-  '#800080',
-  '#008080',
+  '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4500',
+  '#8A2BE2', '#DEB887', '#5F9EA0', '#D2691E', '#FF7F50', '#6495ED'
 ];
 
-const RADIAN = Math.PI / 180;
+// --- Custom Tooltip Component ---
+const CustomTooltip: React.FC<TooltipProps> = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-gray-800 text-white p-3 rounded-md shadow-md border border-gray-700">
+        <p className="label font-bold text-lg mb-2">{`Date: ${new Date(label).toLocaleDateString()}`}</p>
+        {payload.map((pld, index) => (
+          <div key={index} style={{ color: pld.color }}>
+            <strong>{pld.name}:</strong> {(pld.value as number * 100).toFixed(2)}%
+            <br />
+            <span className="text-sm text-gray-400">
+              Contributors: {(pld.payload[`${pld.name}_count`] as number)?.toLocaleString() || 'N/A'}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
-const LanguagesPage: React.FC = () => {
-  const [topLanguages, setTopLanguages] = useState<LanguageItem[]>([]);
-  const [otherLanguages, setOtherLanguages] = useState<LanguageItem[]>([]);
-  const [showOtherLanguages, setShowOtherLanguages] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+
+// --- Main Page Component ---
+const LanguageTrendPage: React.FC = () => {
+  const [chartData, setChartData] = useState<ChartDataItem[]>([]);
+  const [topLanguages, setTopLanguages] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setTopLanguages(
-      languageData.map((item) => ({
-        language_name: item.language_name,
-        bytes: item.bytes,
-        byte_dominance: item.byte_dominance,
-      }))
-    );
-    setOtherLanguages(
-      otherLanguagesData.map((item) => ({
-        language_name: item.language_name,
-        bytes: item.sum_bytes_by_language,
-        byte_dominance: item.byte_dominance,
-      }))
-    );
-  }, []);
+    const fetchData = async () => {
+      try {
+        const response = await fetch('/api/get-language-trends');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to fetch data');
+        }
+        const data: LanguageTrendData[] = await response.json();
 
-  const checkIsMobile = () => {
-    if (typeof window !== 'undefined') {
-      setIsMobile(window.innerWidth < 768);
-    }
-  };
+        // --- Data Processing ---
+        // 1. Group by timestamp
+        const groupedByTimestamp: { [key: string]: LanguageTrendData[] } = data.reduce((acc, item) => {
+          const timestamp = item.latest_data_timestamp;
+          if (!acc[timestamp]) {
+            acc[timestamp] = [];
+          }
+          acc[timestamp].push(item);
+          return acc;
+        }, {} as { [key: string]: LanguageTrendData[] });
 
-  useEffect(() => {
-    checkIsMobile();
+        // 2. Identify top 12 languages based on average contribution
+        const languageAverages: { [key: string]: number } = {};
+        const languageCounts: { [key: string]: number } = {};
+        data.forEach(item => {
+            const totalForTimestamp = groupedByTimestamp[item.latest_data_timestamp].reduce((sum, i) => sum + i.developer_count, 0);
+            const percentage = totalForTimestamp > 0 ? (item.developer_count / totalForTimestamp) * 100 : 0;
+            languageAverages[item.dominant_language] = (languageAverages[item.dominant_language] || 0) + percentage;
+            languageCounts[item.dominant_language] = (languageCounts[item.dominant_language] || 0) + 1;
+        });
+        Object.keys(languageAverages).forEach(lang => {
+            languageAverages[lang] /= Object.keys(groupedByTimestamp).length; // Average over all timestamps
+        });
+        
+        const top12Langs = Object.entries(languageAverages)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 12)
+          .map(([lang]) => lang);
+        setTopLanguages(top12Langs);
 
-    const handleResize = () => {
-      checkIsMobile();
+        // 3. Pivot data for charting, including an "Other" category
+        const processedData = Object.entries(groupedByTimestamp).map(([timestamp, items]) => {
+          const totalDevelopers = items.reduce((sum, item) => sum + item.developer_count, 0);
+          
+          const chartItem: ChartDataItem = { timestamp: new Date(timestamp).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) };
+          
+          let topLangsTotalPercentage = 0;
+          top12Langs.forEach(lang => {
+            const langData = items.find(item => item.dominant_language === lang);
+            const percentage = langData && totalDevelopers > 0 ? langData.developer_count / totalDevelopers : 0;
+            chartItem[lang] = percentage;
+            // Store raw count for tooltip
+            chartItem[`${lang}_count`] = langData ? langData.developer_count : 0;
+            topLangsTotalPercentage += percentage;
+          });
+
+          // Aggregate remaining languages into "Other"
+          const otherPercentage = 1 - topLangsTotalPercentage;
+          chartItem['Other'] = otherPercentage < 0 ? 0 : otherPercentage; // Clamp at 0
+          
+          return chartItem;
+        });
+
+        // Sort data chronologically
+        processedData.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+        setChartData(processedData);
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : 'An unknown error occurred');
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    fetchData();
   }, []);
 
-  const renderCustomizedLabel = ({
-    cx,
-    cy,
-    midAngle,
-    outerRadius,
-    percent,
-    name,
-  }: {
-    cx: number;
-    cy: number;
-    midAngle: number;
-    innerRadius: number;
-    outerRadius: number;
-    percent: number;
-    index: number;
-    name: string;
-  }) => {
-    const dominance = percent * 100;
-    // Apply different logic for mobile and desktop
-    if (isMobile && dominance <= 5) {
-      return null; // Hide on mobile if dominance is less than or equal to 5%
-    } else if (!isMobile && dominance <= 2) {
-      return null; // Hide on desktop if dominance is less than or equal to 2%
-    }
+  const languagesForChart = useMemo(() => [...topLanguages, 'Other'], [topLanguages]);
 
-    const radius = isMobile ? outerRadius + 1 : outerRadius + 20; // Adjust the radius to position the label outside the pie
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-    if (isMobile) {
-      return (
-        <text
-          x={x}
-          y={y}
-          fill="white"
-          textAnchor={x > cx ? 'start' : 'end'}
-          dominantBaseline="central"
-          style={{ fontSize: '12px' }}
-        >
-          <tspan x={x} dy="1.2em">{name}</tspan>
-          <tspan x={x} dy="1.2em">({(percent * 100).toFixed(0)}%)</tspan>
-        </text>
-      );
-    }
-
-    // Render name and percentage outside for desktop
-    return (
-      <text
-        x={x}
-        y={y}
-        fill="white"
-        textAnchor={x > cx ? 'start' : 'end'}
-        dominantBaseline="central"
-        style={{ fontSize: '14px' }}
-      >
-        {`${name}: ${(percent * 100).toFixed(0)}%`}
-      </text>
-    );
-  };
-
-  const CustomTooltip: React.FC<TooltipProps> = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload as LanguageItem;
-      return (
-        <div className="bg-gray-800 text-white p-2 rounded-md shadow-md">
-          <p className="label font-bold">{`${payload[0].name}`}</p>
-          <p className="intro">
-            {`Bytes: ${data.bytes.toLocaleString()}`}
-          </p>
-          <p className="intro">{`Dominance: ${(
-            data.byte_dominance * 100
-          ).toFixed(2)}%`}</p>
-        </div>
-      );
-    }
-
-    return null;
-  };
-
-  // Calculate total bytes
-  const totalBytes = useMemo(() => {
-    return topLanguages.reduce((sum, lang) => sum + lang.bytes, 0);
-  }, [topLanguages]);
-
-  // Toggle function
-  const toggleOtherLanguages = () => {
-    setShowOtherLanguages(!showOtherLanguages);
-  };
+  if (isLoading) {
+    return <div className="text-center mt-20">Loading chart data...</div>;
+  }
+  if (error) {
+    return <div className="text-center mt-20 text-red-500">Error: {error}</div>;
+  }
 
   return (
     <div className="p-6">
-      {/* Language Distribution Chart */}
       <div className="mt-20">
         <h3 className="text-2xl font-bold mb-4 text-center">
-          Language Dominance - Entire Crypto Industry
+          Language Contribution Trend by Developer Count
         </h3>
-        <ResponsiveContainer width="100%" height={350}>
-          <PieChart>
-            <Pie
-              data={topLanguages}
-              cx="50%"
-              cy="50%"
-              labelLine={!isMobile}
-              label={renderCustomizedLabel}
-              outerRadius="80%"
-              fill="#8884d8"
-              dataKey="bytes"
-              nameKey="language_name"
-            >
-              {topLanguages.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={COLORS[index % COLORS.length]}
-                />
-              ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-          </PieChart>
-        </ResponsiveContainer>
-        {/* Callout Field */}
-        <div className="flex justify-center">
-          <p className="text-md text-gray-400 text-center mt-2">
-            {totalBytes.toLocaleString()} bytes and counting
-          </p>
-        </div>
-        {/* Other Languages Toggle */}
-        <div className="flex justify-center mt-4">
-          <button
-            onClick={toggleOtherLanguages}
-            className="text-blue-500 hover:underline focus:outline-none"
+        <ResponsiveContainer width="100%" height={400}>
+          <BarChart
+            data={chartData}
+            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+            stackOffset="expand" // This creates the 100% stacked effect
           >
-            {showOtherLanguages ? 'Hide Other' : 'View Other'}
-          </button>
-        </div>
-        {/* Other Languages (Conditional) */}
-        {showOtherLanguages && (
-          <div className="flex justify-center mt-2">
-            <p className="text-xs text-gray-400 text-center">
-              {otherLanguages.map((lang, index) => (
-                <React.Fragment key={lang.language_name}>
-                  {lang.language_name} ({((lang.byte_dominance || 0) * 100).toFixed(2)}%)
-                  {index < otherLanguages.length - 1 && ', '}
-                </React.Fragment>
-              ))}
-            </p>
-          </div>
-        )}
+            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
+            <XAxis dataKey="timestamp" />
+            <YAxis 
+              tickFormatter={(tick) => `${(tick * 100).toFixed(0)}%`} 
+              label={{ value: 'Percentage of Contributors', angle: -90, position: 'insideLeft' }}
+            />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}/>
+            <Legend />
+            {languagesForChart.map((lang, index) => (
+              <Bar 
+                key={lang} 
+                dataKey={lang} 
+                stackId="a" 
+                fill={COLORS[index % COLORS.length]} 
+                name={lang}
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
 };
 
-export default LanguagesPage;
+export default LanguageTrendPage;
