@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Card } from 'flowbite-react';
 import {
   BarChart,
   Bar,
@@ -25,7 +26,7 @@ const CustomTooltip: React.FC<TooltipProps> = ({ active, payload, label }) => {
     const sortedPayload = [...payload].sort((a, b) => b.value - a.value);
 
     return (
-      <div className="bg-gray-800 text-white p-3 rounded-md shadow-md border border-gray-700">
+      <div className="bg-gray-800 text-white p-3 rounded-md shadow-lg border border-gray-700">
         <p className="label font-bold text-lg mb-2">{`Date: ${new Date(label).toLocaleDateString()}`}</p>
         {sortedPayload.map((pld, index) => {
           const count = (pld.payload[`${pld.name}_count`] as number)?.toLocaleString() || 'N/A';
@@ -109,12 +110,12 @@ const LanguageTrendPage: React.FC = () => {
     fetchData();
   }, []);
 
-  if (isLoading) return <div className="text-center mt-20">Loading chart data...</div>;
-  if (error) return <div className="text-center mt-20 text-red-500">Error: {error}</div>;
+  if (isLoading) return <div className="text-center mt-20 p-4">Loading chart data...</div>;
+  if (error) return <div className="text-center mt-20 p-4 text-red-500">Error: {error}</div>;
 
   return (
-    <div className="p-6">
-      <div className="mt-20">
+    <div className="p-4 md:p-6">
+      <Card>
         <h3 className="text-2xl font-bold mb-4 text-center">
           Language Contribution Trend by Developer Count
         </h3>
@@ -123,6 +124,7 @@ const LanguageTrendPage: React.FC = () => {
             data={chartData}
             margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
             stackOffset="expand"
+            barCategoryGap={0} // Remove space between bars
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
             <XAxis dataKey="timestamp" />
@@ -132,18 +134,20 @@ const LanguageTrendPage: React.FC = () => {
             />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}/>
             <Legend />
-            {topLanguages.map((lang, index) => (
+            {/* Reverse the array to stack largest percentages on top */}
+            {[...topLanguages].reverse().map((lang, index) => (
               <Bar 
                 key={lang} 
                 dataKey={lang} 
                 stackId="a" 
                 fill={COLORS[index % COLORS.length]} 
                 name={lang}
+                maxBarSize={100} // Enforce a max width for each bar
               />
             ))}
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </Card>
     </div>
   );
 };
