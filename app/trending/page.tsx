@@ -32,7 +32,7 @@ const ProjectOutliersLeaderboardCard: React.FC<ProjectOutliersLeaderboardCardPro
     <Card>
         <div className="mb-4 flex items-center justify-between">
         <h5 className="text-xl font-bold leading-none text-gray-900 dark:text-white">{title}</h5>
-        <a href="#" className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-500">
+        <a href="#" className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-500" target="_blank" rel="noopener noreferrer">
             View all
         </a>
         </div>
@@ -47,14 +47,14 @@ const ProjectOutliersLeaderboardCard: React.FC<ProjectOutliersLeaderboardCardPro
                 <li key={item.project_title} className="py-3 sm:py-4">
                 <div className="flex items-center space-x-4">
                     <div className="min-w-0 flex-1">
-                    {/* --- THIS IS THE MODIFIED PART --- */}
                     <Link
                         href={`/industry/${encodeURIComponent(item.project_title)}`}
                         className="truncate text-sm font-medium text-blue-600 hover:underline dark:text-blue-500"
+                        target="_blank"
+                        rel="noopener noreferrer"
                     >
                         {item.project_title}
                     </Link>
-                    {/* --- END MODIFICATION --- */}
                     <p className="truncate text-sm text-gray-500 dark:text-gray-400">
                         {`${metricLabel}: ${formatNumber(item.current_value)} (Prev: ${formatNumber(item.previous_value)})`}
                     </p>
