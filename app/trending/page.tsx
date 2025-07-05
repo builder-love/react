@@ -14,10 +14,18 @@ const formatNumber = (num: number | null) => {
 
 // Helper to format percentage change
 const formatPctChange = (num: number | null) => {
-  if (num === null) return 'N/A';
-  const sign = num > 0 ? '+' : '';
-  return `${sign}${(num * 100).toFixed(1)}%`;
-};
+    if (num === null) return 'N/A';
+    const sign = num > 0 ? '+' : '';
+    const percentage = num * 100;
+  
+    // Use Intl.NumberFormat to add commas and control decimal places
+    const formattedNumber = new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }).format(percentage);
+  
+    return `${sign}${formattedNumber}%`;
+  };
 
 const ProjectOutliersLeaderboardCard: React.FC<ProjectOutliersLeaderboardCardProps> = ({ title, metric: _metric, metricLabel, isLoading, data }) => (
   <Card>
