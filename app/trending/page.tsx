@@ -33,7 +33,7 @@ const ProjectOutliersLeaderboardCard: React.FC<ProjectOutliersLeaderboardCardPro
         <div className="mb-4 flex items-center justify-between">
         <h5 className="text-xl font-bold leading-none text-gray-900 dark:text-white">{title}</h5>
         <a href="#" className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-500" target="_blank" rel="noopener noreferrer">
-            View all
+            {/* View all */}
         </a>
         </div>
         <div className="flow-root">
