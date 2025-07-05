@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, Spinner } from 'flowbite-react';
 import { HiFire } from 'react-icons/hi';
 import { ProjectOutliersLeaderboardEntry, ProjectOutliersLeaderboardCardProps } from '../types';
@@ -28,40 +29,47 @@ const formatPctChange = (num: number | null) => {
   };
 
 const ProjectOutliersLeaderboardCard: React.FC<ProjectOutliersLeaderboardCardProps> = ({ title, metric: _metric, metricLabel, isLoading, data }) => (
-  <Card>
-    <div className="mb-4 flex items-center justify-between">
-      <h5 className="text-xl font-bold leading-none text-gray-900 dark:text-white">{title}</h5>
-      <a href="#" className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-500">
-        View all
-      </a>
-    </div>
-    <div className="flow-root">
-      {isLoading ? (
-        <div className="flex justify-center items-center h-48">
-          <Spinner size="xl" />
+    <Card>
+        <div className="mb-4 flex items-center justify-between">
+        <h5 className="text-xl font-bold leading-none text-gray-900 dark:text-white">{title}</h5>
+        <a href="#" className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-500">
+            View all
+        </a>
         </div>
-      ) : (
-        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-          {data.map((item) => (
-            <li key={item.project_title} className="py-3 sm:py-4">
-              <div className="flex items-center space-x-4">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-gray-900 dark:text-white">{item.project_title}</p>
-                  <p className="truncate text-sm text-gray-500 dark:text-gray-400">
-                    {`${metricLabel}: ${formatNumber(item.current_value)} (Prev: ${formatNumber(item.previous_value)})`}
-                  </p>
+        <div className="flow-root">
+        {isLoading ? (
+            <div className="flex justify-center items-center h-48">
+            <Spinner size="xl" />
+            </div>
+        ) : (
+            <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+            {data.map((item) => (
+                <li key={item.project_title} className="py-3 sm:py-4">
+                <div className="flex items-center space-x-4">
+                    <div className="min-w-0 flex-1">
+                    {/* --- THIS IS THE MODIFIED PART --- */}
+                    <Link
+                        href={`/industry/${encodeURIComponent(item.project_title)}`}
+                        className="truncate text-sm font-medium text-blue-600 hover:underline dark:text-blue-500"
+                    >
+                        {item.project_title}
+                    </Link>
+                    {/* --- END MODIFICATION --- */}
+                    <p className="truncate text-sm text-gray-500 dark:text-gray-400">
+                        {`${metricLabel}: ${formatNumber(item.current_value)} (Prev: ${formatNumber(item.previous_value)})`}
+                    </p>
+                    </div>
+                    <div className={`inline-flex items-center text-base font-semibold ${item.pct_change && item.pct_change > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {formatPctChange(item.pct_change)}
+                    </div>
                 </div>
-                <div className={`inline-flex items-center text-base font-semibold ${item.pct_change && item.pct_change > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                  {formatPctChange(item.pct_change)}
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  </Card>
-);
+                </li>
+            ))}
+            </ul>
+        )}
+        </div>
+    </Card>
+    );
 
 
 // --- Main Page Component ---
