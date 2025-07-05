@@ -15,11 +15,13 @@ import {
   HiMenu, // Hamburger icon
   HiX,
   HiSearch,
+  HiFire
 } from 'react-icons/hi'; // Using react-icons
 
 // navigation items data
 const navItems = [
   { href: "/", label: "Top Projects", icon: HiTrendingUp },
+  { href: "/trending", label: "Trending", icon: HiFire },
   { href: "/developers", label: "Top Builders", icon: HiUser },
   { href: "/industry", label: "Find a Project", icon: HiSearch }, // New "Find a Project" item
   { href: "/languages", label: "Languages", icon: HiViewBoards },

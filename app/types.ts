@@ -191,3 +191,20 @@ export interface Top100Contributor {
   contributor_rank: number | null;
   latest_data_timestamp: string | null;
 }
+
+// --- Leaderboard Card Component types ---
+export interface ProjectOutliersLeaderboardEntry {
+  project_title: string;
+  report_date: string;
+  pct_change: number | null;
+  current_value: number | null;
+  previous_value: number | null;
+}
+
+export interface ProjectOutliersLeaderboardCardProps {
+  title: string;
+  metric: string; // e.g., 'fork_count'
+  metricLabel: string; // e.g., 'Forks'
+  isLoading: boolean;
+  data: ProjectOutliersLeaderboardEntry[];
+}
