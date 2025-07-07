@@ -25,6 +25,7 @@ import chroma from 'chroma-js';
 import type { EnhancedTopProjectsTrendsData, FormattedLineChartData } from './types';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import ProjectLegendCheckboxes from './utilities/LegendCheckboxes';
+import { ToggleSwitch } from 'flowbite-react';
 
 // --- Define Metric Options ---
 const metricOptions = [
@@ -98,6 +99,7 @@ const Page: React.FC = () => {
   const isMobile = useIsMobile();
   const [visibleProjects, setVisibleProjects] = useState<Set<string>>(new Set());
   const [topNFilter, setTopNFilter] = useState<number>(10); // State for Top N filter, default 25
+  const [includeForks, setIncludeForks] = useState<boolean>(false);
 
   useEffect(() => {
     if (projectTitles.length > 0) {
@@ -113,7 +115,7 @@ const Page: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch('/api/get-top50-project-trends');
+        const response = await fetch(`/api/get-top50-project-trends?include_forks=${includeForks}`);
         if (!response.ok) {
           let errorDetail = `HTTP error! status: ${response.status}`;
           try { const errorData = await response.json(); errorDetail = errorData.message || errorDetail; }
@@ -135,7 +137,7 @@ const Page: React.FC = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [includeForks]);
 
   // Define the sorter function for tooltip items
   const tooltipItemSorter = (item: Payload<ValueType, NameType>): number => {
@@ -403,7 +405,11 @@ const Page: React.FC = () => {
                     {chartMainTitle}
                     {!isMobile && " by Development Activity"}
                 </h2>
-                {/* Download button removed from here */}
+                {/* DIV FOR THE TOGGLE */}
+                <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-400">Include Fork History</span>
+                    <ToggleSwitch checked={includeForks} onChange={setIncludeForks} disabled={isLoading} />
+                </div>
             </div>
 
             {/* Legend Checkboxes and Top N Filter */}

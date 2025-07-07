@@ -40,9 +40,23 @@ export async function GET(req: NextRequest) {
     console.error("Application API Key (e.g., API_KEY_VALUE) is not set!");
     // Potentially return an error or proceed if some endpoints might not need it (though yours do)
   }
+
+  // Get the include_forks parameter from the request
+  const searchParams = req.nextUrl.searchParams;
+  const include_forks = searchParams.get('include_forks');
+
   // Construct the full API path. Ensure the base URL doesn't have a trailing slash if the path segment starts with one.
   const pathSegment = '/projects/top50-trend';
-  const finalApiUrl = API_BASE_URL.endsWith('/') ? `${API_BASE_URL.slice(0, -1)}${pathSegment}` : `${API_BASE_URL}${pathSegment}`;
+  const finalApiUrl = new URL(
+    API_BASE_URL.endsWith('/') ? `${API_BASE_URL.slice(0, -1)}${pathSegment}` : `${API_BASE_URL}${pathSegment}`
+  );
+
+  // Append the include_forks parameter if it exists
+  if (include_forks) {
+    finalApiUrl.searchParams.append('include_forks', include_forks);
+  }
+
+  console.log("Fetching from final URL:", finalApiUrl.toString());
 
   try {
     // --- Authentication Strategy ---
