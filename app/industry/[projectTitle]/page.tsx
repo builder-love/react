@@ -393,6 +393,7 @@ const ProjectDetailPage = () => {
 
         {projectTrends.length > 0 && <h2 className="text-2xl font-bold mt-8 mb-4 text-center md:text-left text-gray-800 dark:text-white">Metric Trends Over Time</h2>}
         
+        {renderTrendChart( "Repo Count", projectTrends, [{ dataKey: "repo_count", stroke: "#00C49F", name: "Repos" }], "Repos" )}
         {renderTrendChart( "Contributor Count", projectTrends, [{ dataKey: "contributor_count", stroke: "#8884d8", name: "Contributors" }], "Contributors" )}
         {renderTrendChart( "Stargaze Count", projectTrends, [{ dataKey: "stargaze_count", stroke: "#82ca9d", name: "Stars" }], "Stars" )}
         {renderTrendChart( "Fork Count", projectTrends, [{ dataKey: "fork_count", stroke: "#ffc658", name: "Forks" }], "Forks" )}
