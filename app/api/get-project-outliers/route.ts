@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const metric = searchParams.get('metric');
   const limit = searchParams.get('limit');
+  const include_forks = searchParams.get('include_forks');
 
   // Validate that the required 'metric' parameter exists
   if (!metric) {
@@ -41,6 +42,11 @@ export async function GET(req: NextRequest) {
   // validate the limit parameter exists and is a number
   if (limit && isNaN(Number(limit))) {
     return NextResponse.json({ message: 'Limit parameter must be a number.' }, { status: 400 });
+  }
+
+  // validate the include_forks parameter exists and is a boolean
+  if (include_forks && include_forks !== 'true' && include_forks !== 'false') {
+    return NextResponse.json({ message: 'Include forks parameter must be a boolean.' }, { status: 400 });
   }
 
   // Set up request headers
@@ -57,6 +63,9 @@ export async function GET(req: NextRequest) {
   const finalApiUrl = new URL(`${API_BASE_URL}/projects/outliers`);
   finalApiUrl.searchParams.append('metric', metric);
   finalApiUrl.searchParams.append('limit', limit || '5'); // Default to 5 if not provided
+  if (include_forks) {
+    finalApiUrl.searchParams.append('include_forks', include_forks);
+  }
 
   try {
     // --- Authentication Strategy ---
