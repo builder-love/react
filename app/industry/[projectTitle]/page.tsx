@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Card, Spinner, Alert, Button, ListGroup, ListGroupItem } from 'flowbite-react';
+import { Card, Spinner, Alert, Button, ListGroup, ListGroupItem, ToggleSwitch } from 'flowbite-react';
 import { HiInformationCircle, HiLink } from 'react-icons/hi';
 import { TopProjects, ProjectOrganizationData, ProjectTrendsData } from '@/app/types';
 import { formatNumberWithCommas, formatYAxisTickValue, formatPercentage } from '@/app/utilities/formatters';
@@ -33,7 +33,7 @@ const useIsMobile = (breakpoint = 768): boolean => {
   return isMobileView;
 };
 
-// MODIFIED Helper component for consistent metric display
+// Helper component for consistent metric display
 const MetricDisplayBox = ({
   title,
   value,
@@ -64,115 +64,74 @@ const ProjectDetailPage = () => {
   const params = useParams();
   const projectTitleUrlEncoded = params.projectTitle as string;
 
+  // --- State Management ---
   const [project, setProject] = useState<TopProjects | null>(null);
   const [organizations, setOrganizations] = useState<ProjectOrganizationData[]>([]);
   const [projectTrends, setProjectTrends] = useState<ProjectTrendsData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isLoadingOrgs, setIsLoadingOrgs] = useState(true);
-  const [orgError, setOrgError] = useState<string | null>(null);
-  const [isLoadingTrends, setIsLoadingTrends] = useState(true);
-  const [trendsError, setTrendsError] = useState<string | null>(null);
+  
+  // Single, global toggle state for the entire page
+  const [includeForks, setIncludeForks] = useState(false);
 
+  // --- Consolidated Data Fetching ---
   useEffect(() => {
     if (projectTitleUrlEncoded) {
-      // Data fetching logic (remains the same)
-      const fetchProjectData = async () => {
+      const fetchAllData = async () => {
         setIsLoading(true);
         setError(null);
+
         try {
-          const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}`);
-          if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.message || `Failed to fetch project details (status: ${response.status})`);
+          // Fetch all data concurrently based on the toggle state
+          const [projectResponse, trendsResponse, orgsResponse] = await Promise.all([
+            fetch(`/api/industry/project/${projectTitleUrlEncoded}?include_forks=${includeForks}`),
+            fetch(`/api/industry/project/${projectTitleUrlEncoded}/trends?include_forks=${includeForks}`),
+            fetch(`/api/industry/project/${projectTitleUrlEncoded}/organizations`)
+          ]);
+
+          // Process project details
+          if (!projectResponse.ok) {
+            const errData = await projectResponse.json();
+            throw new Error(errData.message || `Failed to fetch project details`);
           }
-          const data: TopProjects = await response.json();
-          setProject(data);
-        } catch (err: Error | unknown) {
-          console.error("Fetch project detail error:", err);
-          setError(err instanceof Error ? err.message : 'An unknown error occurred fetching project details.');
+          const projectData: TopProjects = await projectResponse.json();
+          setProject(projectData);
+
+          // Process trends data
+          if (!trendsResponse.ok) {
+            const errData = await trendsResponse.json();
+            throw new Error(errData.message || `Failed to fetch project trends`);
+          }
+          const trendsData: ProjectTrendsData[] = await trendsResponse.json();
+          const formattedTrends = trendsData.map(d => ({
+            ...d,
+            report_date: new Date(d.report_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          })).sort((a, b) => new Date(a.report_date).getTime() - new Date(b.report_date).getTime());
+          setProjectTrends(formattedTrends);
+
+          // Process organization data
+          if (!orgsResponse.ok) {
+            const errData = await orgsResponse.json();
+            throw new Error(errData.message || `Failed to fetch organizations`);
+          }
+          const orgsData: ProjectOrganizationData[] = await orgsResponse.json();
+          setOrganizations(orgsData);
+
+        } catch (err: unknown) {
+          console.error("Data fetching error:", err);
+          setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+          // Clear data on error to avoid showing stale info
+          setProject(null);
+          setProjectTrends([]);
+          setOrganizations([]);
         } finally {
           setIsLoading(false);
         }
       };
-      const fetchOrganizationData = async () => {
-        setIsLoadingOrgs(true);
-        setOrgError(null);
-        try {
-          const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/organizations`);
-          if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.message || `Failed to fetch project organizations (status: ${response.status})`);
-          }
-          const data: ProjectOrganizationData[] = await response.json();
-          setOrganizations(data);
-        } catch (err: unknown) {
-          console.error("Fetch project organizations error:", err);
-          setOrgError(err instanceof Error ? err.message : 'An unknown error occurred fetching organizations.');
-          setOrganizations([]);
-        } finally {
-          setIsLoadingOrgs(false);
-        }
-      };
-      const fetchProjectTrendsData = async () => {
-        setIsLoadingTrends(true);
-        setTrendsError(null);
-        try {
-          const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/trends`);
-          if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.message || `Failed to fetch project trends (status: ${response.status})`);
-          }
-          const data: ProjectTrendsData[] = await response.json();
-          const formattedData = data.map(d => ({
-            ...d,
-            report_date: new Date(d.report_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-          })).sort((a, b) => new Date(a.report_date).getTime() - new Date(b.report_date).getTime());
-          setProjectTrends(formattedData);
-        } catch (err: unknown) {
-          console.error("Fetch project trends error:", err);
-          setTrendsError('Trend data could not be loaded. Please try again later.');
-          setProjectTrends([]);
-        } finally {
-          setIsLoadingTrends(false);
-        }
-      };
-      fetchProjectData();
-      fetchOrganizationData();
-      fetchProjectTrendsData();
-    } else {
-      setIsLoading(false);
-      setIsLoadingOrgs(false);
-      setIsLoadingTrends(false);
-      setError("Project title not found in URL.");
+      
+      fetchAllData();
     }
-  }, [projectTitleUrlEncoded]);
-
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-screen"><Spinner size="xl" /> Loading project details...</div>;
-  }
-
-  if (error && !project) {
-    return (
-      <div className="w-full p-4">
-        <Alert color="failure" icon={HiInformationCircle}>
-          <span>Error loading project: {error}</span>
-        </Alert>
-        <Button onClick={() => router.back()} className="mt-4">Go Back</Button>
-      </div>
-    );
-  }
-
-  if (!project) {
-    return (
-       <div className="w-full p-4">
-        <Alert color="warning" icon={HiInformationCircle}>
-            <span>Project data could not be loaded or project not found.</span>
-        </Alert>
-        <Button onClick={() => router.back()} className="mt-4">Go Back</Button>
-      </div>
-    );
-  }
+  }, [projectTitleUrlEncoded, includeForks]); // Re-fetches all data when toggle changes
 
   const renderTrendChart = (
     title: string,
@@ -181,24 +140,16 @@ const ProjectDetailPage = () => {
     yAxisLabelValue?: string,
     yAxisRankLabelValue?: string
   ) => {
+    // ... (This function remains unchanged)
     const hasRankAxis = lines.some(line => line.yAxisId === 'right');
-
-    // Responsive settings
-    const yAxisTickWidth = isMobile ? 45 : 70; // Adjusted mobile width, 45px should be ok for "1.2M" or "120k"
+    const yAxisTickWidth = isMobile ? 45 : 70;
     const yAxisLabelFontSizeDesktop = '0.8rem';
     const yAxisLabelDxLeftDesktop = -20; 
     const yAxisLabelFontSizeMobile = '0.55rem'; 
     const yAxisLabelDxRightMobile = 8;
-
-    const chartLeftMargin = isMobile 
-        ? 5 
-        : (yAxisLabelValue ? 45 : 25); 
-
-    const chartRightMargin = isMobile 
-        ? (yAxisRankLabelValue && hasRankAxis ? 15 : 5) 
-        : (yAxisRankLabelValue && hasRankAxis ? 45 : 25);
-    
-    const axisTickFontSize = isMobile ? '0.55rem' : '0.75rem'; // Approx 8.8px on mobile
+    const chartLeftMargin = isMobile ? 5 : (yAxisLabelValue ? 45 : 25); 
+    const chartRightMargin = isMobile ? (yAxisRankLabelValue && hasRankAxis ? 15 : 5) : (yAxisRankLabelValue && hasRankAxis ? 45 : 25);
+    const axisTickFontSize = isMobile ? '0.55rem' : '0.75rem';
     const xAxisHeight = isMobile ? 40 : 40;
     const xAxisDy = isMobile ? 3 : 2;
     const chartTopBottomMargin = isMobile ? 2 : 5;
@@ -208,98 +159,27 @@ const ProjectDetailPage = () => {
     return (
       <Card className="mb-6">
         <h2 className="text-xl font-semibold mb-3">{title}</h2>
-        {isLoadingTrends && (
-          <div className="flex justify-center items-center h-64"><Spinner /> Loading trend data...</div>
-        )}
-        {trendsError && !isLoadingTrends && (
-          <Alert color="failure" icon={HiInformationCircle}>
-            <span>{trendsError}</span>
-          </Alert>
-        )}
-        {!isLoadingTrends && !trendsError && projectTrends.length === 0 && (
-          <Alert color="info">No trend data available for {title.toLowerCase()}.</Alert>
-        )}
-        {!isLoadingTrends && !trendsError && projectTrends.length > 0 && (
+        {projectTrends.length > 0 && (
           <div style={{ width: '100%', height: 300 }}>
             <ResponsiveContainer>
-              <LineChart 
-                data={data} 
-                margin={{ 
-                    top: chartTopBottomMargin, 
-                    right: chartRightMargin, 
-                    left: chartLeftMargin, 
-                    bottom: chartTopBottomMargin 
-                }}
-              >
+              <LineChart data={data} margin={{ top: chartTopBottomMargin, right: chartRightMargin, left: chartLeftMargin, bottom: chartTopBottomMargin }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="report_date" 
-                  tick={{ fontSize: axisTickFontSize }}
-                  angle={-35}
-                  textAnchor="end"
-                  height={xAxisHeight}
-                  dy={xAxisDy}
-                  interval={"preserveStartEnd"} 
-                />
-                <YAxis
-                  yAxisId="left"
-                  tickFormatter={(tickValue) => formatYAxisTickValue(tickValue, isMobile)} // MODIFIED
-                  label={(!isMobile && yAxisLabelValue) ? { 
-                      value: yAxisLabelValue, 
-                      angle: -90, 
-                      position: 'insideLeft', 
-                      dx: yAxisLabelDxLeftDesktop, 
-                      fill: '#6b7280', 
-                      style: { textAnchor: 'middle', fontSize: yAxisLabelFontSizeDesktop } 
-                  } : undefined}
-                  width={yAxisTickWidth} // MODIFIED (slightly adjusted for mobile if needed)
-                  tick={{ fontSize: axisTickFontSize }}
-                  allowDecimals={false} // Usually good for abbreviated values like "1M", "120k"
-                />
+                <XAxis dataKey="report_date" tick={{ fontSize: axisTickFontSize }} angle={-35} textAnchor="end" height={xAxisHeight} dy={xAxisDy} interval={"preserveStartEnd"} />
+                <YAxis yAxisId="left" tickFormatter={(tickValue) => formatYAxisTickValue(tickValue, isMobile)} label={(!isMobile && yAxisLabelValue) ? { value: yAxisLabelValue, angle: -90, position: 'insideLeft', dx: yAxisLabelDxLeftDesktop, fill: '#6b7280', style: { textAnchor: 'middle', fontSize: yAxisLabelFontSizeDesktop } } : undefined} width={yAxisTickWidth} tick={{ fontSize: axisTickFontSize }} allowDecimals={false} />
                 {hasRankAxis && yAxisRankLabelValue && (
-                  <YAxis
-                    yAxisId="right"
-                    orientation="right"
-                    tickFormatter={(tickValue) => formatYAxisTickValue(tickValue, isMobile)} // MODIFIED
-                    label={yAxisRankLabelValue ? { 
-                        value: yAxisRankLabelValue, 
-                        angle: -90, 
-                        position: 'insideRight', 
-                        dx: isMobile ? yAxisLabelDxRightMobile : 20,
-                        fill: '#6b7280', 
-                        style: { textAnchor: 'middle', fontSize: isMobile ? yAxisLabelFontSizeMobile : yAxisLabelFontSizeDesktop } 
-                    } : undefined}
-                    width={yAxisTickWidth} // MODIFIED
-                    tick={{ fontSize: axisTickFontSize }}
-                    allowDecimals={false}
-                  />
+                  <YAxis yAxisId="right" orientation="right" tickFormatter={(tickValue) => formatYAxisTickValue(tickValue, isMobile)} label={yAxisRankLabelValue ? { value: yAxisRankLabelValue, angle: -90, position: 'insideRight', dx: isMobile ? yAxisLabelDxRightMobile : 20, fill: '#6b7280', style: { textAnchor: 'middle', fontSize: isMobile ? yAxisLabelFontSizeMobile : yAxisLabelFontSizeDesktop } } : undefined} width={yAxisTickWidth} tick={{ fontSize: axisTickFontSize }} allowDecimals={false} />
                 )}
-                <Tooltip 
-                    formatter={(value: number | string) => typeof value === 'number' ? formatNumberWithCommas(value) : value} 
-                    labelStyle={{ fontSize: tooltipFontSize }}
-                    itemStyle={{ fontSize: tooltipFontSize }}
-                />
-                <Legend 
-                  wrapperStyle={{ 
-                    fontSize: legendFontSize, 
-                    paddingTop: (isMobile && xAxisHeight > 20) ? 5 : 0 
-                  }} 
-                />
+                <Tooltip formatter={(value: number | string) => typeof value === 'number' ? formatNumberWithCommas(value) : value} labelStyle={{ fontSize: tooltipFontSize }} itemStyle={{ fontSize: tooltipFontSize }} />
+                <Legend wrapperStyle={{ fontSize: legendFontSize, paddingTop: (isMobile && xAxisHeight > 20) ? 5 : 0 }} />
                 {lines.map(line => (
-                  <Line
-                    key={line.dataKey as string}
-                    type="monotone"
-                    dataKey={line.dataKey}
-                    stroke={line.stroke}
-                    name={line.name}
-                    yAxisId={line.yAxisId || "left"}
-                    dot={isMobile ? false : {r: 1}}
-                    strokeWidth={isMobile ? 1.5 : 2}
-                  />
+                  <Line key={line.dataKey as string} type="monotone" dataKey={line.dataKey} stroke={line.stroke} name={line.name} yAxisId={line.yAxisId || "left"} dot={isMobile ? false : {r: 1}} strokeWidth={isMobile ? 1.5 : 2} />
                 ))}
               </LineChart>
             </ResponsiveContainer>
           </div>
+        )}
+        {projectTrends.length === 0 && !isLoading && (
+          <Alert color="info">No trend data available for {title.toLowerCase()}.</Alert>
         )}
       </Card>
     );
@@ -311,8 +191,37 @@ const ProjectDetailPage = () => {
     return value.toFixed(decimalPlaces);
   };
 
+  if (isLoading && !project) {
+    return <div className="flex justify-center items-center h-screen"><Spinner size="xl" /> Loading project details...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="w-full p-4">
+        <Alert color="failure" icon={HiInformationCircle}><span>Error: {error}</span></Alert>
+        <Button onClick={() => router.back()} className="mt-4">Go Back</Button>
+      </div>
+    );
+  }
+  
+  if (!project) {
+    return (
+       <div className="w-full p-4">
+        <Alert color="warning" icon={HiInformationCircle}><span>Project data could not be loaded or project not found.</span></Alert>
+        <Button onClick={() => router.back()} className="mt-4">Go Back</Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full p-4 md:p-8">
+    <div className="w-full p-4 md:p-8 relative">
+      {/* Loading overlay for re-fetches */}
+      {isLoading && project && (
+        <div className="absolute inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center z-10 rounded-lg">
+          <Spinner size="xl" />
+        </div>
+      )}
+
       <Card className="mb-6 pt-6 sm:pt-4">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2">
           <div className="w-full sm:w-auto mb-4 sm:mb-0">
@@ -330,9 +239,13 @@ const ProjectDetailPage = () => {
               view repos
             </Link>
           </div>
-          <p className="hidden sm:block text-xs text-gray-500 dark:text-gray-400 text-right whitespace-nowrap sm:ml-4 flex-shrink-0">
-            Latest Data:<br />{new Date(project.latest_data_timestamp).toLocaleString()}
-          </p>
+          <div className="text-xs text-gray-500 dark:text-gray-400 text-right whitespace-nowrap sm:ml-4 flex-shrink-0">
+            <p>Latest Data:<br />{new Date(project.latest_data_timestamp).toLocaleString()}</p>
+            <div className="flex items-center justify-end space-x-2 mt-2">
+                <span className="text-sm font-medium">Include Fork History</span>
+                <ToggleSwitch checked={includeForks} onChange={setIncludeForks} disabled={isLoading} />
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 mt-6 items-start">
@@ -354,44 +267,19 @@ const ProjectDetailPage = () => {
             </Card>
         </div>
 
-        {/* MODIFIED Card Title and MetricDisplayBox calls */}
         <Card className="mb-6">
-            <h2 className="text-xl font-semibold mb-4">All Time Activity Metrics</h2> {/* Title Changed */}
+            <h2 className="text-xl font-semibold mb-4">All Time Activity Metrics</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <MetricDisplayBox
-                    title="Contributors"
-                    value={formatNumberWithCommas(project.contributor_count)}
-                    changeText={`4wk Change: ${formatPercentage(project.contributor_count_pct_change_over_4_weeks, true)}`}
-                />
-                <MetricDisplayBox
-                    title="Commits (All Time)"
-                    value={formatNumberWithCommas(project.commit_count)}
-                    changeText={`4wk Change: ${formatPercentage(project.commit_count_pct_change_over_4_weeks, true)}`}
-                />
-                <MetricDisplayBox
-                    title="Stars"
-                    value={formatNumberWithCommas(project.stargaze_count)}
-                    changeText={`4wk Change: ${formatPercentage(project.stargaze_count_pct_change_over_4_weeks, true)}`}
-                />
-                <MetricDisplayBox
-                    title="Forks"
-                    value={formatNumberWithCommas(project.fork_count)}
-                    changeText={`4wk Change: ${formatPercentage(project.fork_count_pct_change_over_4_weeks, true)}`}
-                />
-                 <MetricDisplayBox
-                    title="Watchers"
-                    value={formatNumberWithCommas(project.watcher_count)}
-                    changeText={`4wk Change: ${formatPercentage(project.watcher_count_pct_change_over_4_weeks, true)}`}
-                />
-                <MetricDisplayBox
-                    title="Original Ratio (Not Fork)"
-                    value={project.is_not_fork_ratio?.toFixed(4)}
-                    changeText={`4wk Change: ${formatPercentage(project.is_not_fork_ratio_pct_change_over_4_weeks, true)}`}
-                />
+                <MetricDisplayBox title="Contributors" value={formatNumberWithCommas(project.contributor_count)} changeText={`4wk Change: ${formatPercentage(project.contributor_count_pct_change_over_4_weeks, true)}`} />
+                <MetricDisplayBox title="Commits (All Time)" value={formatNumberWithCommas(project.commit_count)} changeText={`4wk Change: ${formatPercentage(project.commit_count_pct_change_over_4_weeks, true)}`} />
+                <MetricDisplayBox title="Stars" value={formatNumberWithCommas(project.stargaze_count)} changeText={`4wk Change: ${formatPercentage(project.stargaze_count_pct_change_over_4_weeks, true)}`} />
+                <MetricDisplayBox title="Forks" value={formatNumberWithCommas(project.fork_count)} changeText={`4wk Change: ${formatPercentage(project.fork_count_pct_change_over_4_weeks, true)}`} />
+                <MetricDisplayBox title="Watchers" value={formatNumberWithCommas(project.watcher_count)} changeText={`4wk Change: ${formatPercentage(project.watcher_count_pct_change_over_4_weeks, true)}`} />
+                <MetricDisplayBox title="Original Ratio (Not Fork)" value={project.is_not_fork_ratio?.toFixed(4)} changeText={`4wk Change: ${formatPercentage(project.is_not_fork_ratio_pct_change_over_4_weeks, true)}`} />
             </div>
         </Card>
 
-        {projectTrends.length > 0 && <h2 className="text-2xl font-bold mt-8 mb-4 text-center md:text-left text-gray-800 dark:text-white">Metric Trends Over Time</h2>}
+        <h2 className="text-2xl font-bold mt-8 mb-4 text-center md:text-left text-gray-800 dark:text-white">Metric Trends Over Time</h2>
         
         {renderTrendChart( "Repo Count", projectTrends, [{ dataKey: "repo_count", stroke: "#00C49F", name: "Repos" }], "Repos" )}
         {renderTrendChart( "Contributor Count", projectTrends, [{ dataKey: "contributor_count", stroke: "#8884d8", name: "Contributors" }], "Contributors" )}
@@ -402,10 +290,7 @@ const ProjectDetailPage = () => {
 
       <Card className="mt-6">
         <h2 className="text-2xl font-semibold mb-4">Top Associated Organizations</h2>
-        {isLoadingOrgs && ( <div className="flex justify-center items-center py-4"> <Spinner size="md" /> <span className="ml-2">Loading organizations...</span> </div> )}
-        {orgError && !isLoadingOrgs && ( <Alert color="failure" icon={HiInformationCircle}> <span>Error loading organizations: {orgError}</span> </Alert> )}
-        {!isLoadingOrgs && !orgError && organizations.length === 0 && ( <Alert color="info" icon={HiInformationCircle}> <span>No associated organizations found for this project.</span> </Alert> )}
-        {!isLoadingOrgs && !orgError && organizations.length > 0 && (
+        {organizations.length > 0 ? (
           <ListGroup className="space-y-3">
             {organizations.map((org, index) => (
               <ListGroupItem key={org.project_organization_url || index} className="p-3 border rounded-lg dark:border-gray-700">
@@ -423,6 +308,8 @@ const ProjectDetailPage = () => {
               </ListGroupItem>
             ))}
           </ListGroup>
+        ) : (
+          <Alert color="info" icon={HiInformationCircle}> <span>No associated organizations found for this project.</span> </Alert>
         )}
       </Card>
 

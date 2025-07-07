@@ -23,6 +23,10 @@ export async function GET(
     const resolvedParams = await context.params;
     const projectTitleUrlEncoded = resolvedParams.projectTitle;
 
+    // Get the include_forks query parameter
+    const searchParams = _request.nextUrl.searchParams;
+    const include_forks = searchParams.get('include_forks');
+
   // --- Environment Variable Checks ---
   if (!API_BASE_URL) {
     console.error("Missing API_BASE_URL environment variable.");
@@ -45,9 +49,18 @@ export async function GET(
   // Construct the FastAPI target endpoint path for project trends.
   // THIS STILL POINTS TO YOUR ACTUAL FASTAPI BACKEND ENDPOINT.
   const fastApiTrendsPathSegment = `/api/projects/trends_from_top_projects/${projectTitleUrlEncoded}`;
-  const finalApiUrl = API_BASE_URL.endsWith('/')
-    ? `${API_BASE_URL.slice(0, -1)}${fastApiTrendsPathSegment}`
-    : `${API_BASE_URL}${fastApiTrendsPathSegment}`;
+  const finalApiUrl = new URL(
+    API_BASE_URL.endsWith('/')
+      ? `${API_BASE_URL.slice(0, -1)}${fastApiTrendsPathSegment}`
+      : `${API_BASE_URL}${fastApiTrendsPathSegment}`
+  );
+
+  // Append the include_forks parameter if it exists
+  if (include_forks) {
+    finalApiUrl.searchParams.append('include_forks', include_forks);
+  }
+
+  console.log("Final API URL:", finalApiUrl.toString());
 
   try {
     // --- Authentication Strategy for Cloud Run IAM (if applicable) ---
