@@ -604,17 +604,18 @@ const Page: React.FC = () => {
         </div>
       </div>
 
-      {/* Explanation Section - CORRECTED */}
+      {/* Explanation Section */}
       <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-gray-600 px-1">
-        <h3 className="text-md sm:text-lg font-semibold mb-2 text-gray-200">
+        <div className="text-right mb-2">
           <a 
             href="https://docs.builder.love/docs/methodology/top-project-score" 
             target="_blank" 
             rel="noopener noreferrer"
+            className="text-sm text-blue-400 hover:underline"
           >
             How is weighted score calculated?
           </a>
-        </h3>
+        </div>
         <div className="text-xs sm:text-sm text-gray-400 leading-relaxed">
           <p>
             Primary source for project-to-repo mapping is Electric Capital Crypto Ecosystems {' '}
