@@ -207,4 +207,7 @@ export interface ProjectOutliersLeaderboardCardProps {
   metricLabel: string; // e.g., 'Forks'
   isLoading: boolean;
   data: ProjectOutliersLeaderboardEntry[];
+  showToggle?: boolean;
+  toggleState?: boolean;
+  onToggleChange?: (checked: boolean) => void;
 }
