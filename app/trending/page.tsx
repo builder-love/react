@@ -93,7 +93,15 @@ export default function TrendingPage() {
   const [includeCommitForks, setIncludeCommitForks] = useState(false);
   const [includeContributorForks, setIncludeContributorForks] = useState(false);
   
-  const [isLoading, setIsLoading] = useState(true);
+  const [loadingStates, setLoadingStates] = useState({
+    commit_count: true,
+    contributor_count: true,
+    fork_count: true,
+    stargaze_count: true,
+    repo_count: true,
+    watcher_count: true,
+    is_not_fork_ratio: true,
+  });
 
   // Reusable fetch function
   const fetchDataForMetric = async (metric: string, includeForks: boolean = false) => {
@@ -102,43 +110,66 @@ export default function TrendingPage() {
       return res.json();
   };
 
-  // Effect for toggled metrics
+  // Effect for Commit Change card (triggers when its toggle changes)
   useEffect(() => {
-      const fetchToggledData = async () => {
-          setIsLoading(true);
+      const fetchCommitData = async () => {
+          setLoadingStates(prev => ({ ...prev, commit_count: true }));
           try {
-              const commit = fetchDataForMetric('commit_count', includeCommitForks);
-              const contributor = fetchDataForMetric('contributor_count', includeContributorForks);
-              const [commitRes, contributorRes] = await Promise.all([commit, contributor]);
-              setCommitData(commitRes);
-              setContributorData(contributorRes);
+              const data = await fetchDataForMetric('commit_count', includeCommitForks);
+              setCommitData(data);
           } catch (error) {
-              console.error("Failed to load toggled data:", error);
+              console.error("Failed to load commit data:", error);
           } finally {
-              setIsLoading(false);
+              setLoadingStates(prev => ({ ...prev, commit_count: false }));
           }
       };
-      fetchToggledData();
-  }, [includeCommitForks, includeContributorForks]);
+      fetchCommitData();
+  }, [includeCommitForks]);
 
-  // Effect for non-toggled metrics (runs once on mount)
+  // Effect for Contributor Change card (triggers when its toggle changes)
+  useEffect(() => {
+      const fetchContributorData = async () => {
+          setLoadingStates(prev => ({ ...prev, contributor_count: true }));
+          try {
+              const data = await fetchDataForMetric('contributor_count', includeContributorForks);
+              setContributorData(data);
+          } catch (error) {
+              console.error("Failed to load contributor data:", error);
+          } finally {
+              setLoadingStates(prev => ({ ...prev, contributor_count: false }));
+          }
+      };
+      fetchContributorData();
+  }, [includeContributorForks]);
+
+  // Effect for all other cards (runs once on mount)
   useEffect(() => {
       const fetchOtherData = async () => {
-          setIsLoading(true);
+          const metricsToFetch = ['fork_count', 'stargaze_count', 'repo_count', 'watcher_count', 'is_not_fork_ratio'];
           try {
-              const metricsToFetch = ['fork_count', 'stargaze_count', 'repo_count', 'watcher_count', 'is_not_fork_ratio'];
-              const promises = metricsToFetch.map(metric => fetchDataForMetric(metric).then(data => ({ [metric]: data })));
+              const promises = metricsToFetch.map(async (metric) => {
+                  const data = await fetchDataForMetric(metric);
+                  return { [metric]: data };
+              });
               const results = await Promise.all(promises);
               const dataMap = results.reduce((acc, current) => ({ ...acc, ...current }), {});
               setOtherData(dataMap);
           } catch (error) {
               console.error("Failed to load other leaderboard data:", error);
           } finally {
-              setIsLoading(false);
+              // Set loading to false for each of these metrics
+              setLoadingStates(prev => ({
+                  ...prev,
+                  fork_count: false,
+                  stargaze_count: false,
+                  repo_count: false,
+                  watcher_count: false,
+                  is_not_fork_ratio: false,
+              }));
           }
       };
       fetchOtherData();
-  }, []);
+  }, []); // Empty dependency array means this runs only once
 
   return (
     <div className="p-4 sm:p-6">
@@ -147,20 +178,23 @@ export default function TrendingPage() {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Trending Projects</h1>
       </div>
 
+      {/* Step 3: Update isLoading prop for each card */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         <ProjectOutliersLeaderboardCard 
-          title="Commit Change" metric="commit_count" metricLabel="Commits" data={commitData} isLoading={isLoading}
+          title="Commit Change" metric="commit_count" metricLabel="Commits" data={commitData} 
+          isLoading={loadingStates.commit_count} // Use specific loading state
           showToggle={true} toggleState={includeCommitForks} onToggleChange={setIncludeCommitForks} 
         />
         <ProjectOutliersLeaderboardCard 
-          title="Contributor Change" metric="contributor_count" metricLabel="Contributors" data={contributorData} isLoading={isLoading} 
+          title="Contributor Change" metric="contributor_count" metricLabel="Contributors" data={contributorData} 
+          isLoading={loadingStates.contributor_count} // Use specific loading state
           showToggle={true} toggleState={includeContributorForks} onToggleChange={setIncludeContributorForks}
         />
-        <ProjectOutliersLeaderboardCard title="Fork Change" metric="fork_count" metricLabel="Forks" data={otherData['fork_count'] || []} isLoading={isLoading} />
-        <ProjectOutliersLeaderboardCard title="Stargaze Change" metric="stargaze_count" metricLabel="Stars" data={otherData['stargaze_count'] || []} isLoading={isLoading} />
-        <ProjectOutliersLeaderboardCard title="Repo Count Change" metric="repo_count" metricLabel="Repos" data={otherData['repo_count'] || []} isLoading={isLoading} />
-        <ProjectOutliersLeaderboardCard title="Watcher Change" metric="watcher_count" metricLabel="Watchers" data={otherData['watcher_count'] || []} isLoading={isLoading} />
-        <ProjectOutliersLeaderboardCard title="Original Ratio Change" metric="is_not_fork_ratio" metricLabel="Ratio" data={otherData['is_not_fork_ratio'] || []} isLoading={isLoading} />
+        <ProjectOutliersLeaderboardCard title="Fork Change" metric="fork_count" metricLabel="Forks" data={otherData['fork_count'] || []} isLoading={loadingStates.fork_count} />
+        <ProjectOutliersLeaderboardCard title="Stargaze Change" metric="stargaze_count" metricLabel="Stars" data={otherData['stargaze_count'] || []} isLoading={loadingStates.stargaze_count} />
+        <ProjectOutliersLeaderboardCard title="Repo Count Change" metric="repo_count" metricLabel="Repos" data={otherData['repo_count'] || []} isLoading={loadingStates.repo_count} />
+        <ProjectOutliersLeaderboardCard title="Watcher Change" metric="watcher_count" metricLabel="Watchers" data={otherData['watcher_count'] || []} isLoading={loadingStates.watcher_count} />
+        <ProjectOutliersLeaderboardCard title="Original Ratio Change" metric="is_not_fork_ratio" metricLabel="Ratio" data={otherData['is_not_fork_ratio'] || []} isLoading={loadingStates.is_not_fork_ratio} />
       </div>
     </div>
   );
