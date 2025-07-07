@@ -2,6 +2,7 @@
 
 'use client'; // Good practice if it might contain client-side logic or be used in varied contexts
 
+import { ToggleSwitch } from 'flowbite-react';
 import React, { useEffect, useMemo } from 'react';
 
 interface ProjectLegendCheckboxesProps {
@@ -15,9 +16,11 @@ interface ProjectLegendCheckboxesProps {
   onClearAll: () => void;
   topNFilter: number;
   onTopNFilterChange: (newFilter: number) => void;
+  includeForks: boolean;
+  onIncludeForksChange: (checked: boolean) => void;
   maxColumnCount: number;
   isMobile: boolean; // Assuming this prop is passed from page.tsx
-
+  isLoading: boolean;
 }
 
 const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
@@ -31,8 +34,11 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
   onClearAll,
   topNFilter,
   onTopNFilterChange,
+  includeForks,
+  onIncludeForksChange,
   maxColumnCount,
   isMobile,
+  isLoading,
 }) => {
   // console.log("LegendCheckboxes - isMobile prop:", isMobile); // For debugging
 
@@ -111,7 +117,7 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
 
       <div className="flex flex-col sm:flex-row justify-between items-center mt-3 pt-2 border-t border-gray-700">
         {/* "Select All" and "Clear All" links - Left Aligned Group */}
-        <div className="flex items-center gap-x-3 sm:gap-x-4 w-full sm:w-auto justify-start mb-2 sm:mb-0">
+        <div className="flex items-center gap-x-3 sm:gap-x-4 mb-2 sm:mb-0">
           <span
             onClick={onSelectAll}
             className="cursor-pointer hover:text-blue-400 text-gray-300 font-medium"
@@ -134,13 +140,25 @@ const ProjectLegendCheckboxes: React.FC<ProjectLegendCheckboxesProps> = ({
             Clear All
           </span>
         </div>
-        {/* Top N Dropdown Filter - Right Aligned Group */}
-        <div className="w-full sm:w-auto flex justify-end">
+
+        {/* NEW: Right Aligned Group for Toggle and Dropdown */}
+        <div className="flex items-center gap-x-4 sm:gap-x-6">
+          {/* Include Forks Toggle */}
+          <div className="flex items-center space-x-2">
+            <span className="text-xs sm:text-sm font-medium text-gray-400">Include Fork History</span>
+            <ToggleSwitch 
+              checked={includeForks} 
+              onChange={onIncludeForksChange} 
+              disabled={isLoading} 
+            />
+          </div>
+
+          {/* Top N Dropdown Filter */}
           <select
             id="top-n-filter-select"
-            value={topNFilter} // Controlled component
+            value={topNFilter}
             onChange={(e) => onTopNFilterChange(Number(e.target.value))}
-            className="bg-gray-700 border border-gray-600 text-white text-xs sm:text-sm rounded p-1 sm:p-1.5 focus:ring-blue-500 focus:border-blue-500 sm:mr-3"
+            className="bg-gray-700 border border-gray-600 text-white text-xs sm:text-sm rounded p-1 sm:p-1.5 focus:ring-blue-500 focus:border-blue-500"
             aria-label="Filter number of projects"
           >
             {topNOptions.map(option => (

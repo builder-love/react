@@ -25,7 +25,7 @@ import chroma from 'chroma-js';
 import type { EnhancedTopProjectsTrendsData, FormattedLineChartData } from './types';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import ProjectLegendCheckboxes from './utilities/LegendCheckboxes';
-import { ToggleSwitch } from 'flowbite-react';
+// import { ToggleSwitch } from 'flowbite-react';
 
 // --- Define Metric Options ---
 const metricOptions = [
@@ -405,11 +405,6 @@ const Page: React.FC = () => {
                     {chartMainTitle}
                     {!isMobile && " by Development Activity"}
                 </h2>
-                {/* DIV FOR THE TOGGLE */}
-                <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-gray-400">Include Fork History</span>
-                    <ToggleSwitch checked={includeForks} onChange={setIncludeForks} disabled={isLoading} />
-                </div>
             </div>
 
             {/* Legend Checkboxes and Top N Filter */}
@@ -425,6 +420,9 @@ const Page: React.FC = () => {
                   onClearAll={handleClearAllProjects}
                   topNFilter={topNFilter}
                   onTopNFilterChange={setTopNFilter}
+                  includeForks={includeForks}
+                  onIncludeForksChange={setIncludeForks}
+                  isLoading={isLoading}
                   maxColumnCount={isMobile ? 2 : 7}
                   isMobile={isMobile}
                 />
@@ -495,8 +493,11 @@ const Page: React.FC = () => {
           onClearAll={handleClearAllProjects}
           topNFilter={topNFilter}
           onTopNFilterChange={setTopNFilter}
+          includeForks={includeForks}
+          onIncludeForksChange={setIncludeForks}
           maxColumnCount={isMobile ? 2 : 7}
           isMobile={isMobile}
+          isLoading={isLoading}
         />
       )}
 
