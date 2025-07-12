@@ -146,6 +146,7 @@ export interface ProjectTrendsData {
 
 export interface RepoData {
   project_title: string; 
+  first_seen_timestamp: string | null;
   latest_data_timestamp: string;
   repo: string | null; 
   fork_count: number | null;

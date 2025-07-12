@@ -26,7 +26,7 @@ import { PaginatedRepos, RepoData } from '@/app/types';
 import { formatNumberWithCommas } from '@/app/utilities/formatters';
 import _debounce from 'lodash/debounce';
 
-type SortableRepoKeys = 'repo' | 'fork_count' | 'stargaze_count' | 'watcher_count' | 'repo_rank' | 'repo_rank_category' | 'predicted_is_dev_tooling' | 'predicted_is_educational' | 'predicted_is_scaffold';
+type SortableRepoKeys = 'repo' | 'first_seen_timestamp' | 'fork_count' | 'stargaze_count' | 'watcher_count' | 'repo_rank' | 'repo_rank_category' | 'predicted_is_dev_tooling' | 'predicted_is_educational' | 'predicted_is_scaffold';
 
 const ProjectReposPage = () => {
   const router = useRouter();
@@ -250,6 +250,14 @@ const ProjectReposPage = () => {
             );
         },
         size: 250,
+        enableSorting: true,
+    },
+    {
+        header: 'First Seen',
+        accessorKey: 'first_seen_timestamp',
+        id: 'first_seen_timestamp',
+        cell: ({ getValue }) => getValue<string>() ? new Date(getValue<string>()).toLocaleDateString() : 'N/A',
+        size: 120,
         enableSorting: true,
     },
     {
