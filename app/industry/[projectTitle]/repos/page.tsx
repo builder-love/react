@@ -24,7 +24,6 @@ import {
 import { HiSearch, HiInformationCircle, HiArrowUp, HiArrowDown } from 'react-icons/hi';
 import { PaginatedRepos, RepoData } from '@/app/types';
 import { formatNumberWithCommas } from '@/app/utilities/formatters';
-import _debounce from 'lodash/debounce';
 
 type SortableRepoKeys = 'repo' | 'first_seen_timestamp' | 'fork_count' | 'stargaze_count' | 'watcher_count' | 'repo_rank' | 'repo_rank_category' | 'predicted_is_dev_tooling' | 'predicted_is_educational' | 'predicted_is_scaffold';
 
@@ -60,16 +59,6 @@ const ProjectReposPage = () => {
     pageSize: initialValues.limit,
   });
   const [globalFilter, setGlobalFilter] = useState(initialValues.search);
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(initialValues.search);
-
-  const debouncedSetSearchForAPI = useMemo(
-    () =>
-      _debounce((value: string) => {
-        setDebouncedSearchTerm(value);
-        setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-      }, 500),
-    []
-  );
 
   useEffect(() => {
     if (projectTitleUrlEncoded) {
@@ -78,23 +67,17 @@ const ProjectReposPage = () => {
   }, [projectTitleUrlEncoded]);
 
   useEffect(() => {
-    debouncedSetSearchForAPI(globalFilter);
-    return () => {
-      debouncedSetSearchForAPI.cancel();
-    };
-  }, [globalFilter, debouncedSetSearchForAPI]);
-
-  useEffect(() => {
     if (!projectTitleUrlEncoded) {
         return;
     }
+    const currentSearch = searchParamsHook.get('search') || '';
     const desiredParams = new URLSearchParams();
     desiredParams.set('page', (pagination.pageIndex + 1).toString());
     desiredParams.set('limit', pagination.pageSize.toString());
     desiredParams.set('sort_by', sorting[0]?.id || 'repo_rank');
     desiredParams.set('sort_order', sorting[0]?.desc ? 'desc' : 'asc');
-    if (debouncedSearchTerm.trim()) {
-      desiredParams.set('search', debouncedSearchTerm.trim());
+    if (currentSearch.trim()) {
+      desiredParams.set('search', currentSearch.trim());
     }
     const desiredQueryString = desiredParams.toString();
     const currentQueryString = searchParamsHook.toString();
@@ -106,10 +89,24 @@ const ProjectReposPage = () => {
     projectTitleUrlEncoded,
     pagination,
     sorting,
-    debouncedSearchTerm,
     router,
     searchParamsHook
   ]);
+
+  // This function handles the explicit search action.
+  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); // Prevent the form from doing a full page reload
+    const search = globalFilter.trim();
+    
+    // Reset to page 1 for new searches
+    setPagination(prev => ({...prev, pageIndex: 0}));
+
+    // Update the URL to trigger the data fetch
+    const currentParams = new URLSearchParams(searchParamsHook.toString());
+    currentParams.set('search', search);
+    currentParams.set('page', '1');
+    router.push(`/industry/${projectTitleUrlEncoded}/repos?${currentParams.toString()}`);
+  };
 
   useEffect(() => {
     if (!projectTitleUrlEncoded) {
@@ -358,31 +355,35 @@ const ProjectReposPage = () => {
       <h1 className="text-2xl font-bold mb-4 text-white">Repositories for {projectTitle}</h1>
 
       {!showInitialLoader && (
-        <div className="mb-4">
-            <TextInput
-              id="repoSearch" // ID used for fallback document.getElementById
-              ref={searchInputRef} // Attempt to use direct ref
-              type="search"
-              icon={HiSearch}
-              placeholder="Search repositories by name..."
-              value={globalFilter ?? ''}
-              onChange={(e) => {
-                  // console.log('TextInput onChange:', e.target.value);
-                  setGlobalFilter(e.target.value);
-              }}
-              onFocus={() => {
-                  _searchHadFocus.current = true;
-              }}
-              onBlur={() => {
-                  // Deliberately not setting _searchHadFocus.current = false here.
-                  // onFocus is the source of truth for "focus intent".
-                  // The effect handles consuming/resetting this intent.
-              }}
-              className="max-w-md dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600"
-              disabled={isLoading && data.length > 0} // This disabling causes the focus loss
-            />
-        </div>
-        )}
+        <form onSubmit={handleSearchSubmit} className="mb-4 flex items-center gap-2">
+          <TextInput
+            id="repoSearch"
+            ref={searchInputRef}
+            type="search"
+            icon={HiSearch}
+            placeholder="Repo attributes (e.g., SDK, decentralized identity, etc.)..."
+            value={globalFilter ?? ''}
+            onChange={(e) => {
+              const newValue = e.target.value;
+              setGlobalFilter(newValue); // Always update the input's visual state
+              // If the user has cleared the input, refresh the results.
+              if (newValue === '') {
+                // We create a new search state without the 'search' param
+                const newParams = new URLSearchParams(searchParamsHook.toString());
+                newParams.delete('search');
+                newParams.set('page', '1'); // Go back to the first page
+                router.push(`/industry/${projectTitleUrlEncoded}/repos?${newParams.toString()}`);
+              }
+            }}
+            onFocus={() => { _searchHadFocus.current = true; }}
+            className="w-full max-w-md dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600"
+            disabled={isLoading}
+          />
+          <Button type="submit" disabled={isLoading}>
+            Search
+          </Button>
+        </form>
+      )}
 
       {(() => {
         if (showInitialLoader) {
@@ -400,8 +401,8 @@ const ProjectReposPage = () => {
           );
         }
         if (!isLoading && data.length === 0) {
-          if (debouncedSearchTerm || globalFilter) {
-            return <Alert color="info" className="my-4">No repositories found matching your search for &quot;{debouncedSearchTerm || globalFilter}&quot;.</Alert>;
+          if (globalFilter) {
+            return <Alert color="info" className="my-4">No repositories found matching your search for &quot;{globalFilter}&quot;.</Alert>;
           }
           return <Alert color="info" className="my-4">No repositories found for this project.</Alert>;
         }

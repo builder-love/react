@@ -43,17 +43,18 @@ export async function GET(
 
   // Get query parameters from the NextRequest
   const { searchParams } = new URL(request.url);
-  const page = searchParams.get('page') || '1';
-  const limit = searchParams.get('limit') || '10';
-  const search = searchParams.get('search') || '';
-  const sortBy = searchParams.get('sort_by') || 'repo_rank'; // Default sort
-  const sortOrder = searchParams.get('sort_order') || 'asc';   // Default order
 
-  // Construct the FastAPI endpoint URL with query parameters
-  let finalApiUrl = `${API_BASE_URL}/api/projects/${projectTitleUrlEncoded}/repos?page=${page}&limit=${limit}&sort_by=${sortBy}&sort_order=${sortOrder}`;
-  if (search) {
-    finalApiUrl += `&search=${encodeURIComponent(search)}`;
-  }
+  // Create a payload object for the post request
+  const payload = {
+    page: parseInt(searchParams.get('page') || '1', 10),
+    limit: parseInt(searchParams.get('limit') || '10', 10),
+    search: searchParams.get('search') || null,
+    sort_by: searchParams.get('sort_by') || 'repo_rank',
+    sort_order: searchParams.get('sort_order') || 'asc',
+  };
+
+  // build final api url without query params
+  const finalApiUrl = `${API_BASE_URL}/api/projects/${projectTitleUrlEncoded}/repos`;
 
   // console.log(`Constructed FastAPI endpoint for repos: ${fastApiTargetEndpoint}`);
 
@@ -120,7 +121,13 @@ export async function GET(
 
     // --- Make the request to your FastAPI backend ---
     console.log(`Making request to ${finalApiUrl} with auth mode: ${API_AUTH_MODE}`);
-    const apiResponse = await fetch(finalApiUrl, { headers: requestHeaders });
+    
+    // make the request as a post with the payload in the body
+    const apiResponse = await fetch(finalApiUrl, {
+      method: 'POST', // Use POST method
+      headers: requestHeaders, // Your existing headers, including all auth tokens
+      body: JSON.stringify(payload), // Send the data as a JSON string in the body
+    });
 
     // --- Handle the response ---
     if (!apiResponse.ok) {
