@@ -291,6 +291,7 @@ const ProjectReposPage = () => {
             icon={HiSearch}
             placeholder="Repo attributes (e.g., SDK, decentralized identity, etc.)..."
             value={searchInput}
+            maxLength={40}
             onChange={(e) => setSearchInput(e.target.value)}
             className="w-full max-w-md dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600"
             disabled={isLoading}
