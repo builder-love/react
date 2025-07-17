@@ -113,28 +113,28 @@ const ProjectReposPage = () => {
       setIsLoading(false);
       return;
     }
-    const pageToFetch = pagination.pageIndex + 1;
-    const limitToFetch = pagination.pageSize;
-    const searchToFetch = globalFilter;
-    const sortByToFetch = sorting[0]?.id || 'repo_rank';
-    const sortOrderToFetch = sorting[0]?.desc ? 'desc' : 'asc';
+    const pageFromUrl = parseInt(searchParamsHook.get('page') || '1', 10);
+    const limitFromUrl = parseInt(searchParamsHook.get('limit') || '10', 10);
+    const searchFromUrl = searchParamsHook.get('search') || '';
+    const sortByFromUrl = (searchParamsHook.get('sort_by') as SortableRepoKeys) || 'repo_rank';
+    const sortOrderFromUrl = (searchParamsHook.get('sort_order') as 'asc' | 'desc') || 'asc';
 
     setPagination(prev => {
-        const newPageIndex = pageToFetch - 1;
-        if (prev.pageIndex !== newPageIndex || prev.pageSize !== limitToFetch) {
-            return { pageIndex: newPageIndex, pageSize: limitToFetch };
+        const newPageIndex = pageFromUrl - 1;
+        if (prev.pageIndex !== newPageIndex || prev.pageSize !== limitFromUrl) {
+            return { pageIndex: newPageIndex, pageSize: limitFromUrl };
         }
         return prev;
     });
     setSorting(prev => {
-        if (prev[0]?.id !== sortByToFetch || (prev[0]?.desc ? 'desc' : 'asc') !== sortOrderToFetch) {
-            return [{ id: sortByToFetch, desc: sortOrderToFetch === 'desc' }];
+        if (prev[0]?.id !== sortByFromUrl || (prev[0]?.desc ? 'desc' : 'asc') !== sortOrderFromUrl) {
+            return [{ id: sortByFromUrl, desc: sortOrderFromUrl === 'desc' }];
         }
         return prev;
     });
     setGlobalFilter(currentGlobalFilter => {
-      if (currentGlobalFilter !== searchToFetch) {
-        return searchToFetch;
+      if (currentGlobalFilter !== searchFromUrl) {
+        return searchFromUrl;
       }
       return currentGlobalFilter;
     });
@@ -142,16 +142,19 @@ const ProjectReposPage = () => {
     const fetchRepos = async () => {
       setIsLoading(true);
       setError(null);
-
+      const queryParamsForFetch = new URLSearchParams({
+        page: pageFromUrl.toString(),
+        limit: limitFromUrl.toString(),
+        sort_by: sortByFromUrl,
+        sort_order: sortOrderFromUrl,
+      });
+      if (searchFromUrl.trim()) {
+        queryParamsForFetch.set('search', searchFromUrl.trim());
+      }
+      const queryStringForFetch = queryParamsForFetch.toString();
 
       try {
-        const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/repos`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ page: pageToFetch, limit: limitToFetch, search: searchToFetch, sort_by: sortByToFetch, sort_order: sortOrderToFetch }),
-        });
+        const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/repos?${queryStringForFetch}`);
         if (!response.ok) {
           const errData = await response.json();
           throw new Error(errData.message || `Failed to fetch repositories (status: ${response.status})`);
@@ -166,7 +169,7 @@ const ProjectReposPage = () => {
       }
     };
     fetchRepos();
-  }, [projectTitleUrlEncoded, pagination, sorting, globalFilter]);
+  }, [projectTitleUrlEncoded, searchParamsHook]);
 
 
   // Effect to manage focus on the search input
