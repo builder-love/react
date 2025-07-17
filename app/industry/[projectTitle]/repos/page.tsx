@@ -239,13 +239,6 @@ const ProjectReposPage = () => {
       size: 120,
       enableSorting: true,
     },
-    {
-      header: 'Search Similarity (0=good, 2=bad)',
-      accessorKey: 'distance',
-      id: 'distance',
-      cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? 'N/A',
-      size: 120,
-    },
   ], []);
 
   const table = useReactTable({
