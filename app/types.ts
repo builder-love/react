@@ -161,6 +161,7 @@ export interface RepoData {
   predicted_is_scaffold: boolean | null;
   predicted_is_app: boolean | null;
   predicted_is_infrastructure: boolean | null;
+  distance: number | null;
 }
 
 export interface PaginatedRepos {
