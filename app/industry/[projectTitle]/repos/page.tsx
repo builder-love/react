@@ -143,7 +143,7 @@ const ProjectReposPage = () => {
         enableSorting: true,
     },
     {
-        header: 'Repository',
+        header: 'Repo',
         accessorKey: 'repo',
         id: 'repo',
         cell: ({ getValue }) => {
@@ -230,7 +230,7 @@ const ProjectReposPage = () => {
       enableSorting: true,
     },
     {
-      header: 'Search Similarity (0: good, 2: bad)',
+      header: 'Search Similarity (0=good, 2=bad)',
       accessorKey: 'distance',
       id: 'distance',
       cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? 'N/A',
@@ -292,7 +292,14 @@ const ProjectReposPage = () => {
             placeholder="Repo attributes (e.g., SDK, decentralized identity, etc.)..."
             value={searchInput}
             maxLength={40}
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={(e) => {
+              const newValue = e.target.value;
+              setSearchInput(newValue);
+              // If the user clears the input, immediately reset the search
+              if (newValue === '') {
+                updateUrlParams({ search: undefined });
+              }
+            }}
             className="w-full max-w-md dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600"
             disabled={isLoading}
           />
