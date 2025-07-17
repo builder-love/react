@@ -44,19 +44,19 @@ const ProjectReposPage = () => {
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
     const search = searchParams.get('search') || '';
-    const sortBy = (searchParams.get('sort_by') as SortableRepoKeys) || 'repo_rank';
+    // Default sort to 'distance' if a search is active, otherwise 'repo_rank'
+    const sortBy = (searchParams.get('sort_by') as SortableRepoKeys) || (search ? 'distance' : 'repo_rank');
     const sortOrder = (searchParams.get('sort_order') as 'asc' | 'desc') || 'asc';
     return { page, limit, search, sortBy, sortOrder };
   }, [searchParams]);
 
-  // State for the search input field, which can be typed into by the user.
-  // It's initialized from the URL's search param.
+  // State for the search input field, controlled by the user.
   const [searchInput, setSearchInput] = useState(search);
   useEffect(() => {
     setSearchInput(search);
   }, [search]);
 
-  // Table state for React Table is now derived directly from the URL params.
+  // Table state for React Table is derived directly from the URL params.
   const sorting: SortingState = useMemo(() => [{ id: sortBy, desc: sortOrder === 'desc' }], [sortBy, sortOrder]);
   const pagination: PaginationState = useMemo(() => ({ pageIndex: page - 1, pageSize: limit }), [page, limit]);
 
@@ -66,9 +66,7 @@ const ProjectReposPage = () => {
     }
   }, [projectTitleUrlEncoded]);
 
-  // --- The Main Data-Fetching useEffect ---
-  // This effect is driven by changes in the URL's derived parameters.
-  // Its dependency array contains only stable, primitive values, which fixes the error.
+  // --- Main Data-Fetching useEffect ---
   useEffect(() => {
     if (!projectTitleUrlEncoded) {
       setIsLoading(false);
@@ -109,10 +107,11 @@ const ProjectReposPage = () => {
   }, [projectTitleUrlEncoded, page, limit, search, sortBy, sortOrder]);
 
 
-  // Helper function to update URL search params and trigger a re-render/re-fetch.
+  // Helper function to update URL search params, triggering a re-render/re-fetch.
   const updateUrlParams = (newParams: Record<string, string | number | undefined>) => {
     const currentParams = new URLSearchParams(searchParams.toString());
     let resetPage = false;
+    let isNewSearch = false;
 
     for (const [key, value] of Object.entries(newParams)) {
         if (value === undefined || value === '') {
@@ -120,14 +119,25 @@ const ProjectReposPage = () => {
         } else {
             currentParams.set(key, String(value));
         }
-        // If sorting or search changes, we should go back to page 1
         if (key === 'sort_by' || key === 'search') {
             resetPage = true;
+        }
+        if (key === 'search') {
+            isNewSearch = true;
         }
     }
 
     if (resetPage) {
         currentParams.set('page', '1');
+    }
+
+    // If it's a new search, default sort by distance. Otherwise, reset to default sort if search is cleared.
+    if (isNewSearch && newParams.search) {
+        currentParams.set('sort_by', 'distance');
+        currentParams.set('sort_order', 'asc');
+    } else if (isNewSearch && !newParams.search) {
+        currentParams.set('sort_by', 'repo_rank');
+        currentParams.set('sort_order', 'asc');
     }
     
     router.push(`/industry/${projectTitleUrlEncoded}/repos?${currentParams.toString()}`, { scroll: false });
@@ -143,7 +153,7 @@ const ProjectReposPage = () => {
         enableSorting: true,
     },
     {
-        header: 'Repository',
+        header: 'Repo',
         accessorKey: 'repo',
         id: 'repo',
         cell: ({ getValue }) => {
@@ -198,45 +208,21 @@ const ProjectReposPage = () => {
         enableSorting: true,
     },
     {
-      header: 'Dev Tooling',
-      accessorKey: 'predicted_is_dev_tooling',
-      id: 'predicted_is_dev_tooling',
-      cell: ({ getValue }) => (getValue<boolean>() ? '✔️' : ''),
-      size: 90,
-      enableSorting: true,
-    },
-    {
-      header: 'Educational',
-      accessorKey: 'predicted_is_educational',
-      id: 'predicted_is_educational',
-      cell: ({ getValue }) => (getValue<boolean>() ? '✔️' : ''),
-      size: 90,
-      enableSorting: true,
-    },
-    {
-      header: 'Scaffold',
-      accessorKey: 'predicted_is_scaffold',
-      id: 'predicted_is_scaffold',
-      cell: ({ getValue }) => (getValue<boolean>() ? '✔️' : ''),
-      size: 90,
-      enableSorting: true,
-    },
-    {
-      header: 'Rank Category',
-      accessorKey: 'repo_rank_category',
-      id: 'repo_rank_category',
-      cell: ({ getValue }) => getValue<string>() ?? 'N/A',
-      size: 120,
-      enableSorting: true,
-    },
-    {
       header: 'Search Similarity (0: good, 2: bad)',
       accessorKey: 'distance',
       id: 'distance',
-      cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? 'N/A',
+      cell: ({ row }) => {
+        const distance = row.original.distance;
+        // Only show distance if a search is active
+        if (search && typeof distance === 'number') {
+            return distance.toFixed(4);
+        }
+        return 'N/A';
+      },
       size: 120,
+      enableSorting: true,
     },
-  ], []);
+  ], [search]);
 
   const table = useReactTable({
     data,
@@ -260,6 +246,8 @@ const ProjectReposPage = () => {
   };
 
   const handleSort = (columnId: string) => {
+    // Prevent sorting by distance if there is no active search
+    if (columnId === 'distance' && !search) return;
     const newSortOrder = sortBy === columnId && sortOrder === 'asc' ? 'desc' : 'asc';
     updateUrlParams({ sort_by: columnId, sort_order: newSortOrder });
   };
@@ -289,9 +277,17 @@ const ProjectReposPage = () => {
             id="repoSearch"
             type="search"
             icon={HiSearch}
-            placeholder="Repo attributes (e.g., SDK, decentralized identity, etc.)..."
+            placeholder="Semantic search for repo attributes..."
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            maxLength={40} // Client-side limit
+            onChange={(e) => {
+              const newValue = e.target.value;
+              setSearchInput(newValue);
+              // If the user clears the input, immediately reset the search
+              if (newValue === '') {
+                updateUrlParams({ search: undefined });
+              }
+            }}
             className="w-full max-w-md dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600"
             disabled={isLoading}
           />
@@ -355,7 +351,7 @@ const ProjectReposPage = () => {
                   {table.getRowModel().rows.map((row) => (
                     <tr key={row.id} className="hover:bg-gray-700 dark:hover:bg-gray-600">
                       {row.getVisibleCells().map((cell) => {
-                        const isRightAligned = ['repo_rank', 'stargaze_count', 'fork_count', 'watcher_count'].includes(cell.column.id);
+                        const isRightAligned = ['repo_rank', 'stargaze_count', 'fork_count', 'watcher_count', 'distance'].includes(cell.column.id);
                         const isCenterAligned = ['predicted_is_dev_tooling', 'predicted_is_educational', 'predicted_is_scaffold'].includes(cell.column.id);
                         const alignmentClass = isRightAligned ? 'text-right' : isCenterAligned ? 'text-center' : 'text-left';
                         return (
