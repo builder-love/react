@@ -23,7 +23,7 @@ import { HiSearch, HiInformationCircle, HiArrowUp, HiArrowDown } from 'react-ico
 import { PaginatedRepos, RepoData } from '@/app/types';
 import { formatNumberWithCommas } from '@/app/utilities/formatters';
 
-type SortableRepoKeys = 'repo' | 'first_seen_timestamp' | 'fork_count' | 'stargaze_count' | 'watcher_count' | 'repo_rank' | 'repo_rank_category' | 'predicted_is_dev_tooling' | 'predicted_is_educational' | 'predicted_is_scaffold' | 'distance';
+type SortableRepoKeys = 'repo' | 'first_seen_timestamp' | 'fork_count' | 'stargaze_count' | 'watcher_count' | 'repo_rank' | 'repo_rank_category' | 'predicted_is_dev_tooling' | 'predicted_is_educational' | 'predicted_is_scaffold';
 
 const ProjectReposPage = () => {
   const router = useRouter();
