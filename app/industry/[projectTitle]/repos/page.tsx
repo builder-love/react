@@ -93,9 +93,19 @@ const ProjectReposPage = () => {
       try {
         const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/repos?${queryStringForFetch}`);
         if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.message || `Failed to fetch repositories (status: ${response.status})`);
+          // Try to get a meaningful error message from the body
+          const errorText = await response.text(); 
+          try {
+            // See if the text is actually JSON with a 'message' field
+            const errData = JSON.parse(errorText);
+            throw new Error(errData.message || `API Error: ${response.status}`);
+          } catch (errCatch) {
+            // If not JSON, use the raw text. This will now show the Vercel timeout message.
+            throw new Error(errorText || `Failed to fetch repositories (status: ${response.status})`);
+            console.log(errCatch);
+          }
         }
+      
         const result: PaginatedRepos = await response.json();
         setData(result.items);
         setPageCount(result.total_pages);
