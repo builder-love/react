@@ -23,7 +23,7 @@ import { HiSearch, HiInformationCircle, HiArrowUp, HiArrowDown } from 'react-ico
 import { PaginatedRepos, RepoData } from '@/app/types';
 import { formatNumberWithCommas } from '@/app/utilities/formatters';
 
-type SortableRepoKeys = 'repo' | 'first_seen_timestamp' | 'fork_count' | 'stargaze_count' | 'watcher_count' | 'repo_rank' | 'repo_rank_category' | 'predicted_is_dev_tooling' | 'predicted_is_educational' | 'predicted_is_scaffold';
+type SortableRepoKeys = 'repo' | 'first_seen_timestamp' | 'fork_count' | 'stargaze_count' | 'watcher_count' | 'repo_rank' | 'repo_rank_category' | 'predicted_is_dev_tooling' | 'predicted_is_educational' | 'predicted_is_scaffold' | 'distance';
 
 const ProjectReposPage = () => {
   const router = useRouter();
@@ -228,7 +228,14 @@ const ProjectReposPage = () => {
       cell: ({ getValue }) => getValue<string>() ?? 'N/A',
       size: 120,
       enableSorting: true,
-    }
+    },
+    {
+      header: 'Search Similarity (0: good, 2: bad)',
+      accessorKey: 'distance',
+      id: 'distance',
+      cell: ({ getValue }) => getValue<number>()?.toLocaleString() ?? 'N/A',
+      size: 120,
+    },
   ], []);
 
   const table = useReactTable({
