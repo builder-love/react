@@ -119,9 +119,30 @@ const ProjectReposPage = () => {
     const sortByToFetch = sorting[0]?.id || 'repo_rank';
     const sortOrderToFetch = sorting[0]?.desc ? 'desc' : 'asc';
 
+    setPagination(prev => {
+        const newPageIndex = pageToFetch - 1;
+        if (prev.pageIndex !== newPageIndex || prev.pageSize !== limitToFetch) {
+            return { pageIndex: newPageIndex, pageSize: limitToFetch };
+        }
+        return prev;
+    });
+    setSorting(prev => {
+        if (prev[0]?.id !== sortByToFetch || (prev[0]?.desc ? 'desc' : 'asc') !== sortOrderToFetch) {
+            return [{ id: sortByToFetch, desc: sortOrderToFetch === 'desc' }];
+        }
+        return prev;
+    });
+    setGlobalFilter(currentGlobalFilter => {
+      if (currentGlobalFilter !== searchToFetch) {
+        return searchToFetch;
+      }
+      return currentGlobalFilter;
+    });
+
     const fetchRepos = async () => {
       setIsLoading(true);
       setError(null);
+
 
       try {
         const response = await fetch(`/api/industry/project/${projectTitleUrlEncoded}/repos`, {
