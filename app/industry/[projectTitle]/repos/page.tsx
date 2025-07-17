@@ -1,15 +1,13 @@
 // app/industry/[projectTitle]/repos/page.tsx
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
   useReactTable,
   SortingState,
   PaginationState,
@@ -30,35 +28,37 @@ type SortableRepoKeys = 'repo' | 'first_seen_timestamp' | 'fork_count' | 'starga
 const ProjectReposPage = () => {
   const router = useRouter();
   const params = useParams();
-  const searchParamsHook = useSearchParams();
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const _searchHadFocus = useRef(false);
+  const searchParams = useSearchParams();
 
   const projectTitleUrlEncoded = params.projectTitle as string;
   const [projectTitle, setProjectTitle] = useState('');
 
+  // Data state
   const [data, setData] = useState<RepoData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState(0);
 
-  const initialValues = useMemo(() => {
-    const page = parseInt(searchParamsHook.get('page') || '1', 10);
-    const limit = parseInt(searchParamsHook.get('limit') || '10', 10);
-    const search = searchParamsHook.get('search') || '';
-    const sortBy = (searchParamsHook.get('sort_by') as SortableRepoKeys) || 'repo_rank';
-    const sortOrder = (searchParamsHook.get('sort_order') as 'asc' | 'desc') || 'asc';
+  // --- Single Source of Truth: Derive all state from URL search params ---
+  const { page, limit, search, sortBy, sortOrder } = useMemo(() => {
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const search = searchParams.get('search') || '';
+    const sortBy = (searchParams.get('sort_by') as SortableRepoKeys) || 'repo_rank';
+    const sortOrder = (searchParams.get('sort_order') as 'asc' | 'desc') || 'asc';
     return { page, limit, search, sortBy, sortOrder };
-  }, [searchParamsHook]);
+  }, [searchParams]);
 
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: initialValues.sortBy, desc: initialValues.sortOrder === 'desc' },
-  ]);
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: initialValues.page - 1,
-    pageSize: initialValues.limit,
-  });
-  const [globalFilter, setGlobalFilter] = useState(initialValues.search);
+  // State for the search input field, which can be typed into by the user.
+  // It's initialized from the URL's search param.
+  const [searchInput, setSearchInput] = useState(search);
+  useEffect(() => {
+    setSearchInput(search);
+  }, [search]);
+
+  // Table state for React Table is now derived directly from the URL params.
+  const sorting: SortingState = useMemo(() => [{ id: sortBy, desc: sortOrder === 'desc' }], [sortBy, sortOrder]);
+  const pagination: PaginationState = useMemo(() => ({ pageIndex: page - 1, pageSize: limit }), [page, limit]);
 
   useEffect(() => {
     if (projectTitleUrlEncoded) {
@@ -66,90 +66,27 @@ const ProjectReposPage = () => {
     }
   }, [projectTitleUrlEncoded]);
 
-  useEffect(() => {
-    if (!projectTitleUrlEncoded) {
-        return;
-    }
-    const currentSearch = searchParamsHook.get('search') || '';
-    const desiredParams = new URLSearchParams();
-    desiredParams.set('page', (pagination.pageIndex + 1).toString());
-    desiredParams.set('limit', pagination.pageSize.toString());
-    desiredParams.set('sort_by', sorting[0]?.id || 'repo_rank');
-    desiredParams.set('sort_order', sorting[0]?.desc ? 'desc' : 'asc');
-    if (currentSearch.trim()) {
-      desiredParams.set('search', currentSearch.trim());
-    }
-    const desiredQueryString = desiredParams.toString();
-    const currentQueryString = searchParamsHook.toString();
-
-    if (desiredQueryString !== currentQueryString) {
-      router.replace(`/industry/${projectTitleUrlEncoded}/repos?${desiredQueryString}`, { scroll: false });
-    }
-  }, [
-    projectTitleUrlEncoded,
-    pagination,
-    sorting,
-    router,
-    searchParamsHook
-  ]);
-
-  // This function handles the explicit search action.
-  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); // Prevent the form from doing a full page reload
-    const search = globalFilter.trim();
-    
-    // Reset to page 1 for new searches
-    setPagination(prev => ({...prev, pageIndex: 0}));
-
-    // Update the URL to trigger the data fetch
-    const currentParams = new URLSearchParams(searchParamsHook.toString());
-    currentParams.set('search', search);
-    currentParams.set('page', '1');
-    router.push(`/industry/${projectTitleUrlEncoded}/repos?${currentParams.toString()}`);
-  };
-
+  // --- The Main Data-Fetching useEffect ---
+  // This effect is driven by changes in the URL's derived parameters.
+  // Its dependency array contains only stable, primitive values, which fixes the error.
   useEffect(() => {
     if (!projectTitleUrlEncoded) {
       setIsLoading(false);
       return;
     }
-    const pageFromUrl = parseInt(searchParamsHook.get('page') || '1', 10);
-    const limitFromUrl = parseInt(searchParamsHook.get('limit') || '10', 10);
-    const searchFromUrl = searchParamsHook.get('search') || '';
-    const sortByFromUrl = (searchParamsHook.get('sort_by') as SortableRepoKeys) || 'repo_rank';
-    const sortOrderFromUrl = (searchParamsHook.get('sort_order') as 'asc' | 'desc') || 'asc';
-
-    setPagination(prev => {
-        const newPageIndex = pageFromUrl - 1;
-        if (prev.pageIndex !== newPageIndex || prev.pageSize !== limitFromUrl) {
-            return { pageIndex: newPageIndex, pageSize: limitFromUrl };
-        }
-        return prev;
-    });
-    setSorting(prev => {
-        if (prev[0]?.id !== sortByFromUrl || (prev[0]?.desc ? 'desc' : 'asc') !== sortOrderFromUrl) {
-            return [{ id: sortByFromUrl, desc: sortOrderFromUrl === 'desc' }];
-        }
-        return prev;
-    });
-    setGlobalFilter(currentGlobalFilter => {
-      if (currentGlobalFilter !== searchFromUrl) {
-        return searchFromUrl;
-      }
-      return currentGlobalFilter;
-    });
 
     const fetchRepos = async () => {
       setIsLoading(true);
       setError(null);
+      
       const queryParamsForFetch = new URLSearchParams({
-        page: pageFromUrl.toString(),
-        limit: limitFromUrl.toString(),
-        sort_by: sortByFromUrl,
-        sort_order: sortOrderFromUrl,
+        page: page.toString(),
+        limit: limit.toString(),
+        sort_by: sortBy,
+        sort_order: sortOrder,
       });
-      if (searchFromUrl.trim()) {
-        queryParamsForFetch.set('search', searchFromUrl.trim());
+      if (search.trim()) {
+        queryParamsForFetch.set('search', search.trim());
       }
       const queryStringForFetch = queryParamsForFetch.toString();
 
@@ -169,53 +106,32 @@ const ProjectReposPage = () => {
       }
     };
     fetchRepos();
-  }, [projectTitleUrlEncoded, searchParamsHook]);
+  }, [projectTitleUrlEncoded, page, limit, search, sortBy, sortOrder]);
 
 
-  // Effect to manage focus on the search input
-  useEffect(() => {
-    // Fallback to assign searchInputRef if direct ref prop didn't work or input wasn't initially rendered
-    if (!searchInputRef.current) {
-      const element = document.getElementById('repoSearch');
-      if (element instanceof HTMLInputElement) {
-        searchInputRef.current = element;
-      }
-    }
+  // Helper function to update URL search params and trigger a re-render/re-fetch.
+  const updateUrlParams = (newParams: Record<string, string | number | undefined>) => {
+    const currentParams = new URLSearchParams(searchParams.toString());
+    let resetPage = false;
 
-    const inputElement = searchInputRef.current;
-    let focusTimeoutId: NodeJS.Timeout | undefined = undefined;
-
-    if (inputElement) {
-      if (!isLoading) { // Only manage focus when loading is NOT active
-        if (_searchHadFocus.current && !inputElement.disabled) {
-          focusTimeoutId = setTimeout(() => {
-            if (searchInputRef.current && !searchInputRef.current.disabled) {
-              searchInputRef.current.focus();
-            } else {
-            }
-          }, 0);
-          // Consume the flag: we've processed this "focus intent" for this loading cycle.
-          // If the user focuses the input again (triggering onFocus), it will be set to true for the next cycle.
-          _searchHadFocus.current = false;
-        } else if (_searchHadFocus.current && inputElement.disabled) {
-          // This case should ideally not happen if isLoading is false,
-          // but as a safeguard, if the flag is true but input is still disabled, reset the flag.
-          _searchHadFocus.current = false;
+    for (const [key, value] of Object.entries(newParams)) {
+        if (value === undefined || value === '') {
+            currentParams.delete(key);
+        } else {
+            currentParams.set(key, String(value));
         }
-        // If _searchHadFocus.current was already false when !isLoading, do nothing, it remains false.
-      }
-    } else {
-      // do nothing
-      console.log("FOCUS EFFECT: inputElement is null/undefined.");
+        // If sorting or search changes, we should go back to page 1
+        if (key === 'sort_by' || key === 'search') {
+            resetPage = true;
+        }
     }
 
-    return () => {
-      if (focusTimeoutId) {
-        clearTimeout(focusTimeoutId);
-      }
-    };
-  }, [isLoading]); // Re-run this effect ONLY when isLoading changes.
-
+    if (resetPage) {
+        currentParams.set('page', '1');
+    }
+    
+    router.push(`/industry/${projectTitleUrlEncoded}/repos?${currentParams.toString()}`, { scroll: false });
+  };
 
   const columns = useMemo<ColumnDef<RepoData>[]>(() => [
     {
@@ -326,11 +242,7 @@ const ProjectReposPage = () => {
     manualPagination: true,
     manualSorting: true,
     manualFiltering: true,
-    onSortingChange: setSorting,
-    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     debugTable: process.env.NODE_ENV === 'development',
   });
 
@@ -338,6 +250,16 @@ const ProjectReposPage = () => {
     const sort = sorting.find(s => s.id === columnId);
     if (!sort) return null;
     return sort.desc ? <HiArrowDown className="inline ml-1 w-4 h-4" /> : <HiArrowUp className="inline ml-1 w-4 h-4" />;
+  };
+
+  const handleSort = (columnId: string) => {
+    const newSortOrder = sortBy === columnId && sortOrder === 'asc' ? 'desc' : 'asc';
+    updateUrlParams({ sort_by: columnId, sort_order: newSortOrder });
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    updateUrlParams({ search: searchInput.trim() });
   };
 
   if (!projectTitleUrlEncoded && !isLoading) {
@@ -358,24 +280,11 @@ const ProjectReposPage = () => {
         <form onSubmit={handleSearchSubmit} className="mb-4 flex items-center gap-2">
           <TextInput
             id="repoSearch"
-            ref={searchInputRef}
             type="search"
             icon={HiSearch}
             placeholder="Repo attributes (e.g., SDK, decentralized identity, etc.)..."
-            value={globalFilter ?? ''}
-            onChange={(e) => {
-              const newValue = e.target.value;
-              setGlobalFilter(newValue); // Always update the input's visual state
-              // If the user has cleared the input, refresh the results.
-              if (newValue === '') {
-                // We create a new search state without the 'search' param
-                const newParams = new URLSearchParams(searchParamsHook.toString());
-                newParams.delete('search');
-                newParams.set('page', '1'); // Go back to the first page
-                router.push(`/industry/${projectTitleUrlEncoded}/repos?${newParams.toString()}`);
-              }
-            }}
-            onFocus={() => { _searchHadFocus.current = true; }}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="w-full max-w-md dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600"
             disabled={isLoading}
           />
@@ -401,28 +310,28 @@ const ProjectReposPage = () => {
           );
         }
         if (!isLoading && data.length === 0) {
-          if (globalFilter) {
-            return <Alert color="info" className="my-4">No repositories found matching your search for &quot;{globalFilter}&quot;.</Alert>;
+          if (search) {
+            return <Alert color="info" className="my-4">No repositories found matching your search for &quot;{search}&quot;.</Alert>;
           }
           return <Alert color="info" className="my-4">No repositories found for this project.</Alert>;
         }
         if (data.length > 0) {
           return (
             <div className="relative overflow-x-auto shadow-md sm:rounded-lg border border-gray-700">
-              {isLoading && data.length > 0 && (
+              {isLoading && (
                 <div className="absolute inset-0 bg-gray-800 bg-opacity-75 flex flex-col items-center justify-center z-10 rounded-lg">
                   <Spinner size="lg" color="pink" />
                   <span className="mt-2 text-white">Updating results...</span>
                 </div>
               )}
-              <Table hoverable striped className={(isLoading && data.length > 0) ? 'opacity-60' : ''}>
+              <Table hoverable striped className={isLoading ? 'opacity-60' : ''}>
                 <thead className="text-xs text-gray-400 uppercase bg-gray-700">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id} className="border-b-gray-600">
                       {headerGroup.headers.map((header) => (
                         <th
                           key={header.id}
-                          onClick={header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
+                          onClick={header.column.getCanSort() ? () => handleSort(header.column.id) : undefined}
                           style={{ width: header.getSize() !== 0 ? header.getSize() : undefined }}
                           className={`px-3 py-3 text-left text-xs md:text-sm font-medium tracking-wider group whitespace-nowrap ${header.column.getCanSort() ? 'cursor-pointer' : ''}`}
                         >
@@ -437,31 +346,21 @@ const ProjectReposPage = () => {
                 </thead>
                 <tbody className="divide-y divide-gray-700 bg-gray-800">
                   {table.getRowModel().rows.map((row) => (
-                    <tr
-                      key={row.id}
-                      className="hover:bg-gray-700 dark:hover:bg-gray-600"
-                    >
+                    <tr key={row.id} className="hover:bg-gray-700 dark:hover:bg-gray-600">
                       {row.getVisibleCells().map((cell) => {
-                      // Define which columns should have which text alignment
-                      const isRightAligned = ['repo_rank', 'stargaze_count', 'fork_count', 'watcher_count'].includes(cell.column.id);
-                      const isCenterAligned = ['predicted_is_dev_tooling', 'predicted_is_educational', 'predicted_is_scaffold'].includes(cell.column.id);
-
-                      const alignmentClass = isRightAligned
-                        ? 'text-right'
-                        : isCenterAligned
-                        ? 'text-center' // Apply text-center for the checkmark columns
-                        : 'text-left';
-
-                      return (
-                        <td
-                          key={cell.id}
-                          style={{ width: cell.column.getSize() !== 0 ? cell.column.getSize() : undefined}}
-                          className={`px-3 py-2 text-xs md:text-sm whitespace-nowrap ${alignmentClass}`}
-                        >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      );
-                    })}
+                        const isRightAligned = ['repo_rank', 'stargaze_count', 'fork_count', 'watcher_count'].includes(cell.column.id);
+                        const isCenterAligned = ['predicted_is_dev_tooling', 'predicted_is_educational', 'predicted_is_scaffold'].includes(cell.column.id);
+                        const alignmentClass = isRightAligned ? 'text-right' : isCenterAligned ? 'text-center' : 'text-left';
+                        return (
+                          <td
+                            key={cell.id}
+                            style={{ width: cell.column.getSize() !== 0 ? cell.column.getSize() : undefined}}
+                            className={`px-3 py-2 text-xs md:text-sm whitespace-nowrap ${alignmentClass}`}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>
@@ -472,52 +371,48 @@ const ProjectReposPage = () => {
         return null;
       })()}
 
-      {pageCount > 0 && data.length > 0 && (
+      {pageCount > 1 && data.length > 0 && (
         <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 w-full">
           <div className="flex items-center gap-2">
-            <Button color="gray" size="xs" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage() || isLoading} className="border-gray-600">{'<<'}</Button>
-            <Button color="gray" size="xs" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage() || isLoading} className="border-gray-600">{'<'}</Button>
-            <Button color="gray" size="xs" onClick={() => table.nextPage()} disabled={!table.getCanNextPage() || isLoading} className="border-gray-600">{'>'}</Button>
-            <Button color="gray" size="xs" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage() || isLoading} className="border-gray-600">{'>>'}</Button>
+            <Button color="gray" size="xs" onClick={() => updateUrlParams({ page: 1 })} disabled={page <= 1 || isLoading} className="border-gray-600">{'<<'}</Button>
+            <Button color="gray" size="xs" onClick={() => updateUrlParams({ page: page - 1 })} disabled={page <= 1 || isLoading} className="border-gray-600">{'<'}</Button>
+            <Button color="gray" size="xs" onClick={() => updateUrlParams({ page: page + 1 })} disabled={page >= pageCount || isLoading} className="border-gray-600">{'>'}</Button>
+            <Button color="gray" size="xs" onClick={() => updateUrlParams({ page: pageCount })} disabled={page >= pageCount || isLoading} className="border-gray-600">{'>>'}</Button>
           </div>
           <div className="flex items-center gap-2 text-xs md:text-sm text-gray-400">
             <span>Page</span>
-            <strong>
-              {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-            </strong>
+            <strong>{page} of {pageCount}</strong>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs md:text-sm text-gray-400 hidden md:inline">Go to page:</span>
             <TextInput
               type="number"
-              defaultValue={table.getState().pagination.pageIndex + 1}
-              key={`go-to-page-${table.getState().pagination.pageIndex}-${table.getState().pagination.pageSize}`}
-              onChange={e => {
+              defaultValue={page}
+              key={`go-to-page-${page}`}
+              onBlur={e => {
                 const pageVal = e.target.value;
-                if (pageVal === "") return;
-                const page = Number(pageVal) - 1;
-                if (!isNaN(page) && page >= 0 && page < table.getPageCount()) {
-                    table.setPageIndex(page);
+                if (pageVal === "") {
+                    e.target.value = String(page);
+                    return;
+                };
+                const newPage = Number(pageVal);
+                if (!isNaN(newPage) && newPage >= 1 && newPage <= pageCount) {
+                    updateUrlParams({ page: newPage });
+                } else {
+                    e.target.value = String(page);
                 }
               }}
-              onBlur={(e) => {
-                const pageVal = e.target.value;
-                const currentPagePlusOne = (table.getState().pagination.pageIndex + 1).toString();
-                if (pageVal === "") {
-                    e.target.value = currentPagePlusOne;
-                    return;
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                    e.currentTarget.blur();
                 }
-                const page = Number(pageVal) - 1;
-                 if (isNaN(page) || page < 0 || page >= table.getPageCount()) {
-                    e.target.value = currentPagePlusOne;
-                 }
               }}
               className="w-16 text-xs dark:[&_input]:bg-gray-700 dark:[&_input]:text-white dark:[&_input]:border-gray-600 dark:[&_input]:p-1.5 text-center"
               disabled={isLoading}
             />
             <select
-              value={table.getState().pagination.pageSize}
-              onChange={e => table.setPageSize(Number(e.target.value))}
+              value={limit}
+              onChange={e => updateUrlParams({ limit: Number(e.target.value) })}
               className="text-xs p-1.5 border border-gray-600 rounded bg-gray-700 text-white focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500"
               disabled={isLoading}
             >
