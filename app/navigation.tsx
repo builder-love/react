@@ -10,8 +10,8 @@ import {
   HiTrendingUp,
   HiViewBoards,
   HiUser,
-  HiShoppingBag,
-  HiInbox,
+  // HiShoppingBag,
+  // HiInbox,
   HiMenu, // Hamburger icon
   HiX,
   HiSearch,
@@ -25,8 +25,8 @@ const navItems = [
   { href: "/developers", label: "Top Builders", icon: HiUser },
   { href: "/industry", label: "Find a Project", icon: HiSearch }, // New "Find a Project" item
   { href: "/languages", label: "Languages", icon: HiViewBoards },
-  { href: "/economics", label: "Economics", icon: HiShoppingBag },
-  { href: "/research", label: "Research", icon: HiInbox }, // Consider changing HiInbox if it's not fitting for "Research"
+  // { href: "/economics", label: "Economics", icon: HiShoppingBag },
+  // { href: "/research", label: "Research", icon: HiInbox }, // Consider changing HiInbox if it's not fitting for "Research"
 ];
 
 const CustomNavigation: React.FC<React.PropsWithChildren> = ({ children }) => {

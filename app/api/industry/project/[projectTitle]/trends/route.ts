@@ -15,6 +15,9 @@ const GCP_WORKLOAD_IDENTITY_POOL_ID = process.env.GCP_WORKLOAD_IDENTITY_POOL_ID;
 const GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID = process.env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID;
 const GCP_SERVICE_ACCOUNT_EMAIL = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
 
+// set timeout to 60 seconds
+export const maxDuration = 60;
+
 export async function GET(
   _request: NextRequest, // First argument is NextRequest (prefix with _ if unused)
   context: { params: Promise<{ projectTitle: string }> } // Parameter name matches the dynamic segment [projectTitle]

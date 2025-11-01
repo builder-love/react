@@ -5,6 +5,9 @@ import { ExternalAccountClient } from 'google-auth-library';
 import { NextRequest, NextResponse } from 'next/server';
 // import { decodeJwt } from 'jose'; // Keep for debugging Vercel tokens if needed
 
+// set timeout to 60 seconds
+export const maxDuration = 60;
+
 // --- Environment Variable Configuration ---
 const API_BASE_URL = process.env.API_BASE_URL;
 const API_AUTH_MODE = process.env.API_AUTH_MODE || 'OIDC_WORKLOAD_IDENTITY'; // Default to OIDC

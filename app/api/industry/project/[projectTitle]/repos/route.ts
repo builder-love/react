@@ -15,6 +15,9 @@ const GCP_WORKLOAD_IDENTITY_POOL_ID = process.env.GCP_WORKLOAD_IDENTITY_POOL_ID;
 const GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID = process.env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID;
 const GCP_SERVICE_ACCOUNT_EMAIL = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
 
+// set timeout to 60 seconds
+export const maxDuration = 60;
+
 export async function GET(
   request: NextRequest, // Use 'request' to access searchParams
   context: { params: Promise<{ projectTitle: string }> }
